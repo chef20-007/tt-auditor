@@ -438,9 +438,9 @@ export default function AppDesktop(){
   const [orgs,setOrgs]=useState([]);
   const [accts,setAccts]=useState([]);
   const [orgId,setOrgId]=useState(null);
-  const [nav,setNav]=useState("dashboard");
-  const [selected,setSelected]=useState(null);
-  const [detailTab,setDetailTab]=useState("overview");
+  const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
+  const [selected,setSelected]=useState(()=>{try{return sessionStorage.getItem('tt_selected')||null;}catch{return null;}});
+  const [detailTab,setDetailTab]=useState(()=>{try{return sessionStorage.getItem('tt_tab')||'overview';}catch{return'overview';}});
   const [editMode,setEditMode]=useState(false);
   const [loaded,setLoaded]=useState(false);
   const [archiveTarget,setArchiveTarget]=useState(null);
@@ -467,7 +467,7 @@ export default function AppDesktop(){
     setAccts(p=>{const i=p.findIndex(x=>x.id===a.id&&x.orgId===a.orgId);if(i>=0){const c=[...p];c[i]=a;return c;}return[...p,a];});
   }
   async function saveOrg(o){await sset(`org:${o.id}`,o);setOrgs(p=>[...p,o]);setOrgId(o.id);}
-  async function delAcct(a){await sdel(`acct:${a.orgId}:${a.id}`);setAccts(p=>p.filter(x=>!(x.id===a.id&&x.orgId===a.orgId)));setSelected(null);}
+  async function delAcct(a){await sdel(`acct:${a.orgId}:${a.id}`);setAccts(p=>p.filter(x=>!(x.id===a.id&&x.orgId===a.orgId)));selectAcct(null);}
 
   if(!loaded)return<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:sans,color:T.sub,fontSize:14}}>Loading…</div>;
 
@@ -497,6 +497,8 @@ export default function AppDesktop(){
   const allMilestones=activeAccts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&daysDiff(m.date)>=0&&daysDiff(m.date)<=14).map(m=>({...m,acct:a.account,aid:a.id}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const velocity=activeAccts.length>0?Math.round(activeAccts.reduce((n,a)=>{const ms=(a.milestones||[]).filter(m=>m.done);return n+(ms.length>0?14:21);},0)/activeAccts.length):0;
   const showDetail=selectedAcct&&(nav==="accounts");
+  function navigate(page){try{sessionStorage.setItem('tt_nav',page);}catch{}setNav(page);}
+  function selectAcct(id,tab){const t=tab||'overview';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
 
   return(
     <div style={{display:"flex",height:"100vh",background:"#FAFAFA",fontFamily:sans,color:T.ink,letterSpacing:-.1,overflow:"hidden"}}>
@@ -510,7 +512,7 @@ export default function AppDesktop(){
           </div>
         </div>
         <div style={{padding:"8px 0",flex:1,overflowY:"auto"}}>
-          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&!showDetail;return<div key={n.id}>{showLabel&&<div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 5px"}}>{n.section}</div>}<button onClick={()=>{setNav(n.id);if(n.id!=="accounts")setSelected(null);}} style={{width:"100%",display:"flex",alignItems:"center",padding:"6px 16px",border:"none",cursor:"pointer",fontFamily:sans,fontSize:13,fontWeight:isActive?600:400,background:isActive?S.activeBg:"transparent",color:isActive?S.activeText:S.inactiveText,textAlign:"left",borderLeft:isActive?`2px solid ${S.activeBorder}`:"2px solid transparent"}}>{n.label}</button></div>;});})()}
+          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&!showDetail;return<div key={n.id}>{showLabel&&<div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 5px"}}>{n.section}</div>}<button onClick={()=>{navigate(n.id);if(n.id!=="accounts")selectAcct(null);}} style={{width:"100%",display:"flex",alignItems:"center",padding:"6px 16px",border:"none",cursor:"pointer",fontFamily:sans,fontSize:13,fontWeight:isActive?600:400,background:isActive?S.activeBg:"transparent",color:isActive?S.activeText:S.inactiveText,textAlign:"left",borderLeft:isActive?`2px solid ${S.activeBorder}`:"2px solid transparent"}}>{n.label}</button></div>;});})()}
         </div>
         <div style={{padding:"12px 16px 16px",borderTop:`1px solid ${S.border}`}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
@@ -519,14 +521,14 @@ export default function AppDesktop(){
           </div>
           <div style={{fontSize:12,color:T.ink,fontWeight:500,marginBottom:1}}>Weekly pull ready</div>
           <div style={{fontSize:11,color:S.inactiveText,marginBottom:10}}>Last run: not yet</div>
-          <button onClick={()=>setNav("digest")} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:12}}>Run pull</button>
+          <button onClick={()=>navigate("digest")} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:12}}>Run pull</button>
         </div>
       </div>
 
       {/* MAIN CONTENT */}
       <div style={{flex:1,overflow:"auto",background:"#FFFFFF",minWidth:0}}>
 
-        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={setDetailTab} onBack={()=>setSelected(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
+        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={setDetailTab} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
         {/* DASHBOARD */}
         {!showDetail&&nav==="dashboard"&&<div style={{padding:"32px 40px"}}>
@@ -537,7 +539,7 @@ export default function AppDesktop(){
               <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Real-time revenue, pipeline, and contract health</p>
             </div>
             <div style={{display:"flex",gap:10}}>
-              <button onClick={()=>{setNav("accounts");setEditMode(true);}} style={{...VBtn.secondary,fontSize:13}}>+ New account</button>
+              <button onClick={()=>{navigate("accounts");setEditMode(true);}} style={{...VBtn.secondary,fontSize:13}}>+ New account</button>
             </div>
           </div>
 
@@ -546,7 +548,7 @@ export default function AppDesktop(){
               <div><div style={{fontSize:13,fontWeight:600,color:"#92400E"}}>{staleAccts.length} account{staleAccts.length!==1?"s":""} with no contact in 90+ days</div>
               <div style={{fontSize:12,color:"#B45309",marginTop:1}}>{staleAccts.map(a=>a.account).join(", ")} — consider archiving</div></div>
             </div>
-            <button onClick={()=>setNav("accounts")} style={{...VBtn.small,borderColor:"#FDE68A",color:"#92400E"}}>Review →</button>
+            <button onClick={()=>navigate("accounts")} style={{...VBtn.small,borderColor:"#FDE68A",color:"#92400E"}}>Review →</button>
           </div>}
 
           <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:28}}>
@@ -577,7 +579,7 @@ export default function AppDesktop(){
                 <span style={{width:24,height:24,borderRadius:"50%",background:T.black,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{actions.length}</span>
               </div>
               {actions.slice(0,4).map((r,i)=>(
-                <button key={i} onClick={()=>{setSelected(r.aid);setNav("accounts");setDetailTab("overview");}} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
+                <button key={i} onClick={()=>{setSelected(r.aid);navigate("accounts");setDetailTab("overview");}} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
                   <Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2}}>{r.risk}</div>
@@ -594,7 +596,7 @@ export default function AppDesktop(){
                 <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Next 14 days</div>
               </div>
               {allMilestones.slice(0,5).map((m,i)=>{const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);return(
-                <button key={m.id} onClick={()=>{setSelected(m.aid);setNav("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
+                <button key={m.id} onClick={()=>{setSelected(m.aid);navigate("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
                     <div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{m.acct}</div>
@@ -637,7 +639,7 @@ export default function AppDesktop(){
                     {showTierHeader&&i>0&&<div style={{padding:"8px 20px 5px",background:"#F9FAFB",borderTop:`1px solid ${S.border}`}}>
                       <span style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:tier.c}}>{tier.label}</span>
                     </div>}
-                    <button onClick={()=>{setSelected(a.id);setDetailTab("overview");}} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
+                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -674,7 +676,7 @@ export default function AppDesktop(){
                       <div style={{fontSize:13,color:S.labelText,textAlign:"right"}}>—</div>
                       <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
                         <button onClick={()=>unarchiveAcct(a.id)} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500}}>Restore</button>
-                        <button onClick={()=>{setSelected(a.id);setDetailTab("overview");}} style={{fontSize:12,color:S.labelText,background:"none",border:"none",cursor:"pointer",fontFamily:sans}}>View →</button>
+                        <button onClick={()=>{selectAcct(a.id,"overview");}} style={{fontSize:12,color:S.labelText,background:"none",border:"none",cursor:"pointer",fontFamily:sans}}>View →</button>
                       </div>
                     </div>
                   ))}
@@ -705,7 +707,7 @@ export default function AppDesktop(){
                     <span style={{fontSize:14,fontWeight:600,color:T.ink}}>{a.account}</span>
                   </div>
                   <Tag label={tier.label} c={tier.c} s={tier.s}/>
-                  <button onClick={()=>{setSelected(a.id);setDetailTab("timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,fontFamily:sans}}>Open →</button>
+                  <button onClick={()=>{selectAcct(a.id,"timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,fontFamily:sans}}>Open →</button>
                 </div>
                 {/* Upcoming milestones */}
                 {upcoming.length>0&&<>
@@ -769,7 +771,7 @@ export default function AppDesktop(){
                   <div style={{fontSize:13,display:"flex",alignItems:"center"}}>{cb.amount>0?fmt(cb.amount):"—"}</div>
                   <div style={{fontSize:13,color:S.inactiveText,display:"flex",alignItems:"center"}}>{cb.date}</div>
                   <div style={{display:"flex",alignItems:"center"}}><Tag label={cb.status} c={col} s={col+"14"}/></div>
-                  <button onClick={()=>{setSelected(cb.aid);setNav("accounts");setDetailTab("timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500,textAlign:"left"}}>View →</button>
+                  <button onClick={()=>{setSelected(cb.aid);navigate("accounts");setDetailTab("timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500,textAlign:"left"}}>View →</button>
                 </div>
               );})}
             </div>;
@@ -822,7 +824,7 @@ export default function AppDesktop(){
             </div>
             <div style={{padding:"0 24px 20px",display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button onClick={()=>setArchiveTarget(null)} style={{...VBtn.secondary,fontSize:13}}>Cancel</button>
-              <button onClick={()=>{archiveAcct(archiveTarget.id);setArchiveTarget(null);if(selected===archiveTarget.id)setSelected(null);}} style={{...VBtn.primary,fontSize:13}}>Archive account</button>
+              <button onClick={()=>{archiveAcct(archiveTarget.id);setArchiveTarget(null);if(selected===archiveTarget.id)selectAcct(null);}} style={{...VBtn.primary,fontSize:13}}>Archive account</button>
             </div>
           </div>
         </div>
@@ -836,7 +838,7 @@ export default function AppDesktop(){
               <h2 style={{margin:0,fontSize:18,fontWeight:700,color:T.ink}}>{selectedAcct&&editMode?"Edit account":"New account"}</h2>
               <button onClick={()=>setEditMode(false)} style={{width:28,height:28,borderRadius:"50%",border:`1px solid ${S.border}`,background:"none",cursor:"pointer",fontSize:16,color:T.sub,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
             </div>
-            <AccountForm orgId={orgId} existing={selectedAcct&&editMode?selectedAcct:undefined} onCancel={()=>setEditMode(false)} onSave={async a=>{await saveAcct(a);setSelected(a.id);setNav("accounts");setEditMode(false);}}/>
+            <AccountForm orgId={orgId} existing={selectedAcct&&editMode?selectedAcct:undefined} onCancel={()=>setEditMode(false)} onSave={async a=>{await saveAcct(a);setSelected(a.id);navigate("accounts");setEditMode(false);}}/>
           </div>
         </div>
       )}
@@ -1178,37 +1180,65 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
           {/* CONTRACT */}
           {tab==="contract"&&<>
             <ContractImport onImport={parsed=>{const n={...eco,...parsed};setEco(n);save({contract:n});setToast("Imported ✓");setTimeout(()=>setToast(null),2000);}}/>
-            <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:16}}>
-              {c?[
-                ["Start → End",`${eco.start||"—"} → ${eco.end||"—"}`],
-                ["Renewal",eco.renewal||"—"],
-                ["Payment terms",eco.paymentTerms||"—"],
-                ["Liability cap",eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
-                ["SLA target",eco.slaTarget?eco.slaTarget+"%":"—"],
-                ["Data rights",eco.dataRights||"—"],
-                ["IP ownership",eco.ipOwnership||"—"],
-                ["Termination notice",eco.terminationNotice||"—"],
-                ["Auto-renew",eco.autoRenew?"Yes":"No"],
-                ["Exclusivity",eco.exclusive?"Yes":"No"],
-                ["Audit rights",eco.auditRights?"Yes":"No"],
-              ].map(([k,v2],i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
-                  <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
-                  <span style={{fontSize:13,fontWeight:500,color:String(v2).startsWith("⚠")?T.red:T.ink}}>{v2}</span>
+
+            {/* Quick GMV update — most common action */}
+            <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:16,background:"#F9FAFB"}}>
+              <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:12}}>Update GMV</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                <div>
+                  <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
+                  <input type="number" value={eco.gmvActual||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvActual:v}));save({contract:{...eco,gmvActual:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
                 </div>
-              )):
-              <div style={{padding:"24px 16px",fontSize:13,color:S.inactiveText}}>No signed contract on file. Edit the account to add contract terms.</div>}
-            </div>
-            {(a.dismissed_signals||[]).length>0&&<div style={{marginTop:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Dismissed signals</div>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
-                {a.dismissed_signals.map((s,i)=>(
-                  <div key={s.id} style={{padding:"12px 16px",borderTop:i?`1px solid ${S.border}`:"none"}}>
-                    <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,fontWeight:500,color:S.inactiveText}}>{s.kind}</span><span style={{fontSize:11.5,color:S.labelText}}>{s.dismissedAt}</span></div>
-                    <div style={{fontSize:12,color:S.labelText,marginTop:2,lineHeight:1.45}}>{s.text}</div>
-                  </div>
-                ))}
+                <div>
+                  <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
+                  <input type="number" value={eco.gmvProjected||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvProjected:v}));save({contract:{...eco,gmvProjected:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
+                  <input type="number" value={eco.netTakePct||10} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,netTakePct:v}));save({contract:{...eco,netTakePct:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+                </div>
               </div>
+              <div style={{marginTop:8,fontSize:12,color:S.inactiveText}}>
+                Fees at current GMV: <b style={{color:T.ink}}>{fmt((eco.gmvActual||0)*(eco.netTakePct||10)/100)}</b>
+                {eco.gmvProjected>0&&<span> · {Math.round(100*(eco.gmvActual||0)/(eco.gmvProjected||1))}% of projection</span>}
+              </div>
+            </div>
+
+            {/* Contract terms — collapsible */}
+            <CollapsibleSection title="Contract terms" defaultOpen={false} style={{marginTop:20}}>
+              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:8}}>
+                {c?[
+                  ["Start → End",`${eco.start||"—"} → ${eco.end||"—"}`],
+                  ["Renewal",eco.renewal||"—"],
+                  ["Payment terms",eco.paymentTerms||"—"],
+                  ["Liability cap",eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
+                  ["SLA target",eco.slaTarget?eco.slaTarget+"%":"—"],
+                  ["Data rights",eco.dataRights||"—"],
+                  ["Termination notice",eco.terminationNotice||"—"],
+                  ["Auto-renew",eco.autoRenew?"Yes":"No"],
+                  ["Exclusivity",eco.exclusive?"Yes":"No"],
+                  ["Audit rights",eco.auditRights?"Yes":"No"],
+                ].map(([k,v2],i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"11px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
+                    <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
+                    <span style={{fontSize:13,fontWeight:500,color:String(v2).startsWith("⚠")?T.red:T.ink}}>{v2}</span>
+                  </div>
+                )):
+                <div style={{padding:"24px 16px",fontSize:13,color:S.inactiveText}}>No signed contract on file.</div>}
+              </div>
+            </CollapsibleSection>
+
+            {(a.dismissed_signals||[]).length>0&&<div style={{marginTop:20}}>
+              <CollapsibleSection title="Dismissed signals" defaultOpen={false}>
+                <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:8}}>
+                  {a.dismissed_signals.map((s,i)=>(
+                    <div key={s.id} style={{padding:"12px 16px",borderTop:i?`1px solid ${S.border}`:"none"}}>
+                      <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:13,fontWeight:500,color:S.inactiveText}}>{s.kind}</span><span style={{fontSize:11.5,color:S.labelText}}>{s.dismissedAt}</span></div>
+                      <div style={{fontSize:12,color:S.labelText,marginTop:2,lineHeight:1.45}}>{s.text}</div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
             </div>}
           </>}
 
@@ -1741,7 +1771,7 @@ function NewOrg({onCancel,onSave}){
 }
 
 function AccountForm({orgId,existing,onCancel,onSave}){
-  const blank={id:uid(),orgId,account:"",short:"",logo:"#6C5FE0",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:1,milestones:[],comms:"",summary:"",signal:"",shift:"",impact:{pct:"",dir:"neg",label:"",withAction:""},fault:{verdict:"unclear",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:{start:"",end:"",renewal:"",paymentTerms:"Net 30",platformFeePct:8,kickbackPct:0,kickbackTo:"",netTakePct:8,processingPassThru:true,processingRate:2.9,gmvProjected:0,gmvActual:0,liabilityCap:0,slaTarget:99.9,exclusive:false,dataRights:"",autoRenew:false,terminationNotice:"30 days",auditRights:false,ipOwnership:"",revenueShareOnUpsells:false,whiteLabel:false,notes:""}};
+  const blank={id:uid(),orgId,account:"",short:"",logo:"#6C5FE0",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:1,milestones:[],comms:"",summary:"",signal:"",shift:"",impact:{pct:"",dir:"neg",label:"",withAction:""},fault:{verdict:"unclear",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:{start:"",end:"",renewal:"",paymentTerms:"Net 30",platformFeePct:10,kickbackPct:0,kickbackTo:"",netTakePct:10,processingPassThru:true,processingRate:2.9,gmvProjected:0,gmvActual:0,liabilityCap:0,slaTarget:99.9,exclusive:false,dataRights:"",autoRenew:false,terminationNotice:"30 days",auditRights:false,ipOwnership:"",revenueShareOnUpsells:false,whiteLabel:false,notes:""}};
   const [f,setF]=useState(existing||blank);const [hasContract,setHasContract]=useState(!!existing?.contract);const [scanning,setScanning]=useState(false);
   const up=(k,v)=>setF(p=>({...p,[k]:v}));const upC=(k,v)=>setF(p=>({...p,contract:{...p.contract,[k]:v}}));
   const toggleProduct=p=>{const cur=f.products||[];up("products",cur.includes(p)?cur.filter(x=>x!==p):[...cur,p]);};
