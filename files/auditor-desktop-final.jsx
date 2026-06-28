@@ -845,6 +845,8 @@ export default function AppDesktop(){
 }
 // Full main area. Left: main content + tabs. Right: meta sidebar.
 // Mirrors Stripe's transaction detail layout exactly.
+const EF=({label,value,onChange,type="text",placeholder=""})=><div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>{label}</label><input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>;
+
 function MilestoneAdd({onAdd,onCancel}){
   const [type,setType]=useState("event_date");
   const [title,setTitle]=useState("");
@@ -1294,6 +1296,43 @@ function CostAddStripe({onAdd}){
   </div>;
 }
 
+function ContractCycles({cycles=[],currentProducts=[],onAdd,onUpdate,onDelete}){
+  const [adding,setAdding]=useState(false);
+  const sorted=[...cycles].sort((a,b)=>new Date(a.start||0)-new Date(b.start||0));
+  return <div>
+    {sorted.length===0&&<div style={{fontSize:13,color:S.inactiveText,padding:"8px 0 4px"}}>No cycles yet.</div>}
+    {sorted.map((cy,i)=><CycleCard key={cy.id} cy={cy} index={i} onUpdate={p=>onUpdate(cy.id,p)} onDelete={()=>onDelete(cy.id)}/>)}
+    {adding
+      ?<NewCycleForm products={currentProducts} onSave={cy=>{onAdd(cy);setAdding(false);}} onCancel={()=>setAdding(false)}/>
+      :<button onClick={()=>setAdding(true)} style={{...VBtn.secondary,marginTop:8,fontSize:12}}>+ Add cycle / renewal</button>}
+  </div>;
+}
+function CycleCard({cy,index,onUpdate,onDelete}){
+  const [open,setOpen]=useState(false);
+  return <div style={{borderTop:`1px solid ${S.border}`,padding:"12px 0"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block"}}>›</span>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{cy.label||`Cycle ${index+1}`}</span>
+          {cy.active&&<Tag label="Active" c={T.purple} s={T.purpleSoft}/>}
+        </div>
+        <div style={{fontSize:12,color:S.inactiveText,marginTop:1}}>{cy.start||"—"}{cy.end?` → ${cy.end}`:""}{cy.products?.length?` · ${cy.products.join(", ")}`:""}</div>
+      </div>
+      <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
+    </div>
+    {open&&<div style={{marginTop:10,padding:"14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+        <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Label</label><input value={cy.label||""} onChange={e=>onUpdate({label:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+        <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Start → End</label><div style={{display:"flex",gap:6}}><input value={cy.start||""} onChange={e=>onUpdate({start:e.target.value})} placeholder="May 2026" style={{flex:1,padding:"7px 8px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:12,fontFamily:sans,outline:"none"}}/><input value={cy.end||""} onChange={e=>onUpdate({end:e.target.value})} placeholder="Jul 2026" style={{flex:1,padding:"7px 8px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:12,fontFamily:sans,outline:"none"}}/></div></div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <label style={{fontSize:12,color:T.ink,display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}><input type="checkbox" checked={!!cy.active} onChange={e=>onUpdate({active:e.target.checked})} style={{cursor:"pointer"}}/>Active cycle</label>
+        <button onClick={onDelete} style={{...VBtn.secondary,fontSize:12,color:T.red,borderColor:T.redSoft,marginLeft:"auto"}}>Delete</button>
+      </div>
+    </div>}
+  </div>;
+}
 function NewCycleForm({products,onSave,onCancel}){
   const [label,setLabel]=useState("");const [start,setStart]=useState("");const [end,setEnd]=useState("");
   const [prods,setProds]=useState([...products]);const [note,setNote]=useState("");
