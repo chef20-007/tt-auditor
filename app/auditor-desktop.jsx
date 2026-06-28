@@ -846,6 +846,66 @@ export default function AppDesktop(){
 }
 // Full main area. Left: main content + tabs. Right: meta sidebar.
 // Mirrors Stripe's transaction detail layout exactly.
+function MilestoneAdd({onAdd,onCancel}){
+  const [type,setType]=useState("event_date");
+  const [title,setTitle]=useState("");
+  const [date,setDate]=useState("");
+  const [note,setNote]=useState("");
+  return <div style={{background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:8}}>
+    <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:10}}>Add milestone</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12}}>
+      {Object.entries(MILESTONE_TYPES).map(([k,v])=><button key={k} onClick={()=>setType(k)} style={{padding:"6px 4px",borderRadius:5,fontFamily:sans,fontSize:11,fontWeight:type===k?600:400,cursor:"pointer",border:`1px solid ${type===k?v.color:S.border}`,background:type===k?v.color+"12":"#fff",color:type===k?v.color:S.inactiveText,textAlign:"center"}}>{v.label}</button>)}
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Title</label><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Event day" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+    </div>
+    <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Note (optional)</label><input value={note} onChange={e=>setNote(e.target.value)} placeholder="Add context" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+    <div style={{display:"flex",gap:8}}>
+      <button disabled={!title||!date} onClick={()=>{onAdd({id:uid(),type,title,date,note,done:false});onCancel();}} style={{...VBtn.primary,fontSize:12,opacity:(!title||!date)?.5:1}}>Add</button>
+      <button onClick={onCancel} style={{...VBtn.secondary,fontSize:12}}>Cancel</button>
+    </div>
+  </div>;
+}
+
+function MilestoneRow({m,onToggle,onDelete}){
+  const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
+  const d=daysDiff(m.date);
+  const urgent=d<=3&&!m.done;
+  const soon=d<=7&&!m.done&&!urgent;
+  return <div style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderTop:`1px solid ${S.border}`,opacity:m.done?.45:1}}>
+    <button onClick={()=>onToggle(m.id)} style={{width:18,height:18,borderRadius:4,border:`1.5px solid ${m.done?T.green:"#D1D5DB"}`,background:m.done?T.green:"transparent",color:"#fff",fontSize:10,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>{m.done?"✓":""}</button>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
+        <Tag label={mt.label} c={mt.color} s={mt.color+"18"}/>
+      </div>
+      <div style={{fontSize:12,color:S.inactiveText,marginTop:1}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}{m.note?` · ${m.note}`:""}</div>
+    </div>
+    {urgent&&<span style={{fontSize:12,fontWeight:700,color:T.red,flexShrink:0}}>{d<=0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
+    {soon&&<span style={{fontSize:12,fontWeight:600,color:T.yellow,flexShrink:0}}>{d}d</span>}
+    <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
+  </div>;
+}
+
+function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
+  const [adding,setAdding]=useState(false);
+  const sorted=[...milestones].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const upcoming=sorted.filter(m=>!m.done);
+  const past=sorted.filter(m=>m.done);
+  return <div>
+    {upcoming.map(m=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete}/>)}
+    {past.length>0&&<div style={{marginTop:8,padding:"8px 0",borderTop:`1px solid ${S.border}`}}>
+      <div style={{fontSize:11,color:S.labelText,marginBottom:8}}>{past.length} completed</div>
+      {past.map(m=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete}/>)}
+    </div>}
+    {sorted.length===0&&<div style={{fontSize:13,color:S.inactiveText,padding:"8px 0"}}>No milestones yet.</div>}
+    {adding
+      ?<MilestoneAdd onAdd={onAdd} onCancel={()=>setAdding(false)}/>
+      :<button onClick={()=>setAdding(true)} style={{...VBtn.secondary,marginTop:10,fontSize:12}}>+ Add milestone</button>}
+  </div>;
+}
+
 function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
   const [costs,setCosts]=useState(a.costs||[]);
   const [milestones,setMilestones]=useState(a.milestones||[]);
