@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect } from "react";
 
 const T = {
@@ -14,7 +12,7 @@ const sans='"Inter","SF Pro Text",-apple-system,system-ui,sans-serif';
 const BD=`1px solid ${T.hairS}`;
 const HD=`1px solid ${T.hair}`;
 
-const HEALTH={green:{label:"On track",c:T.green,soft:T.greenSoft},yellow:{label:"Watch",c:T.yellow,soft:T.yellowSoft},red:{label:"Action needed",c:T.red,soft:T.redSoft}};
+const HEALTH={green:{label:"On track",c:T.green,soft:T.greenSoft},yellow:{label:"Watch",c:T.yellow,soft:T.yellowSoft},red:{label:"Action needed",c:T.red,soft:T.redSoft},archived:{label:"Archived",c:T.sub,soft:"#F3F4F6"}};
 const SEV={low:{l:"Low",c:T.green,s:T.greenSoft},medium:{l:"Watch",c:T.yellow,s:T.yellowSoft},high:{l:"Critical",c:T.red,s:T.redSoft}};
 const VERDICT={us:{label:"We're exposed",c:T.red,s:T.redSoft},them:{label:"They're at fault",c:T.green,s:T.greenSoft},shared:{label:"Shared fault",c:T.yellow,s:T.yellowSoft},neither:{label:"No fault",c:T.sub,s:"#F0F1F3"},unclear:{label:"Unclear",c:T.sub,s:"#F0F1F3"}};
 const OBL_STATUS={met:{c:T.green,t:"Met"},missed:{c:T.red,t:"Missed"},at_risk:{c:T.yellow,t:"At risk"},unclear:{c:T.sub,t:"Unclear"}};
@@ -33,14 +31,14 @@ const PRODUCTS=["Primary ticketing","Box Office / POS","Sponsor Portal","Moments
 const SPONSOR_MODES=["No sponsor","We brought the sponsor","They brought the sponsor","Partner brought the sponsor"];
 const EVENT_TYPES=["Paid event","Free event","Hybrid"];
 const MILESTONE_TYPES={
-  event_date:{label:"Event date",icon:"📅",color:T.blue},
-  renewal:{label:"Renewal",icon:"🔄",color:T.purple},
-  deadline:{label:"Deadline",icon:"⏱",color:T.yellow},
-  payment:{label:"Payment",icon:"💳",color:T.green},
-  upsell:{label:"Upsell",icon:"📈",color:T.purple},
-  risk:{label:"Risk trigger",icon:"⚠",color:T.red},
-  review:{label:"Review",icon:"👥",color:T.sub},
-  contract_end:{label:"Contract end",icon:"🏁",color:T.black},
+  event_date:{label:"Event date",icon:"",color:T.blue},
+  renewal:{label:"Renewal",icon:"",color:T.purple},
+  deadline:{label:"Deadline",icon:"",color:T.yellow},
+  payment:{label:"Payment",icon:"",color:T.green},
+  upsell:{label:"Upsell",icon:"",color:T.purple},
+  risk:{label:"Risk trigger",icon:"",color:T.red},
+  review:{label:"Review",icon:"",color:T.sub},
+  contract_end:{label:"Contract end",icon:"",color:T.black},
 };
 // Cycles are account-specific and tied to renewals/events — no fixed template.
 // Each cycle: { id, label, start, end, products[], events[], note, active }
@@ -56,12 +54,197 @@ const daysDiff=(d)=>Math.round((new Date(d)-new Date())/(1000*60*60*24));
 
 // ── SEED ──
 const SEED_ORG={id:"3tree",name:"3 Tree Labs",sub:"Ticket Tree"};
+// ── CRM TIERS ──
+// active: contracted, event upcoming or recent (< 60 days)
+// watch: 30-60 days no contact, renewal risk
+// cold: 60-90 days no contact, needs re-engagement
+// archived: explicitly parked
+const CRM_TIERS={
+  active:  {label:"Active",   c:T.green,  s:T.greenSoft,  order:0},
+  watch:   {label:"Watch",    c:T.yellow, s:T.yellowSoft,  order:1},
+  cold:    {label:"Cold",     c:T.sub,    s:"#F3F4F6",     order:2},
+  archived:{label:"Archived", c:T.faint,  s:"#F9FAFB",     order:3},
+};
+
 const SEED_ACCTS=[
+  // ── ACTIVE ──
   {
     id:"sail4th",orgId:"3tree",account:"Sail4th 250",short:"S4",logo:"#2E6BD6",
-    health:"yellow",owner:"Carter",value:"~$1.0M GMV · ~$70K fees",
+    tier:"active",health:"yellow",owner:"Carter",
+    value:"$257,501 GMV · 29 events",
     products:["Primary ticketing","Sponsor Portal"],eventType:"Paid event",sponsorMode:"They brought the sponsor",
     contractCycle:1,
+    cycles:[{id:"cy1",label:"Sail4th 250 — inaugural event",start:"May 2026",end:"Jul 2026",products:["Primary ticketing","Sponsor Portal"],events:["Sail4th 250 · Jul 3, 2026"],note:"First contract. Paid anchorage ticketing + free boat tour time-select.",active:true}],
+    chargebacks:[{id:"cb1",amount:0,reason:"Misbooking — incorrect pier allocation from client CSV",status:"Open",date:"2026-06-10",disputedBy:"Lisa Vitanza",note:"Client allocation error. Informal refund promise made in text. Resolve before Jul 3."}],
+    features:[
+      {id:"f1",name:"Paid anchorage ticketing — 8 piers",status:"Shipped",scope:"contract",note:"Live since May 2026"},
+      {id:"f2",name:"Free boat tour time-select registration",status:"Shipped",scope:"contract",note:"Live since May 2026"},
+      {id:"f3",name:"Sponsor allocation CSV import",status:"Shipped",scope:"contract",note:"Gwen sends CSV, we import"},
+      {id:"f4",name:"Per-pier GMV report for sponsors",status:"In progress",scope:"out-of-scope",note:"Gwen requested Jun 15. NOT in signed scope."},
+      {id:"f5",name:"Vitanza refund handling",status:"In progress",scope:"out-of-scope",note:"NOT in contract. Informal promise."},
+    ],
+    contract:{start:"May 2026",end:"Jul 2026",renewal:"TBD post-event",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:1000000,gmvActual:257501,liabilityCap:200000,slaTarget:99.9,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[{id:"c1",type:"time",label:"Carter account mgmt",fields:{rate:150,hours:20},computed:3000,note:"Jun 2026",when:"Jun 2026"}],
+    kpis:{daysSinceContact:2,slaActual:99.9,sentiment:"Watch",chargebacks:1},
+    milestones:[
+      {id:"m1",type:"event_date",date:"2026-07-03",title:"Sail4th 250 — event day",note:"Primary revenue date. All piers live.",done:false},
+      {id:"m2",type:"deadline",date:"2026-06-25",title:"Vitanza chargeback response due",note:"Send written scope clarification.",done:false},
+      {id:"m3",type:"payment",date:"2026-07-31",title:"Net 30 invoice — post-event",done:false},
+      {id:"m4",type:"renewal",date:"2026-08-15",title:"Renewal conversation",note:"Introduce Moments + Agent-1 for Cycle 2.",done:false},
+      {id:"m5",type:"risk",date:"2026-06-14",title:"Out-of-scope refund promise",note:"'Make them whole' text. Outside fee schedule.",done:false},
+    ],
+    signal:'On June 14, we told the buyer we\'d "make them whole" on the Vitanza misbooking — no fee-schedule reference.',
+    shift:"Exposure moved from Contained → Watch after the refund language went out.",
+    fault:{verdict:"shared",reasoning:"Misbooking came from client CSV. Our text promise created an obligation the contract doesn't back.",against_us:"Written refund obligation without fee-schedule reference.",against_them:"Their allocation file contained the seating error."},
+    obligations:[
+      {party:"us",obligation:"Paid anchorage ticketing platform",source:"Sec 2.1",status:"met"},
+      {party:"us",obligation:"Free boat tour time-select",source:"Sec 2.1",status:"met"},
+      {party:"us",obligation:"99.9% uptime SLA",source:"Sec 5.3",status:"at_risk"},
+      {party:"them",obligation:"Payment within Net 30",source:"Sec 4.1",status:"unclear"},
+    ],
+    risks:[
+      {risk:"Informal refund promise outside fee schedule",severity:"high",action:"Send written clarification tying any Vitanza refund to the fee schedule."},
+      {risk:"Uncapped data breach liability",severity:"high",action:"Push for a liability cap before the event closes."},
+      {risk:"Merchant of record unconfirmed",severity:"medium",action:"Confirm MOR before final payouts."},
+    ],
+    signals_pending:[
+      {id:"sp1",kind:"Out-of-scope promise",text:'"make them whole" in June 14 text — no fee-schedule reference.',sev:"high"},
+      {id:"sp2",kind:"Unresolved contract term",text:"Data breach liability is uncapped.",sev:"high"},
+    ],
+    flags:["Verbal refund commitment in writing, outside fee schedule"],
+    comms:"",summary:"Anchorage ticketing live across 8 piers. Contact: Gwen Hafner (ghafner@sail4th.org). One active chargeback.",
+  },
+  {
+    id:"cagetitans",orgId:"3tree",account:"Cage Titans",short:"CT",logo:"#D64040",
+    tier:"active",health:"green",owner:"Carter",
+    value:"$422,116 GMV · 13 events",
+    products:["Primary ticketing","Sponsor Portal","Moments (collectibles)"],eventType:"Combat sports",sponsorMode:"They brought the sponsor",
+    contractCycle:2,
+    cycles:[
+      {id:"cy1",label:"Cage Titans — Year 1",start:"Jan 2025",end:"Dec 2025",products:["Primary ticketing"],events:["CT 59","CT 60","CT 61","CT 62","CT 63"],note:"Initial contract. Ticketing only.",active:false},
+      {id:"cy2",label:"Cage Titans — Year 2",start:"Jan 2026",end:"Dec 2026",products:["Primary ticketing","Sponsor Portal","Moments (collectibles)"],events:["CT 64 onward"],note:"Expanded: Sponsor Portal + Moments added.",active:true},
+    ],
+    chargebacks:[],features:[
+      {id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"All CT events"},
+      {id:"f2",name:"Sponsor Portal",status:"Shipped",scope:"contract",note:"Live Year 2"},
+      {id:"f3",name:"Moments digital collectibles",status:"Shipped",scope:"contract",note:"Live Year 2. 22% revenue lift attributed."},
+      {id:"f4",name:"Agent-1 fan CRM",status:"Scoped",scope:"future",note:"Target for Year 3 renewal."},
+    ],
+    contract:{start:"Jan 2026",end:"Dec 2026",renewal:"Jan 2027",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:450000,gmvActual:422116,liabilityCap:500000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:true,terminationNotice:"60 days"},
+    costs:[{id:"c1",type:"flat",label:"Moments integration build",fields:{amount:8000},computed:8000,note:"One-time build cost Year 2",when:"Jan 2026"}],
+    kpis:{daysSinceContact:5,slaActual:99.8,sentiment:"Active",chargebacks:0},
+    milestones:[
+      {id:"m1",type:"renewal",date:"2026-11-01",title:"Year 3 renewal conversation",note:"Target: add Agent-1 fan CRM.",done:false},
+      {id:"m2",type:"upsell",date:"2026-09-01",title:"Agent-1 CRM upsell pitch",note:"82% fan retention data is the proof point.",done:false},
+    ],
+    risks:[
+      {risk:"Concentration risk — Cage Titans is 36% of platform GMV",severity:"medium",action:"Diversify pipeline so no single host exceeds 25% of GMV."},
+    ],
+    signals_pending:[],flags:[],
+    summary:"Largest account. 13 events. 22% revenue lift from Moments. 82% fan retention. Contact: Anthony DiCarlo.",
+    signal:"CT 64 sold out in 48 hours — highest single-event GMV to date.",
+    fault:{verdict:"neither",reasoning:"No active disputes.",against_us:"",against_them:""},
+    obligations:[{party:"us",obligation:"Primary ticketing platform",source:"Contract",status:"met"},{party:"us",obligation:"Sponsor Portal",source:"Contract",status:"met"}],
+    comms:"",
+  },
+  {
+    id:"nxtwwe",orgId:"3tree",account:"NXT from WWE",short:"NX",logo:"#1A1C22",
+    tier:"active",health:"green",owner:"Elijah",
+    value:"$92,753 GMV · 1 event",
+    products:["Primary ticketing"],eventType:"Professional wrestling",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[{id:"cy1",label:"WWE NXT Plymouth",start:"Dec 2025",end:"Dec 2025",products:["Primary ticketing"],events:["WWE NXT Plymouth"],note:"$92K gross, 123% sell-through, 1,431 fan profiles built from zero.",active:false}],
+    chargebacks:[],features:[{id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"123% sell-through achieved."}],
+    contract:{start:"Nov 2025",end:"Dec 2025",renewal:"TBD",paymentTerms:"Net 14",platformFeePct:6,kickbackPct:0,kickbackTo:"",netTakePct:6,gmvProjected:75000,gmvActual:92753,liabilityCap:100000,slaTarget:99.9,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],
+    kpis:{daysSinceContact:45,slaActual:99.9,sentiment:"Contained",chargebacks:0},
+    milestones:[
+      {id:"m1",type:"renewal",date:"2026-09-01",title:"WWE NXT renewal outreach",note:"Proof point: 123% sell-through, 1,431 profiles. Pitch Year 2.",done:false},
+    ],
+    risks:[{risk:"No Year 2 contract signed yet",severity:"medium",action:"Initiate renewal conversation with 123% sell-through as lead proof point."}],
+    signals_pending:[],flags:[],
+    summary:"WWE NXT Plymouth. $92K gross, 123% sell-through, 1,431 fan profiles built. Contact: WWE partnerships team.",
+    signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+
+  // ── WATCH ──
+  // ── MOJO (combined: Happy Valley + Amherst + Boston small events) ──
+  {
+    id:"mojo",orgId:"3tree",account:"Mojo",short:"MO",logo:"#7C3AED",
+    tier:"watch",health:"yellow",owner:"Carter",
+    value:"$222,279 GMV · 8 events",
+    products:["Primary ticketing"],eventType:"Music & entertainment",sponsorMode:"No sponsor",
+    contractCycle:3,
+    cycles:[
+      {
+        id:"cy1",label:"Mojofest Happy Valley",start:"Mar 2026",end:"May 2026",
+        products:["Primary ticketing"],
+        events:["Mojofest Happy Valley — Spring 2026"],
+        note:"$90,228 GMV. 2 events. Strong fan data collected.",
+        active:false,
+      },
+      {
+        id:"cy2",label:"Mojofest Amherst",start:"Mar 2026",end:"May 2026",
+        products:["Primary ticketing"],
+        events:["Mojofest Amherst — Spring 2026"],
+        note:"$85,937 GMV. 2 events.",
+        active:false,
+      },
+      {
+        id:"cy3",label:"Boston small events — ongoing",start:"Nov 2025",end:"Mar 2026",
+        products:["Primary ticketing"],
+        events:["Various Boston shows"],
+        note:"$46,114 GMV across 4 smaller events. Recurring relationship.",
+        active:false,
+      },
+    ],
+    chargebacks:[],
+    features:[
+      {id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"All events across all three cycles."},
+      {id:"f2",name:"Sponsor Portal",status:"Scoped",scope:"future",note:"Festival format is a natural fit — pitch for next cycle."},
+      {id:"f3",name:"Moments digital collectibles",status:"Scoped",scope:"future",note:"Festival audience is high-engagement. Target for Year 2."},
+    ],
+    contract:{
+      start:"Nov 2025",end:"May 2026",renewal:"TBD",paymentTerms:"Net 30",
+      platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,
+      gmvProjected:250000,gmvActual:222279,
+      liabilityCap:250000,slaTarget:99.5,
+      dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days",
+      notes:"Three distinct event lines under one org relationship. Happy Valley + Amherst festivals + Boston small events.",
+    },
+    costs:[],
+    kpis:{daysSinceContact:38,slaActual:99.5,sentiment:"Contained",chargebacks:0},
+    milestones:[
+      {id:"m1",type:"renewal",date:"2026-08-01",title:"Year 2 renewal conversation",note:"$222K GMV across 8 events — strong proof point. Pitch Sponsor Portal + Moments.",done:false},
+      {id:"m2",type:"upsell",date:"2026-09-01",title:"Sponsor Portal upsell pitch",note:"Festival format with sponsor inventory — natural fit.",done:false},
+    ],
+    risks:[
+      {risk:"No contact in 38 days post-event cycle",severity:"medium",action:"Re-engage with fan data report and Year 2 pitch across all three event lines."},
+      {risk:"No Sponsor Portal or Moments upsell yet",severity:"low",action:"$222K GMV with 8 events and festival audience — strong candidate for expansion."},
+    ],
+    signals_pending:[],flags:[],
+    summary:"Combined Mojo account: Mojofest Happy Valley, Mojofest Amherst, and ongoing Boston small events. $222K total GMV across 8 events. Contact: Mojo management team.",
+    signal:"",
+    fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},
+    obligations:[
+      {party:"us",obligation:"Primary ticketing across all event lines",source:"Contract",status:"met"},
+    ],
+    comms:"",
+  },
+  {
+    id:"cesboxing",orgId:"3tree",account:"CES Boxing",short:"CB",logo:"#DC2626",
+    tier:"cold",health:"red",owner:"Elijah",
+    value:"$44,550 GMV · 1 event",
+    products:["Primary ticketing"],eventType:"Combat sports",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[],chargebacks:[],features:[],
+    contract:{start:"Oct 2025",end:"Nov 2025",renewal:"TBD",paymentTerms:"Net 14",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:40000,gmvActual:44550,liabilityCap:50000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:90,slaActual:99.8,sentiment:"Cold",chargebacks:0},
+    milestones:[{id:"m1",type:"renewal",date:"2026-07-01",title:"CES Boxing Year 2 outreach",done:false}],
+    risks:[{risk:"90 days no contact — strong first event went unreinforced",severity:"high",action:"Reach out with 111% sell-through data and a Year 2 pitch."}],
+    signals_pending:[],flags:[],
+    summary:"1 event. $44.5K GMV. 90 days no contact. Strong sell-through — should be a renewal target.",
+    signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+  {
     cycles:[
       { id:"cy1", label:"Sail4th 250 — inaugural event", start:"May 2026", end:"Jul 2026",
         products:["Primary ticketing","Sponsor Portal"], events:["Sail4th 250 · Jul 3, 2026"],
@@ -152,49 +335,104 @@ const SEED_ACCTS=[
     ],
     signals_pending:[],flags:[],
   },
+  {
+    id:"easy991",orgId:"3tree",account:"Easy 99.1",short:"E9",logo:"#0EA5E9",
+    tier:"watch",health:"yellow",owner:"Carter",value:"$51,890 GMV · 4 events",
+    products:["Primary ticketing"],eventType:"Radio/media events",sponsorMode:"They brought the sponsor",
+    contractCycle:1,cycles:[],chargebacks:[],
+    features:[{id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"4 events completed."}],
+    contract:{start:"Jan 2026",end:"Jun 2026",renewal:"TBD",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:60000,gmvActual:51890,liabilityCap:75000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:38,slaActual:99.6,sentiment:"Contained",chargebacks:0},
+    milestones:[{id:"m1",type:"renewal",date:"2026-09-01",title:"Fall season renewal",note:"Pitch Sponsor Portal for fall events.",done:false}],
+    risks:[{risk:"No Sponsor Portal upsell yet",severity:"low",action:"Radio station has natural sponsor inventory — pitch for fall."}],
+    signals_pending:[],flags:[],summary:"Radio station events, 4 completed.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+  {
+    id:"havoc",orgId:"3tree",account:"Havoc Fighting Championship",short:"HF",logo:"#6B7280",
+    tier:"archived",health:"archived",owner:"Carter",value:"$22,455 GMV · 1 event",
+    products:["Primary ticketing"],eventType:"Combat sports",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[],chargebacks:[],features:[],
+    contract:{start:"Sep 2025",end:"Oct 2025",renewal:"N/A",paymentTerms:"Net 14",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:20000,gmvActual:22455,liabilityCap:25000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:180,slaActual:99.9,sentiment:"Cold",chargebacks:0},
+    milestones:[],risks:[],signals_pending:[],flags:[],
+    summary:"1 event. Archived — no future events planned.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+  {
+    id:"graystone",orgId:"3tree",account:"Graystone Promotions",short:"GP",logo:"#6B7280",
+    tier:"archived",health:"archived",owner:"Elijah",value:"$16,354 GMV · 1 event",
+    products:["Primary ticketing"],eventType:"Boxing promotion",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[],chargebacks:[],features:[],
+    contract:{start:"Aug 2025",end:"Sep 2025",renewal:"N/A",paymentTerms:"Net 14",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:15000,gmvActual:16354,liabilityCap:20000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:200,slaActual:99.9,sentiment:"Cold",chargebacks:0},
+    milestones:[],risks:[],signals_pending:[],flags:[],
+    summary:"1 event. Archived — no future events planned.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
 ];
-
-// ── Storage ──
-async function sget(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
-async function sset(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
-async function slist(p){try{const ks=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key&&key.startsWith(p))ks.push(key);}return ks;}catch{return[];}}
-async function sdel(k){try{localStorage.removeItem(k);}catch{}}
+async function sget(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}}
+async function sset(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}
+async function slist(p){try{const r=await window.storage.list(p);return r?.keys||[];}catch{return[];}}
+async function sdel(k){try{await window.storage.delete(k);}catch{}}
 
 // ── Atoms ──
-const Tag=({label,c,s})=><span style={{fontSize:11,fontWeight:600,padding:"4px 9px",borderRadius:6,background:s,color:c}}>{label}</span>;
-const Pill=({children,c,s})=><span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,fontWeight:600,padding:"6px 11px",borderRadius:999,background:s,color:c}}>{children}</span>;
+// Vercel-style tag: compact, text-only, tight padding, 4px radius, no emoji
+const Tag=({label,c,s})=><span style={{
+  display:"inline-flex",alignItems:"center",
+  fontSize:11.5,fontWeight:500,
+  padding:"2px 7px",
+  borderRadius:4,
+  background:s,color:c,
+  letterSpacing:-.1,
+  whiteSpace:"nowrap",
+  lineHeight:"18px",
+}}>{label}</span>;
+
+// Vercel-style collapsible section with smooth CSS transition
+function CollapsibleSection({title,badge,badgeColor,badgeBg,defaultOpen=true,onAdd,addLabel="+ Add",children}){
+  const [open,setOpen]=useState(defaultOpen);
+  return <div style={{marginBottom:28}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:open?14:0,cursor:"pointer",userSelect:"none"}} onClick={()=>setOpen(!open)}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        {/* Vercel chevron — rotates on open */}
+        <span style={{fontSize:12,color:S.inactiveText,display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .18s ease",lineHeight:1}}>›</span>
+        <span style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{title}</span>
+        {badge!=null&&badge!==""&&<span style={{fontSize:11,fontWeight:600,padding:"1px 6px",borderRadius:4,background:badgeBg||"#F3F4F6",color:badgeColor||S.inactiveText}}>{badge}</span>}
+      </div>
+      {open&&onAdd&&<button onClick={e=>{e.stopPropagation();onAdd();}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,padding:0,fontFamily:sans}}>{addLabel}</button>}
+    </div>
+    {/* Smooth expand/collapse */}
+    <div style={{
+      overflow:"hidden",
+      maxHeight:open?"2000px":"0px",
+      opacity:open?1:0,
+      transition:"max-height .22s ease, opacity .18s ease",
+    }}>
+      {children}
+    </div>
+  </div>;
+}
+const Pill=({children,c,s})=><span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,fontWeight:600,padding:"6px 11px",borderRadius:6,background:s,color:c}}>{children}</span>;
 const Sec=({children,right})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"24px 2px 10px"}}><span style={{fontSize:11,fontWeight:600,letterSpacing:.7,textTransform:"uppercase",color:T.faint}}>{children}</span>{right}</div>;
 const icbtn={width:40,height:40,borderRadius:8,background:T.bg,border:BD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:T.ink,cursor:"pointer"};
-function EconOut({k,v,color}){return <div style={{background:T.bg,border:HD,borderRadius:8,padding:"12px 14px",marginTop:9,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,color:T.sub}}>{k}</span><span style={{fontSize:18,fontWeight:600,letterSpacing:-.3,color:color||T.ink}}>{v}</span></div>;}
-const Kpi=({k,v,flag})=><div><div style={{fontSize:11.5,color:T.sub}}>{k}</div><div style={{fontSize:18,fontWeight:600,marginTop:3,color:flag?T.red:T.ink}}>{v}{flag&&<span style={{fontSize:10,marginLeft:5,color:T.red}}>▲</span>}</div></div>;
 
-
-// ── DESKTOP APP SHELL ──
-// Sidebar nav (240px fixed) + main content area + slide-in detail panel (420px)
-// Shares all components, constants, seed data with mobile version.
-
-// ── STRIPE-STYLE DESKTOP SHELL ──
-// Sidebar: white bg, gray active highlight, purple left border, normal-weight nav text
-// Account detail: full main content area (not a side panel) with Stripe two-column layout
-// Nav style mirrors Stripe: section labels, icon+text items, subdued until active
-
-const SIDEBAR_W = 220;
-
-const NAV_ITEMS = [
-  { id:"dashboard", label:"Home",         icon:"⌂",  section:null },
-  { id:"accounts",  label:"Accounts",     icon:"◫",  section:null },
-  { id:"timeline",  label:"Timeline",     icon:"◷",  section:null },
-  { id:"digest",    label:"Digest",       icon:"✦",  section:null },
-  { id:"disputes",  label:"Disputes",     icon:"⚑",  section:"Shortcuts" },
-  { id:"costs",     label:"Cost ledger",  icon:"$",  section:"Shortcuts" },
+// ── Vercel sidebar colors ──
+const S={bg:"#FFFFFF",activeBg:"#F6F6F9",activeText:"#1A1C20",inactiveText:"#6B7280",labelText:"#9CA3AF",border:"#E5E7EB",activeBorder:"#6C5FE0"};
+const SIDEBAR_W=220;
+const NAV_ITEMS=[
+  {id:"dashboard",label:"Home",     section:null},
+  {id:"accounts", label:"Accounts", section:null},
+  {id:"timeline", label:"Timeline", section:null},
+  {id:"digest",   label:"Agent",    section:null},
+  {id:"disputes", label:"Disputes", section:"Shortcuts"},
+  {id:"costs",    label:"Cost ledger",section:"Shortcuts"},
 ];
-
-// Stripe sidebar colors
-const S = {
-  bg:"#FFFFFF", activeBg:"#F6F6F9", activeText:"#1A1C20",
-  inactiveText:"#6B7280", labelText:"#9CA3AF", border:"#E5E7EB",
-  activeBorder:"#6C5FE0",
+const VBtn={
+  primary:  {padding:"7px 14px",borderRadius:6,border:"none",background:T.black,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:-.1},
+  secondary:{padding:"7px 14px",borderRadius:6,border:"1px solid #D1D5DB",background:"#fff",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:-.1},
+  ghost:    {padding:"7px 14px",borderRadius:6,border:"none",background:"transparent",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:400,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6},
+  danger:   {padding:"7px 14px",borderRadius:6,border:"none",background:T.red,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6},
+  small:    {padding:"5px 10px",borderRadius:5,border:"1px solid #D1D5DB",background:"#fff",color:T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5},
 };
+
 
 export default function AppDesktop(){
   const [orgs,setOrgs]=useState([]);
@@ -205,6 +443,7 @@ export default function AppDesktop(){
   const [detailTab,setDetailTab]=useState("overview");
   const [editMode,setEditMode]=useState(false);
   const [loaded,setLoaded]=useState(false);
+  const [archiveTarget,setArchiveTarget]=useState(null);
 
   useEffect(()=>{ (async()=>{
     await sset(`org:${SEED_ORG.id}`,SEED_ORG);
@@ -218,154 +457,111 @@ export default function AppDesktop(){
   const orgAccts=accts.filter(a=>a.orgId===orgId);
   const selectedAcct=selected?orgAccts.find(a=>a.id===selected):null;
 
-  async function saveAcct(a){ await sset(`acct:${a.orgId}:${a.id}`,a); setAccts(p=>{const i=p.findIndex(x=>x.id===a.id&&x.orgId===a.orgId);if(i>=0){const c=[...p];c[i]=a;return c;}return[...p,a];}); }
-  async function saveOrg(o){ await sset(`org:${o.id}`,o); setOrgs(p=>[...p,o]); setOrgId(o.id); }
-  async function delAcct(a){ await sdel(`acct:${a.orgId}:${a.id}`); setAccts(p=>p.filter(x=>!(x.id===a.id&&x.orgId===a.orgId))); setSelected(null); }
+  async function saveAcct(a){await sset(`acct:${a.orgId}:${a.id}`,a);setAccts(p=>{const i=p.findIndex(x=>x.id===a.id&&x.orgId===a.orgId);if(i>=0){const c=[...p];c[i]=a;return c;}return[...p,a];});}
+  async function saveOrg(o){await sset(`org:${o.id}`,o);setOrgs(p=>[...p,o]);setOrgId(o.id);}
+  async function delAcct(a){await sdel(`acct:${a.orgId}:${a.id}`);setAccts(p=>p.filter(x=>!(x.id===a.id&&x.orgId===a.orgId)));setSelected(null);}
 
-  if(!loaded) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:sans,color:T.sub,fontSize:14}}>Loading…</div>;
+  if(!loaded)return<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:sans,color:T.sub,fontSize:14}}>Loading…</div>;
 
-  // Computed metrics
-  const allC=orgAccts.filter(a=>a.contract);
+  const activeAccts=orgAccts.filter(a=>a.tier!=="archived"&&a.health!=="archived");
+  const archivedAccts=orgAccts.filter(a=>a.tier==="archived"||a.health==="archived");
+  const acctsByTier={
+    active:activeAccts.filter(a=>a.tier==="active"),
+    watch: activeAccts.filter(a=>a.tier==="watch"),
+    cold:  activeAccts.filter(a=>a.tier==="cold"||a.health==="red"),
+  };
+  const staleAccts=activeAccts.filter(a=>(a.kpis?.daysSinceContact||0)>=90);
+  function archiveAcct(id){const a=orgAccts.find(x=>x.id===id);if(a)saveAcct({...a,tier:"archived",health:"archived"});}
+  function unarchiveAcct(id){const a=orgAccts.find(x=>x.id===id);if(a)saveAcct({...a,tier:"active",health:"green"});}
+
+  const allC=activeAccts.filter(a=>a.contract);
   const gmvActual=allC.reduce((n,a)=>n+(a.contract.gmvActual||0),0);
   const gmvProj=allC.reduce((n,a)=>n+(a.contract.gmvProjected||0),0);
   const feesEarned=allC.reduce((n,a)=>n+(a.contract.gmvActual||0)*(a.contract.netTakePct||0)/100,0);
-  const totalCosts=orgAccts.reduce((n,a)=>n+((a.costs||[]).reduce((s,c)=>s+(c.computed||0),0)),0);
+  const totalCosts=activeAccts.reduce((n,a)=>n+sumCosts(a),0);
   const netRev=feesEarned-totalCosts;
   const pipelinePct=gmvProj>0?Math.round(100*gmvActual/gmvProj):0;
   const coverage=gmvProj>0?(gmvActual/gmvProj).toFixed(1)+"x":"—";
   const coverageHealthy=gmvActual/gmvProj>=0.3;
   const forecast=gmvProj*(allC[0]?.contract?.netTakePct||7)/100;
   const confidence=pipelinePct>=60?"High":pipelinePct>=35?"Medium":"Low";
-  const actions=orgAccts.flatMap(a=>(a.risks||[]).map(r=>({...r,acct:a.account,aid:a.id}))).sort((x,y)=>({high:0,medium:1,low:2}[x.severity]-{high:0,medium:1,low:2}[y.severity]));
-  const allMilestones=orgAccts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&daysDiff(m.date)>=0&&daysDiff(m.date)<=14).map(m=>({...m,acct:a.account,aid:a.id}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const velocity=orgAccts.length>0?Math.round(orgAccts.reduce((n,a)=>{const ms=(a.milestones||[]).filter(m=>m.done);return n+(ms.length>0?14:21);},0)/orgAccts.length):0;
+  const actions=activeAccts.flatMap(a=>(a.risks||[]).map(r=>({...r,acct:a.account,aid:a.id}))).sort((x,y)=>({high:0,medium:1,low:2}[x.severity]-{high:0,medium:1,low:2}[y.severity]));
+  const allMilestones=activeAccts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&daysDiff(m.date)>=0&&daysDiff(m.date)<=14).map(m=>({...m,acct:a.account,aid:a.id}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const velocity=activeAccts.length>0?Math.round(activeAccts.reduce((n,a)=>{const ms=(a.milestones||[]).filter(m=>m.done);return n+(ms.length>0?14:21);},0)/activeAccts.length):0;
+  const showDetail=selectedAcct&&(nav==="accounts");
 
-  // Which nav to show — if an account is selected, we show the account detail view
-  const showDetail = selectedAcct && (nav==="accounts");
-
-  return (
+  return(
     <div style={{display:"flex",height:"100vh",background:"#FAFAFA",fontFamily:sans,color:T.ink,letterSpacing:-.1,overflow:"hidden"}}>
 
-      {/* ── STRIPE-STYLE SIDEBAR ── */}
-      <div style={{width:SIDEBAR_W,flexShrink:0,background:S.bg,borderRight:`1px solid ${S.border}`,display:"flex",flexDirection:"column",overflow:"auto"}}>
-        {/* Brand — Stripe puts org name + dropdown at top */}
-        <div style={{padding:"16px 16px 8px"}}>
-          <button onClick={()=>{}} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,border:`1px solid ${S.border}`,background:S.bg,cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
-            <div style={{width:28,height:28,borderRadius:6,background:T.black,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <span style={{color:"#fff",fontSize:12,fontWeight:700}}>TT</span>
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{org?.name||"Ticket Tree"}</div>
-            </div>
-            <span style={{fontSize:12,color:T.sub}}>▾</span>
-          </button>
+      {/* SIDEBAR */}
+      <div style={{width:SIDEBAR_W,flexShrink:0,background:S.bg,borderRight:`1px solid ${S.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{padding:"16px 16px 12px",borderBottom:`1px solid ${S.border}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:30,height:30,borderRadius:7,background:T.black,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:12,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
+            <div><div style={{fontSize:13,fontWeight:600,color:T.ink}}>3 Tree Labs</div><div style={{fontSize:11,color:S.inactiveText,marginTop:1}}>Account Intelligence</div></div>
+          </div>
         </div>
-
-        {/* Nav — Stripe style: no background on items, just left border + gray bg on active */}
-        <div style={{padding:"8px 0",flex:1}}>
-          {(()=>{
-            let lastSection=undefined;
-            return NAV_ITEMS.map(n=>{
-              const showSectionLabel = n.section && n.section!==lastSection;
-              lastSection=n.section;
-              const isActive=(nav===n.id)&&!showDetail;
-              return <div key={n.id}>
-                {showSectionLabel&&<div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 6px"}}>{n.section}</div>}
-                <button onClick={()=>{setNav(n.id);if(n.id!=="accounts")setSelected(null);}} style={{
-                  width:"100%",display:"flex",alignItems:"center",gap:10,
-                  padding:"7px 16px",border:"none",cursor:"pointer",fontFamily:sans,
-                  fontSize:13,fontWeight:isActive?600:400,
-                  background:isActive?S.activeBg:"transparent",
-                  color:isActive?S.activeText:S.inactiveText,
-                  textAlign:"left",
-                  borderLeft:isActive?`2px solid ${S.activeBorder}`:"2px solid transparent",
-                  transition:"background .1s",
-                }}>
-                  <span style={{fontSize:14,width:18,textAlign:"center",opacity:.7}}>{n.icon}</span>
-                  {n.label}
-                </button>
-              </div>;
-            });
-          })()}
+        <div style={{padding:"8px 0",flex:1,overflowY:"auto"}}>
+          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&!showDetail;return<div key={n.id}>{showLabel&&<div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 5px"}}>{n.section}</div>}<button onClick={()=>{setNav(n.id);if(n.id!=="accounts")setSelected(null);}} style={{width:"100%",display:"flex",alignItems:"center",padding:"6px 16px",border:"none",cursor:"pointer",fontFamily:sans,fontSize:13,fontWeight:isActive?600:400,background:isActive?S.activeBg:"transparent",color:isActive?S.activeText:S.inactiveText,textAlign:"left",borderLeft:isActive?`2px solid ${S.activeBorder}`:"2px solid transparent"}}>{n.label}</button></div>;});})()}
         </div>
-
-        {/* Org switcher at bottom — like Stripe's account switcher */}
-        <div style={{padding:"12px 16px",borderTop:`1px solid ${S.border}`}}>
-          <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}>Organization</div>
-          {orgs.map(o=>(
-            <button key={o.id} onClick={()=>setOrgId(o.id)} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"6px 8px",borderRadius:6,border:"none",background:o.id===orgId?"#F0EEFB":"transparent",color:o.id===orgId?T.purple:S.inactiveText,fontFamily:sans,fontSize:13,fontWeight:o.id===orgId?600:400,cursor:"pointer",textAlign:"left",marginBottom:2}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:o.id===orgId?T.purple:"transparent",border:`1px solid ${o.id===orgId?T.purple:S.labelText}`,flexShrink:0}}/>
-              {o.name}
-            </button>
-          ))}
-          <button onClick={()=>saveOrg({id:uid(),name:"New Org",sub:""})} style={{width:"100%",padding:"5px 8px",borderRadius:6,border:"none",background:"transparent",color:S.labelText,fontFamily:sans,fontSize:12,cursor:"pointer",textAlign:"left",marginTop:2}}>+ Add org</button>
-        </div>
-
-        {/* Agent status */}
-        <div style={{padding:"12px 16px",borderTop:`1px solid ${S.border}`}}>
-          <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}>Agent</div>
-          <div style={{fontSize:12,color:T.ink,fontWeight:500}}>Weekly pull ready</div>
-          <div style={{fontSize:11,color:S.inactiveText,marginTop:1,marginBottom:8}}>Last run: not yet</div>
-          <button style={{width:"100%",padding:"7px",borderRadius:6,border:`1px solid ${T.purple}`,background:T.purple,color:"#fff",fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer"}}>Run pull ⚡</button>
+        <div style={{padding:"12px 16px 16px",borderTop:`1px solid ${S.border}`}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>Agent</div>
+            <div style={{width:7,height:7,borderRadius:"50%",background:T.green}}/>
+          </div>
+          <div style={{fontSize:12,color:T.ink,fontWeight:500,marginBottom:1}}>Weekly pull ready</div>
+          <div style={{fontSize:11,color:S.inactiveText,marginBottom:10}}>Last run: not yet</div>
+          <button onClick={()=>setNav("digest")} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:12}}>Run pull</button>
         </div>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* MAIN CONTENT */}
       <div style={{flex:1,overflow:"auto",background:"#FFFFFF",minWidth:0}}>
 
-        {/* ── ACCOUNT DETAIL — full main area, Stripe transaction layout ── */}
-        {showDetail&&<StripeDetail
-          a={selectedAcct}
-          tab={detailTab}
-          onTabChange={setDetailTab}
-          onBack={()=>setSelected(null)}
-          onEdit={()=>setEditMode(true)}
-          onDelete={async()=>{await delAcct(selectedAcct);}}
-          onSave={saveAcct}
-        />}
+        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={setDetailTab} onBack={()=>setSelected(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
-        {/* ── DASHBOARD ── */}
+        {/* DASHBOARD */}
         {!showDetail&&nav==="dashboard"&&<div style={{padding:"32px 40px"}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:28}}>
             <div>
-              <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}>
-                <span style={{color:T.purple,cursor:"pointer"}}>Accounts</span> → Dashboard
-              </div>
-              <h1 style={{fontSize:24,fontWeight:700,letterSpacing:-.4,margin:"0 0 4px",color:T.ink}}>{org?.name}</h1>
+              <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}><span style={{color:T.purple,cursor:"pointer"}}>Accounts</span> → Dashboard</div>
+              <h1 style={{fontSize:24,fontWeight:700,letterSpacing:-.4,margin:"0 0 4px",color:T.ink}}>3 Tree Labs</h1>
               <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Real-time revenue, pipeline, and contract health</p>
             </div>
             <div style={{display:"flex",gap:10}}>
-              <button onClick={()=>{setNav("accounts");setEditMode(true);}} style={{padding:"8px 16px",borderRadius:6,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer"}}>+ New account</button>
-              <div style={{width:34,height:34,borderRadius:"50%",background:"#D8C2AE"}}/>
+              <button onClick={()=>{setNav("accounts");setEditMode(true);}} style={{...VBtn.secondary,fontSize:13}}>+ New account</button>
             </div>
           </div>
 
-          {/* 4-col KPI strip */}
+          {staleAccts.length>0&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:8,marginBottom:20}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div><div style={{fontSize:13,fontWeight:600,color:"#92400E"}}>{staleAccts.length} account{staleAccts.length!==1?"s":""} with no contact in 90+ days</div>
+              <div style={{fontSize:12,color:"#B45309",marginTop:1}}>{staleAccts.map(a=>a.account).join(", ")} — consider archiving</div></div>
+            </div>
+            <button onClick={()=>setNav("accounts")} style={{...VBtn.small,borderColor:"#FDE68A",color:"#92400E"}}>Review →</button>
+          </div>}
+
           <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:28}}>
             <div style={{background:T.black,borderRadius:12,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,color:"#fff"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"auto"}}>
-                <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:"#9CA0AB"}}>AI Forecast</span>
-                <span style={{fontSize:13,color:"#9CA0AB"}}>✦</span>
-              </div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"auto"}}><span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:"#9CA0AB"}}>AI Forecast</span><span style={{fontSize:13,color:"#9CA0AB"}}>✦</span></div>
               <div style={{fontSize:32,fontWeight:800,letterSpacing:-1.2,lineHeight:1,margin:"10px 0 8px"}}>{fmtK(forecast)}</div>
-              <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:600,padding:"5px 12px",borderRadius:999,background:"#fff",color:T.black,width:"fit-content"}}>↑ {confidence} Confidence</span>
+              <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:600,padding:"5px 12px",borderRadius:6,background:"#fff",color:T.black,width:"fit-content"}}>↑ {confidence} Confidence</span>
             </div>
             {[
-              {label:"Active GMV",    value:fmtK(gmvActual),  sub:`${pipelinePct}% of plan`},
-              {label:"Pipeline",      value:coverage,          sub:coverageHealthy?"Healthy":"Watch"},
-              {label:"Net Revenue",   value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)), sub:netRev>=0?"Positive":"Underwater", col:netRev<0?T.red:undefined},
+              {label:"Active GMV",value:fmtK(gmvActual),sub:`${pipelinePct}% of plan`},
+              {label:"Pipeline",value:coverage,sub:coverageHealthy?"Healthy":"Watch"},
+              {label:"Net Revenue",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),sub:netRev>=0?"Positive":"Underwater",col:netRev<0?T.red:undefined},
             ].map((t,i)=>(
               <div key={i} style={{background:"#fff",border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,justifyContent:"space-between"}}>
                 <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>{t.label}</span>
                 <div>
                   <div style={{fontSize:28,fontWeight:700,letterSpacing:-1,lineHeight:1,marginBottom:6,color:t.col||T.ink}}>{t.value}</div>
-                  <span style={{display:"inline-flex",alignItems:"center",fontSize:11.5,fontWeight:600,padding:"4px 10px",borderRadius:999,background:T.black,color:"#fff"}}>{t.sub}</span>
+                  <span style={{display:"inline-flex",alignItems:"center",fontSize:11.5,fontWeight:600,padding:"4px 10px",borderRadius:6,background:T.black,color:"#fff"}}>{t.sub}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Two-column: actions + milestones */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:28}}>
             <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden"}}>
               <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -384,94 +580,126 @@ export default function AppDesktop(){
               ))}
               {actions.length===0&&<div style={{padding:"24px 20px",fontSize:13,color:S.inactiveText}}>No open actions.</div>}
             </div>
-
             <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden"}}>
               <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
                 <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Timeline</div>
                 <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Next 14 days</div>
               </div>
-              {allMilestones.slice(0,5).map((m,i)=>{
-                const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
-                const d=daysDiff(m.date);
-                return <button key={m.id} onClick={()=>{setSelected(m.aid);setNav("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
-                  <span style={{fontSize:16,flexShrink:0}}>{mt.icon}</span>
+              {allMilestones.slice(0,5).map((m,i)=>{const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);return(
+                <button key={m.id} onClick={()=>{setSelected(m.aid);setNav("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
                     <div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{m.acct}</div>
                   </div>
                   <span style={{fontSize:12,fontWeight:600,color:d<=3?T.red:d<=7?T.yellow:S.inactiveText,flexShrink:0}}>{d===0?"Today":d===1?"Tomorrow":`${d}d`}</span>
-                </button>;
-              })}
+                </button>
+              );})}
               {allMilestones.length===0&&<div style={{padding:"24px 20px",fontSize:13,color:S.inactiveText}}>No upcoming milestones in the next 14 days.</div>}
             </div>
           </div>
-
-          <WeeklyDigest accounts={orgAccts}/>
         </div>}
 
-        {/* ── ACCOUNTS LIST ── */}
+        {/* ACCOUNTS */}
         {!showDetail&&nav==="accounts"&&<div style={{padding:"32px 40px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
             <div>
               <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Accounts</h1>
-              <p style={{fontSize:13,color:S.inactiveText,margin:0}}>{orgAccts.length} account{orgAccts.length!==1?"s":""} · {orgAccts.filter(a=>a.health==="red").length} need action</p>
+              <p style={{fontSize:13,color:S.inactiveText,margin:0}}>{acctsByTier.active.length} active · {acctsByTier.watch.length} watch · {acctsByTier.cold.length} cold · {archivedAccts.length} archived</p>
             </div>
-            <button onClick={()=>setEditMode(true)} style={{padding:"8px 16px",borderRadius:6,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer"}}>+ New account</button>
+            <button onClick={()=>setEditMode(true)} style={{...VBtn.primary}}>+ New account</button>
           </div>
-
-          {/* Stripe-style table */}
-          <div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-            <div style={{display:"grid",gridTemplateColumns:"2.2fr 1fr 1fr 1fr 1fr 100px",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
-              {["Account","Health","GMV realized","Fees earned","Net revenue",""].map((h,i)=>(
-                <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>=2&&i<5?"right":"left"}}>{h}</div>
-              ))}
-            </div>
-            {orgAccts.length===0&&<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText}}>No accounts yet. Add one to get started.</div>}
-            {orgAccts.map((a,i)=>{
-              const c=a.contract, tc=sumCosts(a);
-              const fees=c?(c.gmvActual||0)*(c.netTakePct||0)/100:0;
-              const net=fees-tc;
-              return <button key={a.id} onClick={()=>{setSelected(a.id);setDetailTab("overview");}} style={{display:"grid",gridTemplateColumns:"2.2fr 1fr 1fr 1fr 1fr 100px",padding:"13px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left",transition:"background .1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
-                onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                <div style={{display:"flex",alignItems:"center",gap:10}}>
-                  <div style={{width:30,height:30,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short||a.account.slice(0,2).toUpperCase()}</div>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:600,color:T.ink}}>{a.account}</div>
-                    <div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{a.owner} · {a.eventType}</div>
-                  </div>
+          {(()=>{
+            const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
+            if(allRows.length===0)return<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText,border:`1px solid ${S.border}`,borderRadius:8}}>No accounts yet.</div>;
+            return<>
+              <div style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"8px 20px",background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:"8px 8px 0 0"}}>
+                {["Account","Tier","GMV realized","Fees earned","Net revenue",""].map((h,i)=>(
+                  <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>=2&&i<5?"right":"left"}}>{h}</div>
+                ))}
+              </div>
+              <div style={{border:`1px solid ${S.border}`,borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden",background:"#fff"}}>
+                {allRows.map((a,i)=>{
+                  const c=a.contract,tc=sumCosts(a);
+                  const fees=c?(c.gmvActual||0)*(c.netTakePct||0)/100:0;
+                  const net=fees-tc;
+                  const tier=CRM_TIERS[a.tier]||CRM_TIERS.active;
+                  const prevTier=i>0?(allRows[i-1].tier||"active"):null;
+                  const showTierHeader=a.tier!==prevTier;
+                  return<div key={a.id}>
+                    {showTierHeader&&i>0&&<div style={{padding:"8px 20px 5px",background:"#F9FAFB",borderTop:`1px solid ${S.border}`}}>
+                      <span style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:tier.c}}>{tier.label}</span>
+                    </div>}
+                    <button onClick={()=>{setSelected(a.id);setDetailTab("overview");}} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <div style={{width:30,height:30,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short||a.account.slice(0,2).toUpperCase()}</div>
+                        <div><div style={{fontSize:13,fontWeight:600,color:T.ink}}>{a.account}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{a.owner} · {a.value}</div></div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center"}}><Tag label={tier.label} c={tier.c} s={tier.s}/></div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(fees):"—"}</div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13,color:net<0?T.red:T.ink}}>{c?(net<0?"-":"")+fmtK(Math.abs(net)):"—"}</div>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:10}}>
+                        <button onClick={e=>{e.stopPropagation();setArchiveTarget(a);}} style={{fontSize:11,color:S.labelText,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:sans}}>Archive</button>
+                        <span style={{fontSize:12,color:T.purple,fontWeight:500}}>View →</span>
+                      </div>
+                    </button>
+                  </div>;
+                })}
+              </div>
+              {archivedAccts.length>0&&<div style={{marginTop:28}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <h2 style={{fontSize:13,fontWeight:600,color:S.inactiveText,margin:0}}>Archived ({archivedAccts.length})</h2>
+                  <span style={{fontSize:12,color:S.labelText}}>Hidden from dashboard, actions, and timeline</span>
                 </div>
-                <div style={{display:"flex",alignItems:"center"}}><Tag label={HEALTH[a.health].label} c={HEALTH[a.health].c} s={HEALTH[a.health].soft}/></div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(fees):"—"}</div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13,color:net<0?T.red:T.ink}}>{c?(net<0?"-":"")+fmtK(Math.abs(net)):"—"}</div>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:12,color:T.purple,fontWeight:500}}>View →</div>
-              </button>;
-            })}
-          </div>
+                <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",background:"#fff",opacity:.7}}>
+                  {archivedAccts.map((a,i)=>(
+                    <div key={a.id} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"11px 20px",borderTop:i?`1px solid ${S.border}`:"none",alignItems:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <div style={{width:28,height:28,borderRadius:6,background:"#D1D5DB",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff"}}>{a.short}</div>
+                        <div><div style={{fontSize:13,color:S.inactiveText}}>{a.account}</div><div style={{fontSize:11.5,color:S.labelText,marginTop:1}}>{a.owner}</div></div>
+                      </div>
+                      <div><Tag label="Archived" c={S.inactiveText} s="#F3F4F6"/></div>
+                      <div style={{fontSize:13,color:S.labelText,textAlign:"right"}}>{a.contract?fmtK(a.contract.gmvActual):"—"}</div>
+                      <div style={{fontSize:13,color:S.labelText,textAlign:"right"}}>—</div>
+                      <div style={{fontSize:13,color:S.labelText,textAlign:"right"}}>—</div>
+                      <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
+                        <button onClick={()=>unarchiveAcct(a.id)} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500}}>Restore</button>
+                        <button onClick={()=>{setSelected(a.id);setDetailTab("overview");}} style={{fontSize:12,color:S.labelText,background:"none",border:"none",cursor:"pointer",fontFamily:sans}}>View →</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>}
+            </>;
+          })()}
         </div>}
 
-        {/* ── TIMELINE ── */}
+        {/* TIMELINE */}
         {!showDetail&&nav==="timeline"&&<div style={{padding:"32px 40px"}}>
-          <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 24px",color:T.ink}}>Timeline — all accounts</h1>
-          {orgAccts.map(a=>(
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Timeline</div>
+            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>All accounts</h1>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Milestones, deadlines, and renewal windows across your active accounts.</p>
+          </div>
+          {activeAccts.map(a=>(
             <div key={a.id} style={{marginBottom:32}}>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${S.border}`}}>
                 <div style={{width:26,height:26,borderRadius:6,background:a.logo,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff"}}>{a.short}</div>
                 <span style={{fontSize:14,fontWeight:600,color:T.ink}}>{a.account}</span>
-                <Tag label={HEALTH[a.health].label} c={HEALTH[a.health].c} s={HEALTH[a.health].soft}/>
-                <button onClick={()=>{setSelected(a.id);setNav("accounts");setDetailTab("timeline");}} style={{marginLeft:"auto",fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Open account →</button>
+                <Tag label={(CRM_TIERS[a.tier]||CRM_TIERS.active).label} c={(CRM_TIERS[a.tier]||CRM_TIERS.active).c} s={(CRM_TIERS[a.tier]||CRM_TIERS.active).s}/>
+                <button onClick={()=>{setSelected(a.id);setNav("accounts");setDetailTab("timeline");}} style={{marginLeft:"auto",fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Open →</button>
               </div>
               <div style={{paddingLeft:16,borderLeft:`2px solid ${S.border}`}}>
                 {(a.milestones||[]).sort((x,y)=>new Date(x.date)-new Date(y.date)).map(m=>{
-                  const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
-                  const d=daysDiff(m.date);
-                  return <div key={m.id} style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:14,opacity:m.done?.45:1}}>
-                    <div style={{width:26,height:26,borderRadius:"50%",background:m.done?"#F3F4F6":mt.color+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0,marginLeft:-28,border:`1.5px solid ${m.done?S.border:mt.color}`}}>{m.done?"✓":mt.icon}</div>
+                  const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);
+                  return<div key={m.id} style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:14,opacity:m.done?.45:1}}>
+                    <div style={{width:20,height:20,borderRadius:"50%",background:m.done?"#F3F4F6":mt.color+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,marginLeft:-27,border:`1.5px solid ${m.done?S.border:mt.color}`,color:m.done?T.green:mt.color,fontWeight:700}}>{m.done?"✓":""}</div>
                     <div style={{flex:1}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
                         <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
-                        <span style={{fontSize:11,fontWeight:500,padding:"2px 7px",borderRadius:4,background:mt.color+"12",color:mt.color}}>{mt.label}</span>
+                        <Tag label={mt.label} c={mt.color} s={mt.color+"12"}/>
                         {!m.done&&d<=3&&<span style={{fontSize:11,fontWeight:600,color:T.red}}>{d===0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
                       </div>
                       {m.note&&<div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>{m.note}</div>}
@@ -485,57 +713,51 @@ export default function AppDesktop(){
           ))}
         </div>}
 
-        {/* ── DIGEST ── */}
-        {!showDetail&&nav==="digest"&&<div style={{padding:"32px 40px",maxWidth:840}}>
-          <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 20px",color:T.ink}}>Pipeline digest</h1>
-          <WeeklyDigest accounts={orgAccts}/>
-        </div>}
+        {/* AGENT */}
+        {!showDetail&&nav==="digest"&&<AgentPage accounts={activeAccts}/>}
 
-        {/* ── DISPUTES shortcut ── */}
+        {/* DISPUTES */}
         {!showDetail&&nav==="disputes"&&<div style={{padding:"32px 40px"}}>
-          <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 20px",color:T.ink}}>Disputes</h1>
-          {orgAccts.flatMap(a=>(a.chargebacks||[]).map(cb=>({...cb,acct:a.account,aid:a.id}))).length===0
-            ?<div style={{fontSize:14,color:S.inactiveText}}>No chargebacks or disputes logged.</div>
-            :<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Disputes</h1>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>All chargebacks and open disputes across accounts. Hand anything contested to Zachary at Polsinelli.</p>
+          </div>
+          {(()=>{const all=orgAccts.flatMap(a=>(a.chargebacks||[]).map(cb=>({...cb,acct:a.account,aid:a.id})));
+            if(all.length===0)return<div style={{fontSize:14,color:S.inactiveText}}>No chargebacks logged.</div>;
+            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
               <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 120px",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
-                {["Account / disputed by","Amount","Date","Status",""].map((h,i)=>(
-                  <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{h}</div>
-                ))}
+                {["Account / disputed by","Amount","Date","Status",""].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{h}</div>)}
               </div>
-              {orgAccts.flatMap(a=>(a.chargebacks||[]).map(cb=>({...cb,acct:a.account,aid:a.id}))).map((cb,i)=>{
-                const col=cb.status==="Open"?T.red:cb.status.includes("won")?T.green:S.inactiveText;
-                return <div key={cb.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 120px",padding:"13px 20px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
-                  <div>
-                    <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{cb.disputedBy||"Unknown"}</div>
-                    <div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{cb.acct}</div>
-                  </div>
-                  <div style={{fontSize:13,color:T.ink,display:"flex",alignItems:"center"}}>{cb.amount>0?fmt(cb.amount):"—"}</div>
+              {all.map((cb,i)=>{const col=cb.status==="Open"?T.red:cb.status.includes("won")?T.green:S.inactiveText;return(
+                <div key={cb.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 120px",padding:"13px 20px",borderTop:i?`1px solid ${S.border}`:"none"}}>
+                  <div><div style={{fontSize:13,fontWeight:500}}>{cb.disputedBy||"Unknown"}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{cb.acct}</div></div>
+                  <div style={{fontSize:13,display:"flex",alignItems:"center"}}>{cb.amount>0?fmt(cb.amount):"—"}</div>
                   <div style={{fontSize:13,color:S.inactiveText,display:"flex",alignItems:"center"}}>{cb.date}</div>
-                  <div style={{display:"flex",alignItems:"center"}}><span style={{fontSize:12,fontWeight:600,padding:"3px 9px",borderRadius:4,background:col+"14",color:col}}>{cb.status}</span></div>
-                  <button onClick={()=>{setSelected(cb.aid);setNav("accounts");setDetailTab("timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,textAlign:"left"}}>View account →</button>
-                </div>;
-              })}
-            </div>
-          }
+                  <div style={{display:"flex",alignItems:"center"}}><Tag label={cb.status} c={col} s={col+"14"}/></div>
+                  <button onClick={()=>{setSelected(cb.aid);setNav("accounts");setDetailTab("timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500,textAlign:"left"}}>View →</button>
+                </div>
+              );})}
+            </div>;
+          })()}
         </div>}
 
-        {/* ── COST LEDGER shortcut ── */}
+        {/* COST LEDGER */}
         {!showDetail&&nav==="costs"&&<div style={{padding:"32px 40px"}}>
-          <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 20px",color:T.ink}}>Cost ledger</h1>
-          {(()=>{
-            const allCosts=orgAccts.flatMap(a=>(a.costs||[]).filter(c=>c.computed>0).map(c=>({...c,acct:a.account,aid:a.id})));
-            const total=allCosts.reduce((n,c)=>n+c.computed,0);
-            return <>
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Cost ledger</h1>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Running costs logged across all accounts. Feeds directly into net revenue calculations.</p>
+          </div>
+          {(()=>{const all=orgAccts.flatMap(a=>(a.costs||[]).filter(c=>c.computed>0).map(c=>({...c,acct:a.account,aid:a.id})));const total=all.reduce((n,c)=>n+c.computed,0);
+            return<>
               <div style={{fontSize:13,color:S.inactiveText,marginBottom:16}}>Total logged: <b style={{color:T.ink}}>{fmt(total)}</b></div>
-              {allCosts.length===0
-                ?<div style={{fontSize:14,color:S.inactiveText}}>No costs logged yet. Open an account → Economics to add costs.</div>
+              {all.length===0?<div style={{fontSize:14,color:S.inactiveText}}>No costs logged yet. Open an account → Economics to add costs.</div>
                 :<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
                   <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
-                    {["Account / label","Type","When","Amount"].map((h,i)=>(
-                      <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i===3?"right":"left"}}>{h}</div>
-                    ))}
+                    {["Account / label","Type","When","Amount"].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i===3?"right":"left"}}>{h}</div>)}
                   </div>
-                  {allCosts.map((c,i)=>(
+                  {all.map((c,i)=>(
                     <div key={c.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"12px 20px",borderTop:i?`1px solid ${S.border}`:"none"}}>
                       <div><div style={{fontSize:13,color:T.ink,fontWeight:500}}>{c.label}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{c.acct}</div></div>
                       <div style={{fontSize:13,color:S.inactiveText,display:"flex",alignItems:"center",textTransform:"capitalize"}}>{c.type}</div>
@@ -543,15 +765,36 @@ export default function AppDesktop(){
                       <div style={{fontSize:13,fontWeight:600,color:T.ink,display:"flex",alignItems:"center",justifyContent:"flex-end"}}>{fmt(c.computed)}</div>
                     </div>
                   ))}
-                </div>
-              }
+                </div>}
             </>;
           })()}
         </div>}
-
       </div>
 
-      {/* ── NEW / EDIT ACCOUNT MODAL ── */}
+      {/* ARCHIVE CONFIRMATION MODAL */}
+      {archiveTarget&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200}} onClick={()=>setArchiveTarget(null)}>
+          <div style={{width:440,background:"#fff",borderRadius:10,boxShadow:"0 8px 40px rgba(0,0,0,.18)",overflow:"hidden"}} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"20px 24px 0",display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:T.ink,marginBottom:4}}>Archive account</div>
+                <div style={{fontSize:13,color:S.inactiveText,lineHeight:1.5}}><b style={{color:T.ink}}>{archiveTarget.account}</b> will be removed from your active pipeline, priority actions, and timeline. You can restore it anytime.</div>
+              </div>
+              <button onClick={()=>setArchiveTarget(null)} style={{background:"none",border:`1px solid ${S.border}`,borderRadius:6,width:28,height:28,cursor:"pointer",fontSize:16,color:S.inactiveText,display:"flex",alignItems:"center",justifyContent:"center",marginLeft:16,flexShrink:0}}>×</button>
+            </div>
+            <div style={{margin:"16px 24px",padding:"12px 14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:7,display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:28,height:28,borderRadius:6,background:archiveTarget.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{archiveTarget.short}</div>
+              <div><div style={{fontSize:13,fontWeight:600,color:T.ink}}>{archiveTarget.account}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{archiveTarget.value}</div></div>
+            </div>
+            <div style={{padding:"0 24px 20px",display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>setArchiveTarget(null)} style={{...VBtn.secondary,fontSize:13}}>Cancel</button>
+              <button onClick={()=>{archiveAcct(archiveTarget.id);setArchiveTarget(null);if(selected===archiveTarget.id)setSelected(null);}} style={{...VBtn.primary,fontSize:13}}>Archive account</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT / NEW ACCOUNT MODAL */}
       {editMode&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={()=>setEditMode(false)}>
           <div style={{width:600,maxHeight:"90vh",overflow:"auto",background:"#fff",borderRadius:12,padding:"28px",boxShadow:"0 20px 60px rgba(0,0,0,.15)"}} onClick={e=>e.stopPropagation()}>
@@ -559,21 +802,13 @@ export default function AppDesktop(){
               <h2 style={{margin:0,fontSize:18,fontWeight:700,color:T.ink}}>{selectedAcct&&editMode?"Edit account":"New account"}</h2>
               <button onClick={()=>setEditMode(false)} style={{width:28,height:28,borderRadius:"50%",border:`1px solid ${S.border}`,background:"none",cursor:"pointer",fontSize:16,color:T.sub,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
             </div>
-            <AccountForm
-              orgId={orgId}
-              existing={selectedAcct&&editMode?selectedAcct:undefined}
-              onCancel={()=>setEditMode(false)}
-              onSave={async a=>{await saveAcct(a);setSelected(a.id);setNav("accounts");setEditMode(false);}}
-            />
+            <AccountForm orgId={orgId} existing={selectedAcct&&editMode?selectedAcct:undefined} onCancel={()=>setEditMode(false)} onSave={async a=>{await saveAcct(a);setSelected(a.id);setNav("accounts");setEditMode(false);}}/>
           </div>
         </div>
       )}
-
     </div>
   );
 }
-
-// ── STRIPE-STYLE ACCOUNT DETAIL ──
 // Full main area. Left: main content + tabs. Right: meta sidebar.
 // Mirrors Stripe's transaction detail layout exactly.
 function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
@@ -629,13 +864,13 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
         {/* Breadcrumb + title — Stripe style */}
         <div style={{padding:"20px 32px 0",borderBottom:`1px solid ${S.border}`,background:"#fff",position:"sticky",top:0,zIndex:10}}>
           <div style={{fontSize:12,color:T.purple,marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
-            <button onClick={onBack} style={{background:"none",border:"none",color:T.purple,cursor:"pointer",fontFamily:sans,fontSize:12,fontWeight:500,padding:0}}>← Accounts</button>
+            <button onClick={onBack} style={{background:"none",border:"none",color:T.purple,cursor:"pointer",fontFamily:sans,fontSize:13,fontWeight:500,padding:0,display:"flex",alignItems:"center",gap:4}}>← Accounts</button>
           </div>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:16}}>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:4}}>
                 <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:0,color:T.ink}}>{a.account}</h1>
-                <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12,fontWeight:600,padding:"4px 10px",borderRadius:4,background:h.soft,color:h.c}}>● {h.label}</span>
+                <Tag label={h.label} c={h.c} s={h.soft}/>
               </div>
               <div style={{fontSize:13,color:S.inactiveText}}>
                 OWNER: <b style={{color:T.ink,fontWeight:500}}>{a.owner}</b> · {a.eventType} · {a.sponsorMode}
@@ -646,8 +881,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
               </div>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <button onClick={onEdit} style={{padding:"7px 14px",borderRadius:6,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer"}}>Edit</button>
-              <button onClick={onDelete} style={{padding:"7px 14px",borderRadius:6,border:`1px solid ${T.redSoft}`,background:T.redSoft,color:T.red,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer"}}>Delete</button>
+              <button onClick={onEdit} style={{...VBtn.secondary,fontSize:12}}>Edit account</button>
+              <button onClick={onDelete} style={{...VBtn.danger,fontSize:12}}>Delete</button>
             </div>
           </div>
           {/* Tab bar — Stripe style: bottom border, no background */}
@@ -756,26 +991,36 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
 
           {/* TIMELINE */}
           {tab==="timeline"&&<>
-            <AccountTimeline milestones={milestones} onAdd={addMilestone} onToggle={toggleMilestone} onDelete={delMilestone}/>
-            <div style={{marginTop:32}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:12}}>Contract cycles</div>
+            <CollapsibleSection title="Account lifecycle" defaultOpen={true}
+              onAdd={()=>addMilestone({id:uid(),type:"review",date:new Date().toISOString().slice(0,10),title:"",note:"",done:false})}
+              addLabel="+ Add milestone">
+              <AccountTimeline milestones={milestones} onAdd={addMilestone} onToggle={toggleMilestone} onDelete={delMilestone}/>
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Contract cycles" defaultOpen={true}
+              badge={cycles.length||null}
+              onAdd={()=>addContractCycle({id:uid(),label:"",start:"",end:"",products:[],events:[],note:"",active:true})}
+              addLabel="+ Add cycle">
               <ContractCycles cycles={cycles} currentProducts={a.products||[]} onAdd={addContractCycle} onUpdate={updateContractCycle} onDelete={delContractCycle}/>
-            </div>
-            <div style={{marginTop:28}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>Chargebacks {chargebacks.some(c=>c.status==="Open")&&<span style={{color:T.red,marginLeft:6}}>{chargebacks.filter(c=>c.status==="Open").length} open</span>}</div>
-                <button onClick={()=>addChargeback({id:uid(),amount:0,reason:"",status:"Open",date:new Date().toISOString().slice(0,10),disputedBy:"",note:""})} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500}}>+ Add</button>
-              </div>
-              {chargebacks.length===0?<div style={{fontSize:13,color:S.inactiveText}}>No chargebacks logged.</div>
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Chargebacks" defaultOpen={true}
+              badge={chargebacks.filter(c=>c.status==="Open").length||null}
+              badgeColor={T.red} badgeBg={T.redSoft}
+              onAdd={()=>addChargeback({id:uid(),amount:0,reason:"",status:"Open",date:new Date().toISOString().slice(0,10),disputedBy:"",note:""})}
+              addLabel="+ Add">
+              {chargebacks.length===0
+                ?<div style={{fontSize:13,color:S.inactiveText,padding:"4px 0 8px"}}>No chargebacks logged.</div>
                 :chargebacks.map(cb=><ChargebackRow key={cb.id} cb={cb} onUpdate={p=>updateChargeback(cb.id,p)} onDelete={()=>delChargeback(cb.id)}/>)}
-            </div>
-            <div style={{marginTop:28}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>Feature tracker</div>
-                <button onClick={()=>addFeature({id:uid(),name:"",status:"Scoped",scope:"contract",note:""})} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500}}>+ Add</button>
-              </div>
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Feature tracker" defaultOpen={true}
+              badge={features.filter(f=>f.scope==="out-of-scope"||f.scope==="oos").length?`${features.filter(f=>f.scope==="out-of-scope"||f.scope==="oos").length} OOS`:null}
+              badgeColor={T.red} badgeBg={T.redSoft}
+              onAdd={()=>addFeature({id:uid(),name:"",status:"Scoped",scope:"contract",note:""})}
+              addLabel="+ Add">
               <FeatureTracker features={features} onUpdate={updateFeature} onDelete={delFeature}/>
-            </div>
+            </CollapsibleSection>
           </>}
 
           {/* ECONOMICS */}
@@ -892,7 +1137,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
           c&&["Liability cap", eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
         ].filter(Boolean).map(([k,v2],i)=>(
           <div key={i} style={{marginBottom:14}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.3,textTransform:"uppercase",color:S.labelText,marginBottom:3}}>{k}</div>
+            <div style={{fontSize:11,fontWeight:500,color:S.labelText,marginBottom:3,textTransform:"uppercase",letterSpacing:.4}}>{k}</div>
             <div style={{fontSize:13,color:String(v2).startsWith("⚠")?T.red:T.ink,fontWeight:500}}>{v2}</div>
           </div>
         ))}
@@ -906,17 +1151,22 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
             ["Sentiment", a.kpis.sentiment||"—", ["Cold","Watch"].includes(a.kpis.sentiment)],
           ].map(([k,v2,flag],i)=>(
             <div key={i} style={{marginBottom:12}}>
-              <div style={{fontSize:11,fontWeight:600,letterSpacing:.3,textTransform:"uppercase",color:S.labelText,marginBottom:3}}>{k}</div>
+              <div style={{fontSize:11,fontWeight:500,color:S.labelText,marginBottom:3,textTransform:"uppercase",letterSpacing:.4}}>{k}</div>
               <div style={{fontSize:13,fontWeight:600,color:flag?T.red:T.ink}}>{v2}{flag&&<span style={{fontSize:10,marginLeft:4}}>▲</span>}</div>
             </div>
           ))}
         </>}
         <div style={{borderTop:`1px solid ${S.border}`,margin:"16px 0"}}/>
         <p style={{fontSize:11,color:S.labelText,lineHeight:1.6,margin:0}}>Internal gut-check, not legal advice. Hand disputes to counsel.</p>
+        <div style={{borderTop:`1px solid ${S.border}`,margin:"16px 0"}}/>
+        <button onClick={()=>{onSave({...a,health:a.health==="archived"?"green":"archived"});onBack();}} style={{...VBtn.small,width:"100%",justifyContent:"center",color:a.health==="archived"?T.green:S.inactiveText,borderColor:S.border}}>
+          {a.health==="archived"?"↩ Restore to active":"Archive this account"}
+        </button>
+        {(a.kpis?.daysSinceContact||0)>=90&&a.health!=="archived"&&<div style={{fontSize:11,color:"#B45309",marginTop:8,lineHeight:1.5,textAlign:"center"}}>⏱ {a.kpis.daysSinceContact} days since last contact — consider archiving</div>}
       </div>
 
       {/* Toast */}
-      {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:T.ink,color:"#fff",padding:"9px 18px",borderRadius:999,fontSize:13,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.18)"}}>{toast}</div>}
+      {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:T.ink,color:"#fff",padding:"9px 18px",borderRadius:6,fontSize:13,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.18)"}}>{toast}</div>}
     </div>
   );
 }
@@ -950,404 +1200,6 @@ function CostAddStripe({onAdd}){
   </div>;
 }
 
-function CompanyCard({a,onClick}){
-  const c=a.contract,tc=sumCosts(a);
-  const nextMilestone=(a.milestones||[]).filter(m=>!m.done&&daysDiff(m.date)>=0).sort((a,b)=>new Date(a.date)-new Date(b.date))[0];
-  const mt=nextMilestone?MILESTONE_TYPES[nextMilestone.type]:null;
-  const head=<div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 15px 12px"}}>
-    <div style={{width:42,height:42,borderRadius:8,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short||a.account.slice(0,2).toUpperCase()}</div>
-    <div style={{flex:1}}>
-      <div style={{fontSize:16,fontWeight:600,letterSpacing:-.2}}>{a.account}</div>
-      <div style={{fontSize:12.5,color:T.sub,marginTop:1}}>{(a.products||[]).slice(0,2).join(" · ")}{c?` · C${a.contractCycle||1}`:""}</div>
-    </div>
-    <Tag label={HEALTH[a.health].label} c={HEALTH[a.health].c} s={HEALTH[a.health].soft}/>
-  </div>;
-  const base={background:T.bg,border:BD,borderRadius:8,marginTop:11,overflow:"hidden",cursor:"pointer",width:"100%",textAlign:"left",font:"inherit",color:"inherit",display:"block",fontFamily:sans};
-  if(!c)return <button onClick={onClick} style={base}>{head}
-    <div style={{padding:"0 15px 14px"}}>
-      <div style={{fontSize:13,color:T.sub,lineHeight:1.45,marginBottom:nextMilestone?8:0}}>{a.summary}</div>
-      {nextMilestone&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:mt.color,fontWeight:600}}><span>{mt.icon}</span>{nextMilestone.title} · {daysDiff(nextMilestone.date)===0?"Today":daysDiff(nextMilestone.date)+"d"}</div>}
-    </div>
-  </button>;
-  const fees=c.gmvActual*c.netTakePct/100,net=fees-tc,p2=pct(c.gmvActual,c.gmvProjected);
-  return <button onClick={onClick} style={base}>{head}
-    <div style={{padding:"0 15px 12px"}}>
-      <div style={{height:6,borderRadius:3,background:"#E9EAEE",overflow:"hidden"}}><div style={{height:"100%",width:p2+"%",background:T.blue,borderRadius:3}}/></div>
-      <div style={{display:"flex",gap:6,marginTop:8,fontSize:12,color:T.sub}}>
-        <span><b style={{color:T.ink}}>{fmtK(c.gmvActual)}</b> of {fmtK(c.gmvProjected)} GMV</span>
-        <span>·</span>
-        <span><b style={{color:T.ink}}>{c.netTakePct}%</b> net take</span>
-      </div>
-      {nextMilestone&&<div style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:mt.color,fontWeight:600,marginTop:7}}><span>{mt.icon}</span>{nextMilestone.title} · {daysDiff(nextMilestone.date)===0?"Today":daysDiff(nextMilestone.date)+"d"}</div>}
-    </div>
-    <div style={{display:"flex",borderTop:HD,padding:"11px 15px",gap:16}}>
-      <CoStat k="Net revenue" v={fmtK(fees)}/>
-      <CoStat k="Costs" v={fmtK(tc)}/>
-      <CoStat k="Net" v={(net<0?"-":"")+fmtK(Math.abs(net))} color={net<0?T.red:T.green}/>
-    </div>
-  </button>;
-}
-const CoStat=({k,v,color})=><div style={{display:"flex",flexDirection:"column"}}><span style={{fontSize:11.5,color:T.sub}}>{k}</span><span style={{fontSize:14,fontWeight:600,marginTop:2,color:color||T.ink}}>{v}</span></div>;
-
-// ── DETAIL with tabs ──
-function Detail({a,onBack,onEdit,onDelete,onSave}){
-  const [tab,setTab]=useState("timeline"); // default to timeline so it's immediately visible
-  const [costs,setCosts]=useState(a.costs||[]);
-  const [milestones,setMilestones]=useState(a.milestones||[]);
-  const [eco,setEco]=useState(a.contract||{});
-  const [addingCost,setAddingCost]=useState(false);
-  const [cycle,setCycle]=useState(a.contractCycle||1);
-  const [cycles,setCycles]=useState(a.cycles||[]);
-  const [chargebacks,setChargebacks]=useState(a.chargebacks||[]);
-  const [features,setFeatures]=useState(a.features||[]);
-  const [toast,setToast]=useState(null);
-
-  function save(patch={}){
-    onSave({...a,contract:eco,costs,milestones,contractCycle:cycle,cycles,chargebacks,features,...patch});
-  }
-
-  const fa=a.fault||{},v=VERDICT[fa.verdict]||VERDICT.unclear,im=a.impact||{},h=HEALTH[a.health],c=a.contract;
-  const tc=costs.reduce((n,x)=>n+(x.computed||0),0);
-  const fees=c?(eco.gmvActual||0)*(eco.netTakePct||0)/100:0,net=fees-tc;
-
-  function saveEco(key,val){const n={...eco,[key]:val};setEco(n);save({contract:n});}
-  function addCost(cost){const n=[...costs,cost];setCosts(n);save({costs:n});}
-  function delCost(id){const n=costs.filter(x=>x.id!==id);setCosts(n);save({costs:n});}
-  function addMilestone(m){const n=[...milestones,m];setMilestones(n);save({milestones:n});}
-  function toggleMilestone(id){const n=milestones.map(m=>m.id===id?{...m,done:!m.done}:m);setMilestones(n);save({milestones:n});}
-  function delMilestone(id){const n=milestones.filter(m=>m.id!==id);setMilestones(n);save({milestones:n});}
-  function saveCycle(c2){setCycle(c2);save({contractCycle:c2});}
-  function addContractCycle(cy){const n=[...cycles,cy];setCycles(n);save({cycles:n});}
-  function updateContractCycle(id,patch){const n=cycles.map(c=>c.id===id?{...c,...patch}:c);setCycles(n);save({cycles:n});}
-  function delContractCycle(id){const n=cycles.filter(c=>c.id!==id);setCycles(n);save({cycles:n});}
-  function addChargeback(cb){const n=[...chargebacks,cb];setChargebacks(n);save({chargebacks:n});}
-  function updateChargeback(id,patch){const n=chargebacks.map(c=>c.id===id?{...c,...patch}:c);setChargebacks(n);save({chargebacks:n});}
-  function delChargeback(id){const n=chargebacks.filter(c=>c.id!==id);setChargebacks(n);save({chargebacks:n});}
-  function addFeature(f2){const n=[...features,f2];setFeatures(n);save({features:n});}
-  function updateFeature(id,patch){const n=features.map(f=>f.id===id?{...f,...patch}:f);setFeatures(n);save({features:n});}
-  function delFeature(id){const n=features.filter(f=>f.id!==id);setFeatures(n);save({features:n});}
-  function resolveSignal(s,keep){
-    const pend=(a.signals_pending||[]).filter(x=>x.id!==s.id);
-    const risks=keep?[...(a.risks||[]),{risk:s.kind,severity:s.sev,action:s.text}]:(a.risks||[]);
-    const dismissed=keep?(a.dismissed_signals||[]):[...(a.dismissed_signals||[]),{...s,dismissedAt:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}];
-    setToast(keep?"Added to risks ✓":"Dismissed — visible in contract log");
-    setTimeout(()=>setToast(null),2500);
-    save({signals_pending:pend,risks,dismissed_signals:dismissed});
-  }
-
-  const panel={background:T.soft,border:HD,borderRadius:8,padding:16,marginTop:12};
-  const panelW={...panel,background:T.bg,border:BD};
-  const sb={background:T.bg,border:HD,borderRadius:8,padding:13,marginTop:10};
-  const TABS=["overview","timeline","economics","contract"];
-
-  return <>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0 6px"}}>
-      <button style={icbtn} onClick={onBack}>‹</button>
-      <div style={{display:"flex",gap:9,alignItems:"center"}}>
-        <span style={{display:"flex",alignItems:"center",gap:6,fontSize:13,fontWeight:600,color:h.c}}><span style={{width:7,height:7,borderRadius:"50%",background:h.c}}/>{h.label}</span>
-        <button style={icbtn} onClick={onEdit}>✎</button>
-      </div>
-    </div>
-    <h1 style={{fontFamily:serif,fontSize:28,fontWeight:600,letterSpacing:-.4,margin:"12px 0 0"}}>{a.account}</h1>
-    <div style={{fontSize:12.5,color:T.sub,marginTop:4}}>OWNER: <b style={{color:T.ink}}>{a.owner}</b> · {a.eventType} · {a.sponsorMode}</div>
-    <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
-      {(a.products||[]).map(p=><span key={p} style={{fontSize:11,fontWeight:600,padding:"3px 8px",borderRadius:5,background:T.purpleSoft,color:T.purple}}>{p}</span>)}
-    </div>
-
-    {/* Tabs */}
-    <div style={{display:"flex",gap:0,marginTop:16,borderRadius:8,overflow:"hidden",border:HD}}>
-      {TABS.map((t,i)=><button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"10px 4px",fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer",border:"none",borderRight:i<TABS.length-1?HD:"none",background:tab===t?T.ink:T.bg,color:tab===t?"#fff":T.sub,textTransform:"capitalize"}}>{t}</button>)}
-    </div>
-
-    {/* Toast */}
-    {toast&&<div style={{position:"fixed",bottom:32,left:"50%",transform:"translateX(-50%)",background:T.ink,color:"#fff",padding:"10px 18px",borderRadius:999,fontSize:13,fontWeight:600,zIndex:999,whiteSpace:"nowrap",boxShadow:"0 4px 20px rgba(0,0,0,.18)"}}>{toast}</div>}
-
-    {/* ── OVERVIEW TAB ── */}
-    {tab==="overview"&&<>
-      {(a.signals_pending||[]).length>0&&<><Sec>Signals to review</Sec>
-        {a.signals_pending.map(s=><div key={s.id} style={{...panelW,marginTop:0,marginBottom:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><strong style={{fontSize:14,fontWeight:600}}>{s.kind}</strong><Tag label={SEV[s.sev].l} c={SEV[s.sev].c} s={SEV[s.sev].s}/></div>
-          <div style={{fontSize:13,color:T.sub,margin:"8px 0 12px",lineHeight:1.45}}>{s.text}</div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>resolveSignal(s,true)} style={{flex:1,padding:9,borderRadius:8,border:"none",background:T.ink,color:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Add as risk</button>
-            <button onClick={()=>resolveSignal(s,false)} style={{padding:"9px 14px",borderRadius:8,border:BD,background:T.bg,color:T.sub,fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Dismiss</button>
-          </div>
-        </div>)}
-      </>}
-      {(a.signal||a.shift)&&<div style={panel}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}><div style={{fontFamily:serif,fontSize:18,fontWeight:600}}>What changed</div><Pill c="#fff" s={T.black}>{a.updates||1} update{(a.updates||1)>1?"s":""}</Pill></div>
-        {a.signal&&<div style={sb}><div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:T.sub,marginBottom:7}}>✉ Signal detected</div><div style={{fontSize:14,lineHeight:1.5}}>{a.signal}</div></div>}
-        {a.shift&&<div style={sb}><div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:T.sub,marginBottom:7}}>↗ Exposure shift</div><div style={{fontSize:14,lineHeight:1.5}}>{a.shift}</div></div>}
-      </div>}
-      {fa.verdict&&<div style={{...panelW,borderLeft:`3px solid ${v.c}`,marginTop:12}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}><span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:T.faint}}>Fault Assessment</span><Tag label={v.label} c={v.c} s={v.s}/></div>
-        <p style={{fontSize:14,lineHeight:1.55,margin:"12px 0"}}>{fa.reasoning}</p>
-        <div style={{fontSize:13.5,lineHeight:1.75}}><div><b style={{color:T.red}}>Against us:</b> {fa.against_us}</div><div><b style={{color:T.green}}>Against them:</b> {fa.against_them}</div></div>
-      </div>}
-      {a.obligations?.length>0&&<><Sec>Obligations</Sec><div style={panelW}>{a.obligations.map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.unclear;return(
-        <div key={i} style={{padding:"12px 0",display:"grid",gridTemplateColumns:"auto 1fr auto",gap:12,alignItems:"start",borderTop:i?HD:"none"}}>
-          <span style={{fontSize:11,fontWeight:600,textTransform:"uppercase",color:o.party==="us"?T.purple:T.sub,paddingTop:2}}>{o.party}</span>
-          <div><div style={{fontSize:14,fontWeight:600}}>{o.obligation}</div><div style={{fontSize:12,color:T.sub,marginTop:2}}>{o.source}</div></div>
-          <span style={{fontSize:12.5,fontWeight:600,color:s.c,whiteSpace:"nowrap",paddingTop:2}}>{s.t}</span>
-        </div>);})}</div></>}
-      {a.risks?.length>0&&<><Sec>Risks</Sec>{a.risks.map((r,i)=>(
-        <div key={i} style={{background:T.bg,border:BD,borderRadius:8,padding:13,marginTop:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}><strong style={{fontSize:14,fontWeight:600}}>{r.risk}</strong><Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/></div>
-          <div style={{fontSize:13,color:T.sub,marginTop:9,lineHeight:1.45}}>→ {r.action}</div>
-        </div>))}
-      </>}
-      {a.flags?.length>0&&<><Sec>Overextension</Sec><div style={panelW}>{a.flags.map((f,i)=>(
-        <div key={i} style={{fontSize:14,lineHeight:1.5,padding:"11px 0",borderTop:i?HD:"none",display:"flex",gap:9}}><span style={{color:T.red,fontSize:8,marginTop:5}}>▲</span>{f}</div>))}</div>
-      </>}
-    </>}
-
-    {/* ── TIMELINE TAB ── */}
-    {tab==="timeline"&&<>
-      <Sec>Account lifecycle</Sec>
-      <AccountTimeline milestones={milestones} onAdd={addMilestone} onToggle={toggleMilestone} onDelete={delMilestone}/>
-
-      <Sec>Contract cycles</Sec>
-      <div style={{fontSize:13,color:T.sub,lineHeight:1.5,margin:"-8px 2px 12px"}}>Each cycle is a contract period — a renewal, a new event, or an expanded scope. Cycles tell the maturity story over time.</div>
-      <ContractCycles cycles={cycles} currentProducts={a.products||[]} onAdd={addContractCycle} onUpdate={updateContractCycle} onDelete={delContractCycle}/>
-
-      <Sec right={<button onClick={()=>{const cb={id:uid(),amount:0,reason:"",status:"Open",date:new Date().toISOString().slice(0,10),disputedBy:"",note:""};addChargeback(cb);}} style={{fontFamily:sans,fontSize:12,fontWeight:600,color:T.purple,background:"none",border:"none",cursor:"pointer"}}>+ Add</button>}>
-        Chargebacks {chargebacks.length>0&&<span style={{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:5,background:chargebacks.some(c=>c.status==="Open")?T.redSoft:T.greenSoft,color:chargebacks.some(c=>c.status==="Open")?T.red:T.green,marginLeft:6}}>{chargebacks.filter(c=>c.status==="Open").length} open</span>}
-      </Sec>
-      {chargebacks.length===0&&<div style={{fontSize:13,color:T.sub,padding:"8px 2px"}}>No chargebacks logged. Add one manually or the agent will flag them from comms.</div>}
-      {chargebacks.map((cb,i)=><ChargebackRow key={cb.id} cb={cb} onUpdate={p=>updateChargeback(cb.id,p)} onDelete={()=>delChargeback(cb.id)}/>)}
-
-      <Sec right={<button onClick={()=>addFeature({id:uid(),name:"",status:"Scoped",scope:"contract",note:""})} style={{fontFamily:sans,fontSize:12,fontWeight:600,color:T.purple,background:"none",border:"none",cursor:"pointer"}}>+ Add</button>}>Feature tracker</Sec>
-      <div style={{fontSize:13,color:T.sub,lineHeight:1.5,margin:"-8px 2px 12px"}}>What was scoped, what's built, what slipped, what was added out of scope.</div>
-      {features.length===0&&<div style={{fontSize:13,color:T.sub,padding:"8px 2px"}}>No features tracked yet.</div>}
-      <FeatureTracker features={features} onUpdate={updateFeature} onDelete={delFeature}/>
-    </>}
-
-    {/* ── ECONOMICS TAB ── */}
-    {tab==="economics"&&c&&<>
-      <ContractHealthRing eco={eco} costs={costs} obligations={a.obligations||[]} chargebacks={chargebacks} kpis={a.kpis||{}} risks={a.risks||[]}/>
-      <Sec>Revenue structure</Sec>
-      <div style={panel}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
-          <EF label="Platform fee %" type="number" value={eco.platformFeePct} onChange={v=>{const n={...eco,platformFeePct:+v,netTakePct:+(+v-(eco.kickbackPct||0)).toFixed(2)};setEco(n);save({contract:n});}}/>
-          <EF label="Kickback %" type="number" value={eco.kickbackPct||0} onChange={v=>{const n={...eco,kickbackPct:+v,netTakePct:+((eco.platformFeePct||0)-+v).toFixed(2)};setEco(n);save({contract:n});}}/>
-          <EF label="Kickback to" type="text" value={eco.kickbackTo||""} onChange={v=>saveEco("kickbackTo",v)}/>
-          <EF label="Net take %" type="number" value={eco.netTakePct} onChange={v=>saveEco("netTakePct",+v)}/>
-          <EF label="Processing rate %" type="number" value={eco.processingRate||2.9} onChange={v=>saveEco("processingRate",+v)}/>
-          <EF label="GMV realized" type="number" value={eco.gmvActual} onChange={v=>saveEco("gmvActual",+v)}/>
-          <EF label="GMV projected" type="number" value={eco.gmvProjected} onChange={v=>saveEco("gmvProjected",+v)}/>
-        </div>
-        <div style={{height:7,borderRadius:4,background:"#E9EAEE",overflow:"hidden",marginTop:14}}><div style={{height:"100%",width:pct(eco.gmvActual,eco.gmvProjected)+"%",background:T.blue,borderRadius:4}}/></div>
-        <div style={{fontSize:12,color:T.sub,marginTop:6,marginBottom:4}}>{pct(eco.gmvActual,eco.gmvProjected)}% of projected GMV</div>
-        <EconOut k="Platform fees" v={fmt((eco.gmvActual||0)*(eco.platformFeePct||0)/100)}/>
-        <EconOut k={`Kickback → ${eco.kickbackTo||"partner"}`} v={"−"+fmt((eco.gmvActual||0)*(eco.kickbackPct||0)/100)}/>
-        <EconOut k="Net revenue" v={fmt(fees)}/>
-        <EconOut k="Running costs" v={fmt(tc)}/>
-        <EconOut k="Net so far" v={(net<0?"-":"")+fmt(Math.abs(net))} color={net<0?T.red:T.green}/>
-        <div style={{fontSize:12,color:T.sub,marginTop:10,lineHeight:1.45}}>Modeled at {fmtK(eco.gmvProjected)} GMV → {fmt(eco.gmvProjected*(eco.netTakePct||0)/100)} net revenue. At {pct(eco.gmvActual,eco.gmvProjected)}% of plan.</div>
-      </div>
-      <Sec right={<button onClick={()=>setAddingCost(true)} style={{fontFamily:sans,fontSize:12,fontWeight:600,color:T.purple,background:"none",border:"none",cursor:"pointer"}}>+ Add cost</button>}>Running costs</Sec>
-      <div style={panelW}>
-        {costs.length===0&&<div style={{fontSize:13,color:T.sub}}>No costs logged yet.</div>}
-        {costs.map((x,i)=><div key={x.id} style={{display:"flex",alignItems:"center",padding:"11px 0",borderTop:i?HD:"none"}}>
-          <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600}}>{x.label||x.type}</div><div style={{fontSize:12,color:T.sub,marginTop:2}}>{x.note}{x.when?` · ${x.when}`:""}{x.detail?` · ${x.detail}`:""}</div></div>
-          <span style={{fontSize:14,fontWeight:600,minWidth:60,textAlign:"right"}}>{x.computed>0?fmt(x.computed):"$0"}</span>
-          <button onClick={()=>delCost(x.id)} style={{marginLeft:10,background:"none",border:"none",color:T.faint,cursor:"pointer",fontSize:16}}>×</button>
-        </div>)}
-        {addingCost&&<CostAdd onAdd={c2=>{addCost(c2);setAddingCost(false);}} onCancel={()=>setAddingCost(false)}/>}
-      </div>
-      <Sec>Performance signals</Sec>
-      <div style={panelW}>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          <Kpi k="Days since contact" v={a.kpis?.daysSinceContact??"—"} flag={(a.kpis?.daysSinceContact||0)>14}/>
-          <Kpi k="SLA actual" v={a.kpis?.slaActual?(a.kpis.slaActual+"%"):"—"} flag={a.kpis?.slaActual&&a.kpis.slaActual<(eco.slaTarget||99.9)}/>
-          <Kpi k="Chargebacks" v={a.kpis?.chargebacks??"—"} flag={(a.kpis?.chargebacks||0)>0}/>
-          <Kpi k="Sentiment" v={a.kpis?.sentiment||"—"} flag={["Cold","Watch","Negative"].includes(a.kpis?.sentiment)}/>
-        </div>
-      </div>
-    </>}
-    {tab==="economics"&&!c&&<div style={{fontSize:14,color:T.sub,padding:"30px 2px",textAlign:"center"}}>No signed contract yet.<br/>Edit the account to add contract terms.</div>}
-
-    {/* ── CONTRACT TAB ── */}
-    {tab==="contract"&&c&&<>
-      {/* Contract import */}
-      <ContractImport onImport={parsed=>{
-        const n={...eco,...parsed};setEco(n);
-        save({contract:n});
-        setToast("Contract terms imported ✓");setTimeout(()=>setToast(null),2500);
-      }}/>
-      <Sec>Contract terms</Sec>
-      <div style={panelW}>
-        {[
-          ["Start → End",`${eco.start||"—"} → ${eco.end||"—"}`],["Renewal",eco.renewal||"—"],
-          ["Payment terms",eco.paymentTerms||"—"],["Liability cap",eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
-          ["SLA target",eco.slaTarget?eco.slaTarget+"%":"—"],["Data rights",eco.dataRights||"—"],
-          ["Termination notice",eco.terminationNotice||"—"],["IP ownership",eco.ipOwnership||"—"],
-          ["Auto-renew",eco.autoRenew?"Yes":"No"],["Exclusivity",eco.exclusive?"Yes":"No"],
-          ["Audit rights",eco.auditRights?"Yes":"No"],["Rev share on upsells",eco.revenueShareOnUpsells?"Yes":"No"],
-          ["White-label",eco.whiteLabel?"Yes":"No"],["Processing pass-through",eco.processingPassThru?"Yes":"No"],
-        ].map(([k,v2],i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderTop:i?HD:"none",gap:12}}>
-          <span style={{fontSize:13,color:T.sub,flexShrink:0}}>{k}</span>
-          <span style={{fontSize:13,fontWeight:600,textAlign:"right",color:String(v2).startsWith("⚠")?T.red:T.ink}}>{v2}</span>
-        </div>)}
-        {eco.notes&&<div style={{fontSize:12,color:T.sub,marginTop:10,paddingTop:10,borderTop:HD,lineHeight:1.5}}>{eco.notes}</div>}
-      </div>
-      {/* Dismissed signals log */}
-      {(a.dismissed_signals||[]).length>0&&<><Sec>Dismissed signals</Sec>
-        <div style={panelW}>
-          <div style={{fontSize:12,color:T.sub,marginBottom:10,lineHeight:1.5}}>Signals you reviewed and dismissed. Kept here for reference in case context changes.</div>
-          {(a.dismissed_signals||[]).map((s,i)=><div key={s.id} style={{padding:"10px 0",borderTop:i?HD:"none"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-              <span style={{fontSize:13,fontWeight:600,color:T.sub}}>{s.kind}</span>
-              <span style={{fontSize:11,color:T.faint}}>{s.dismissedAt}</span>
-            </div>
-            <div style={{fontSize:12,color:T.faint,marginTop:3,lineHeight:1.45}}>{s.text}</div>
-          </div>)}
-        </div>
-      </>}
-    </>}
-    {tab==="contract"&&!c&&<>
-      <ContractImport onImport={()=>{}} disabled/>
-      <div style={{fontSize:14,color:T.sub,padding:"20px 2px",textAlign:"center",marginTop:8}}>No signed contract yet.<br/>Edit the account to add contract terms.</div>
-    </>}
-
-    <div style={{display:"flex",gap:10,marginTop:24}}>
-      <button onClick={onEdit} style={{flex:1,padding:12,borderRadius:8,border:BD,background:T.bg,color:T.ink,fontFamily:sans,fontWeight:600,fontSize:14,cursor:"pointer"}}>Edit account</button>
-      <button onClick={onDelete} style={{padding:"12px 16px",borderRadius:8,border:`1px solid ${T.redSoft}`,background:T.redSoft,color:T.red,fontFamily:sans,fontWeight:600,fontSize:14,cursor:"pointer"}}>Delete</button>
-    </div>
-    <p style={{fontSize:12,color:T.faint,margin:"24px 2px 0",lineHeight:1.6}}>Internal gut-check, not legal advice. Hand disputes to counsel.</p>
-  </>;
-}
-
-function EF({label,type="text",value,onChange,placeholder=""}){
-  const [local,setLocal]=useState(String(value??""));
-  useEffect(()=>setLocal(String(value??"")),[value]);
-  function handleChange(raw){
-    setLocal(raw);
-    if(type==="number"){
-      if(raw===""||raw==="-") return; // allow mid-typing empty/minus
-      const n=parseFloat(raw);
-      if(!isNaN(n)) onChange(n);
-    } else { onChange(raw); }
-  }
-  return <div style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}>
-    <label style={{fontSize:11,color:T.sub,fontWeight:500,display:"block"}}>{label}</label>
-    <input type="text" inputMode={type==="number"?"decimal":"text"} value={local}
-      placeholder={placeholder}
-      onChange={e=>handleChange(e.target.value)}
-      onBlur={()=>{ if(type==="number"&&(local===""||isNaN(parseFloat(local)))){ setLocal("0"); onChange(0); } }}
-      style={{border:"none",outline:"none",font:"inherit",fontSize:15,fontWeight:600,color:T.ink,width:"100%",marginTop:3,background:"none",fontFamily:sans}}/>
-  </div>;
-}
-
-function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
-  const [adding,setAdding]=useState(false);
-  const today=new Date();today.setHours(0,0,0,0);
-  const sorted=[...milestones].sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const upcoming=sorted.filter(m=>!m.done&&new Date(m.date)>=today);
-  const past=sorted.filter(m=>m.done||new Date(m.date)<today);
-  return <div>
-    {upcoming.length>0&&<>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.7,textTransform:"uppercase",color:T.faint,margin:"14px 2px 8px"}}>Upcoming</div>
-      {upcoming.map(m=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete}/>)}
-    </>}
-    {past.length>0&&<>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.7,textTransform:"uppercase",color:T.faint,margin:"18px 2px 8px"}}>Past</div>
-      {past.map(m=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete} past/>)}
-    </>}
-    {adding?<MilestoneAdd onAdd={m=>{onAdd(m);setAdding(false);}} onCancel={()=>setAdding(false)}/>
-      :<button onClick={()=>setAdding(true)} style={{width:"100%",marginTop:10,padding:11,borderRadius:8,border:`1px dashed ${T.hairS}`,background:"none",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Add milestone</button>}
-  </div>;
-}
-
-function MilestoneRow({m,onToggle,onDelete,past}){
-  const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
-  const d=daysDiff(m.date);
-  const urg=d<=3&&!m.done?"crit":d<=7&&!m.done?"soon":"ok";
-  return <div style={{display:"flex",alignItems:"flex-start",gap:12,padding:"12px 0",borderTop:HD}}>
-    <button onClick={()=>onToggle(m.id)} style={{width:22,height:22,borderRadius:6,border:`1.5px solid ${m.done?T.green:urg==="crit"?T.red:urg==="soon"?T.yellow:"rgba(20,22,28,.2)"}`,background:m.done?T.green:"transparent",color:"#fff",fontSize:11,cursor:"pointer",flexShrink:0,marginTop:2,display:"flex",alignItems:"center",justifyContent:"center"}}>{m.done?"✓":""}</button>
-    <div style={{flex:1,opacity:past&&m.done?.5:1}}>
-      <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-        <span style={{fontSize:13,fontWeight:700}}>{m.title}</span>
-        <span style={{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:5,background:mt.color+"18",color:mt.color}}>{mt.icon} {mt.label}</span>
-        {!m.done&&urg==="crit"&&<span style={{fontSize:11,fontWeight:700,color:T.red}}>{d<=0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
-        {!m.done&&urg==="soon"&&<span style={{fontSize:11,color:T.yellow,fontWeight:600}}>{d}d</span>}
-      </div>
-      <div style={{fontSize:12,color:T.sub,marginTop:3}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}{m.note?` · ${m.note}`:""}</div>
-    </div>
-    <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",color:T.faint,cursor:"pointer",fontSize:15}}>×</button>
-  </div>;
-}
-
-function MilestoneAdd({onAdd,onCancel}){
-  const [type,setType]=useState("event_date");const [title,setTitle]=useState("");const [date,setDate]=useState("");const [note,setNote]=useState("");
-  return <div style={{background:T.soft,border:HD,borderRadius:8,padding:14,marginTop:10}}>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:9}}>
-      {Object.entries(MILESTONE_TYPES).map(([k,v])=><button key={k} onClick={()=>setType(k)} style={{padding:"7px 6px",borderRadius:7,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${type===k?v.color:"rgba(20,22,28,.12)"}`,background:type===k?v.color+"18":"#fff",color:type===k?v.color:T.sub,textAlign:"left"}}>{v.icon} {v.label}</button>)}
-    </div>
-    <div style={{display:"grid",gap:8}}>
-      <EF label="Title" value={title} onChange={setTitle}/>
-      <EF label="Date" type="date" value={date} onChange={setDate}/>
-      <EF label="Note (optional)" value={note} onChange={setNote}/>
-    </div>
-    <div style={{display:"flex",gap:8,marginTop:10}}>
-      <button disabled={!title||!date} onClick={()=>onAdd({id:uid(),type,title,date,note,done:false})} style={{flex:1,padding:10,borderRadius:8,border:"none",background:(title&&date)?T.ink:T.hairS,color:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Add</button>
-      <button onClick={onCancel} style={{padding:"10px 14px",borderRadius:8,border:BD,background:T.bg,color:T.sub,fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
-    </div>
-  </div>;
-}
-
-// ── CONTRACT CYCLES (renewal-based, org-specific) ──
-function ContractCycles({cycles=[],currentProducts=[],onAdd,onUpdate,onDelete}){
-  const [adding,setAdding]=useState(false);
-  const sorted=[...cycles].sort((a,b)=>new Date(a.start||0)-new Date(b.start||0));
-  return <div>
-    {sorted.length===0&&<div style={{fontSize:13,color:T.sub,padding:"8px 2px",marginBottom:8}}>No cycles yet. Add the first contract period to start tracking renewal history.</div>}
-    {sorted.map((cy,i)=><CycleCard key={cy.id} cy={cy} index={i} total={sorted.length} onUpdate={p=>onUpdate(cy.id,p)} onDelete={()=>onDelete(cy.id)}/>)}
-    {adding
-      ? <NewCycleForm products={currentProducts} onSave={cy=>{onAdd(cy);setAdding(false);}} onCancel={()=>setAdding(false)}/>
-      : <button onClick={()=>setAdding(true)} style={{width:"100%",marginTop:10,padding:11,borderRadius:8,border:`1px dashed ${T.hairS}`,background:"none",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Add contract cycle / renewal</button>
-    }
-  </div>;
-}
-function CycleCard({cy,index,total,onUpdate,onDelete}){
-  const [open,setOpen]=useState(cy.active||false);
-  const isActive=cy.active;
-  return <div style={{background:T.bg,border:`1px solid ${isActive?T.purple:T.hairS}`,borderRadius:8,marginBottom:10,overflow:"hidden"}}>
-    <div onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",cursor:"pointer"}}>
-      <div style={{width:28,height:28,borderRadius:6,background:isActive?T.purple:T.soft,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:isActive?"#fff":T.sub,flexShrink:0}}>C{index+1}</div>
-      <div style={{flex:1}}>
-        <div style={{fontSize:14,fontWeight:600,color:T.ink}}>{cy.label||`Cycle ${index+1}`}</div>
-        <div style={{fontSize:12,color:T.sub,marginTop:2}}>{cy.start||"—"}{cy.end?` → ${cy.end}`:""}</div>
-      </div>
-      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-        {isActive&&<span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:5,background:T.purpleSoft,color:T.purple}}>Active</span>}
-        <span style={{fontSize:14,color:T.faint}}>{open?"▲":"▼"}</span>
-      </div>
-    </div>
-    {open&&<div style={{padding:"0 14px 14px",borderTop:HD}}>
-      <div style={{display:"grid",gap:8,marginTop:12}}>
-        <EF label="Cycle label" value={cy.label||""} onChange={v=>onUpdate({label:v})}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          <EF label="Start" value={cy.start||""} onChange={v=>onUpdate({start:v})} placeholder="May 2026"/>
-          <EF label="End" value={cy.end||""} onChange={v=>onUpdate({end:v})} placeholder="Jul 2026"/>
-        </div>
-        <EF label="Events (comma separated)" value={(cy.events||[]).join(", ")} onChange={v=>onUpdate({events:v.split(",").map(s=>s.trim()).filter(Boolean)})} placeholder="Sail4th 250 · Jul 3, 2026"/>
-        <EF label="Notes" value={cy.note||""} onChange={v=>onUpdate({note:v})}/>
-      </div>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:T.faint,margin:"14px 2px 8px"}}>Products in scope</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-        {PRODUCTS.map(p=>{const has=(cy.products||[]).includes(p); return <button key={p} onClick={()=>onUpdate({products:has?(cy.products||[]).filter(x=>x!==p):[...(cy.products||[]),p]})} style={{fontSize:12,fontWeight:600,padding:"4px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green:T.hairS}`,background:has?T.greenSoft:T.bg,color:has?T.green:T.sub,fontFamily:sans}}>{has?"✓ ":""}{p}</button>;})}
-      </div>
-      <div style={{display:"flex",gap:8}}>
-        <div onClick={()=>onUpdate({active:!isActive})} style={{display:"flex",alignItems:"center",gap:8,flex:1,padding:"10px 12px",borderRadius:8,border:HD,cursor:"pointer",background:T.bg}}>
-          <div style={{width:38,height:21,borderRadius:11,background:isActive?T.purple:"#D0D3D9",padding:2,display:"flex",alignItems:"center",transition:"background .2s"}}><div style={{width:17,height:17,borderRadius:"50%",background:"#fff",transform:isActive?"translateX(17px)":"translateX(0)",transition:"transform .2s"}}/></div>
-          <span style={{fontSize:13,fontWeight:500}}>Active cycle</span>
-        </div>
-        <button onClick={onDelete} style={{padding:"10px 14px",borderRadius:8,border:`1px solid ${T.redSoft}`,background:T.redSoft,color:T.red,fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Delete</button>
-      </div>
-    </div>}
-  </div>;
-}
 function NewCycleForm({products,onSave,onCancel}){
   const [label,setLabel]=useState("");const [start,setStart]=useState("");const [end,setEnd]=useState("");
   const [prods,setProds]=useState([...products]);const [note,setNote]=useState("");
@@ -1371,45 +1223,51 @@ function NewCycleForm({products,onSave,onCancel}){
     </div>
   </div>;
 }
-// ── CHARGEBACK ROW ──
-const CHARGEBACK_COLORS={"Open":T.red,"Resolved — won":T.green,"Resolved — lost":T.sub,"Disputed":T.yellow};
+// ── CHARGEBACK ROW — scan row first, expand to edit ──
 function ChargebackRow({cb,onUpdate,onDelete}){
   const [open,setOpen]=useState(false);
-  const col=CHARGEBACK_COLORS[cb.status]||T.sub;
-  return <div style={{background:T.bg,border:`1px solid ${cb.status==="Open"?T.redSoft:T.hairS}`,borderRadius:8,marginBottom:8,overflow:"hidden"}}>
-    <div onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",cursor:"pointer"}}>
+  const SC={"Open":{c:T.red,s:T.redSoft},"Resolved — won":{c:T.green,s:T.greenSoft},"Resolved — lost":{c:S.inactiveText,s:"#F3F4F6"},"Disputed":{c:T.yellow,s:T.yellowSoft}};
+  const sc=SC[cb.status]||SC["Open"];
+  return <div style={{borderTop:HD,padding:"12px 0"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block",lineHeight:1}}>›</span>
       <div style={{flex:1}}>
-        <div style={{fontSize:14,fontWeight:600}}>{cb.disputedBy||"Unnamed"}{cb.amount>0?<span style={{fontWeight:400,color:T.sub}}> · {fmt(cb.amount)}</span>:""}</div>
-        <div style={{fontSize:12,color:T.sub,marginTop:2}}>{cb.date} · {cb.reason||"No reason logged"}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{cb.disputedBy||"Unnamed"}</span>
+          <Tag label={cb.status} c={sc.c} s={sc.s}/>
+          {cb.amount>0&&<span style={{fontSize:12,color:S.inactiveText}}>{fmt(cb.amount)}</span>}
+        </div>
+        <div style={{fontSize:12,color:S.inactiveText,marginTop:1}}>{cb.date}{cb.reason?` · ${cb.reason}`:""}</div>
       </div>
-      <span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:5,background:col+"18",color:col}}>{cb.status}</span>
+      <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>x</button>
     </div>
-    {open&&<div style={{padding:"0 14px 14px",borderTop:HD}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:12}}>
-        <EF label="Disputed by" value={cb.disputedBy||""} onChange={v=>onUpdate({disputedBy:v})}/>
-        <EF label="Amount ($)" type="number" value={cb.amount||0} onChange={v=>onUpdate({amount:+v})}/>
-        <EF label="Date" value={cb.date||""} onChange={v=>onUpdate({date:v})}/>
+    {open&&<div style={{marginTop:10,padding:"14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+        {[["Disputed by","text",cb.disputedBy||"","disputedBy"],["Amount ($)","number",cb.amount||0,"amount"],["Date","text",cb.date||"","date"]].map(([lbl,tp,val,key])=>(
+          <div key={key}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>{lbl}</label>
+          <input type={tp} value={val} onChange={e=>onUpdate({[key]:tp==="number"?+e.target.value:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+        ))}
       </div>
-      <div style={{marginTop:8}}>
-        <div style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px",marginBottom:8}}><label style={{fontSize:11,color:T.sub,fontWeight:500,display:"block"}}>Reason</label><textarea value={cb.reason||""} onChange={e=>onUpdate({reason:e.target.value})} style={{display:"block",width:"100%",border:"none",outline:"none",font:"inherit",fontSize:14,color:T.ink,marginTop:3,background:"none",fontFamily:sans,resize:"none",minHeight:40}}/></div>
-        <div style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}><label style={{fontSize:11,color:T.sub,fontWeight:500,display:"block"}}>Notes</label><textarea value={cb.note||""} onChange={e=>onUpdate({note:e.target.value})} style={{display:"block",width:"100%",border:"none",outline:"none",font:"inherit",fontSize:14,color:T.ink,marginTop:3,background:"none",fontFamily:sans,resize:"none",minHeight:40}}/></div>
+      <div style={{marginBottom:10}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Reason</label>
+        <input value={cb.reason||""} onChange={e=>onUpdate({reason:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+      <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Notes</label>
+        <textarea value={cb.note||""} onChange={e=>onUpdate({note:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",resize:"none",minHeight:48,boxSizing:"border-box"}}/></div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {CHARGEBACK_STATUS.map(s=>{const sc2=SC[s]||SC["Open"]; return <button key={s} onClick={()=>onUpdate({status:s})} style={{...VBtn.small,border:`1px solid ${cb.status===s?sc2.c:S.border}`,background:cb.status===s?sc2.s:"#fff",color:cb.status===s?sc2.c:S.inactiveText,fontSize:11}}>{s}</button>;})}
       </div>
-      <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
-        {CHARGEBACK_STATUS.map(s=>{const c2=CHARGEBACK_COLORS[s]||T.sub; return <button key={s} onClick={()=>onUpdate({status:s})} style={{flex:1,padding:"7px 4px",borderRadius:6,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${cb.status===s?c2:T.hairS}`,background:cb.status===s?c2+"18":T.bg,color:cb.status===s?c2:T.sub,minWidth:0}}>{s}</button>;})}
-      </div>
-      <button onClick={onDelete} style={{width:"100%",marginTop:8,padding:"9px",borderRadius:8,border:`1px solid ${T.redSoft}`,background:T.redSoft,color:T.red,fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Delete</button>
     </div>}
   </div>;
 }
-// ── FEATURE TRACKER ──
+
+// ── FEATURE TRACKER — scan-first rows, expand to edit ──
 const FEATURE_SCOPE_C={contract:{c:T.blue,l:"Contract"},future:{c:T.purple,l:"Future cycle"},"out-of-scope":{c:T.red,l:"Out of scope"}};
 function FeatureTracker({features=[],onUpdate,onDelete}){
   const groups={"contract":[],"future":[],"out-of-scope":[]};
-  features.forEach(f=>{ const k=f.scope==="oos"?"out-of-scope":(f.scope||"contract"); (groups[k]=groups[k]||[]).push(f); });
+  features.forEach(f=>{const k=f.scope==="oos"?"out-of-scope":(f.scope||"contract");(groups[k]=groups[k]||[]).push(f);});
   return <div>{Object.entries(groups).filter(([,fs])=>fs.length>0).map(([scope,fs])=>{
     const sc=FEATURE_SCOPE_C[scope]||FEATURE_SCOPE_C.contract;
-    return <div key={scope} style={{marginBottom:6}}>
-      <div style={{fontSize:11,fontWeight:700,letterSpacing:.4,textTransform:"uppercase",color:sc.c,margin:"14px 2px 8px"}}>{sc.l} ({fs.length})</div>
+    return <div key={scope} style={{marginBottom:4}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:sc.c,padding:"8px 0 4px"}}>{sc.l} ({fs.length})</div>
       {fs.map(f=><FeatureRow key={f.id} f={f} onUpdate={p=>onUpdate(f.id,p)} onDelete={()=>onDelete(f.id)}/>)}
     </div>;})}
   </div>;
@@ -1419,46 +1277,44 @@ function FeatureRow({f,onUpdate,onDelete}){
   const stIdx=FEATURE_STATUS.indexOf(f.status);
   const stCol=stIdx===0?T.sub:stIdx===1?T.blue:stIdx===2?T.green:stIdx===3?T.yellow:T.red;
   const isOos=f.scope==="out-of-scope"||f.scope==="oos";
-  return <div style={{background:T.bg,border:`1px solid ${isOos?T.redSoft:T.hairS}`,borderRadius:8,marginBottom:7,overflow:"hidden"}}>
-    <div onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",cursor:"pointer"}}>
-      <div style={{width:8,height:8,borderRadius:"50%",background:isOos?T.red:stCol,flexShrink:0}}/>
-      <div style={{flex:1,fontSize:14,fontWeight:500,color:f.name?T.ink:T.faint}}>{f.name||"New feature — tap to edit"}</div>
-      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-        {isOos&&<span style={{fontSize:10,fontWeight:700,color:T.red}}>OOS</span>}
-        <span style={{fontSize:11,fontWeight:600,padding:"2px 7px",borderRadius:5,background:stCol+"18",color:stCol,whiteSpace:"nowrap"}}>{f.status||"Scoped"}</span>
-      </div>
-    </div>
-    {open&&<div style={{padding:"0 14px 13px",borderTop:HD}}>
-      {isOos&&<div style={{background:T.redSoft,borderRadius:7,padding:"10px 12px",marginTop:12,fontSize:12,color:T.red,lineHeight:1.5}}>
-        <b>Out of scope.</b> This work is not covered by the signed contract. Either raise a formal scope change request, add it to the next contract cycle, or document why we absorbed it.
-      </div>}
-      <div style={{display:"grid",gap:8,marginTop:10}}>
-        <EF label="Feature name" value={f.name||""} onChange={v=>onUpdate({name:v})} placeholder="e.g. Per-pier GMV report"/>
-        <div style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}>
-          <label style={{fontSize:11,color:T.sub,fontWeight:500,display:"block"}}>Notes / scope context</label>
-          <textarea value={f.note||""} onChange={e=>onUpdate({note:e.target.value})} style={{display:"block",width:"100%",border:"none",outline:"none",font:"inherit",fontSize:14,color:T.ink,marginTop:3,background:"none",fontFamily:sans,resize:"none",minHeight:40}}/>
+  const SCOPES=[["contract","Contract"],["future","Future cycle"],["out-of-scope","Out of scope"]];
+  return <div style={{borderTop:HD,padding:"10px 0"}}>
+    <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block",lineHeight:1}}>›</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13,fontWeight:500,color:f.name?T.ink:S.inactiveText,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"Unnamed feature"}</span>
+          <Tag label={f.status||"Scoped"} c={stCol} s={stCol+"14"}/>
+          {isOos&&<Tag label="OOS" c={T.red} s={T.redSoft}/>}
         </div>
-        {isOos&&<div style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}>
-          <label style={{fontSize:11,color:T.sub,fontWeight:500,display:"block"}}>Scope change resolution</label>
-          <select value={f.scopeResolution||""} onChange={e=>onUpdate({scopeResolution:e.target.value})} style={{display:"block",width:"100%",border:"none",outline:"none",font:"inherit",fontSize:14,fontWeight:600,color:T.ink,marginTop:3,background:"none",fontFamily:sans,WebkitAppearance:"none"}}>
-            <option value="">— Select resolution —</option>
-            <option value="absorb">We absorbed it — no charge</option>
-            <option value="charge">Bill client for this work</option>
-            <option value="add_to_contract">Add to next contract cycle</option>
-            <option value="scope_change">Raise formal scope change request</option>
-            <option value="remove">We're stopping this work</option>
-          </select>
-        </div>}
+        {f.note&&<div style={{fontSize:12,color:S.inactiveText,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.note}</div>}
       </div>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:T.faint,margin:"10px 2px 7px"}}>Status</div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:9}}>
-        {FEATURE_STATUS.map(s=>{const i2=FEATURE_STATUS.indexOf(s);const c2=i2===0?T.sub:i2===1?T.blue:i2===2?T.green:i2===3?T.yellow:T.red;return <button key={s} onClick={()=>onUpdate({status:s})} style={{padding:"6px 9px",borderRadius:6,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${f.status===s?c2:T.hairS}`,background:f.status===s?c2+"18":T.bg,color:f.status===s?c2:T.sub}}>{s}</button>;})}
+      <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>x</button>
+    </div>
+    {open&&<div style={{marginTop:10,padding:"14px",background:"#F9FAFB",border:`1px solid ${isOos?T.redSoft:S.border}`,borderRadius:8}}>
+      {isOos&&<div style={{fontSize:12,color:T.red,marginBottom:10,lineHeight:1.5}}>Out of scope — not covered by the signed contract. Resolve before next cycle.</div>}
+      <div style={{marginBottom:10}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Feature name</label>
+        <input value={f.name||""} onChange={e=>onUpdate({name:e.target.value})} placeholder="e.g. Per-pier GMV report" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+      <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Notes</label>
+        <textarea value={f.note||""} onChange={e=>onUpdate({note:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",resize:"none",minHeight:48,boxSizing:"border-box"}}/></div>
+      {isOos&&<div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Resolution</label>
+        <select value={f.scopeResolution||""} onChange={e=>onUpdate({scopeResolution:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",background:"#fff"}}>
+          <option value="">Select resolution</option>
+          <option value="absorb">We absorbed it</option>
+          <option value="charge">Bill the client</option>
+          <option value="add_to_contract">Add to next cycle</option>
+          <option value="scope_change">Raise scope change request</option>
+          <option value="remove">Stop this work</option>
+        </select></div>}
+      <div style={{marginBottom:10}}>
+        <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:6}}>Status</label>
+        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{FEATURE_STATUS.map(s=>{const i2=FEATURE_STATUS.indexOf(s);const c2=i2===0?T.sub:i2===1?T.blue:i2===2?T.green:i2===3?T.yellow:T.red; return <button key={s} onClick={()=>onUpdate({status:s})} style={{...VBtn.small,border:`1px solid ${f.status===s?c2:S.border}`,background:f.status===s?c2+"14":"#fff",color:f.status===s?c2:S.inactiveText,fontSize:11}}>{s}</button>;})}
+        </div>
       </div>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:T.faint,margin:"6px 2px 7px"}}>Scope</div>
-      <div style={{display:"flex",gap:6,marginBottom:10}}>
-        {[["contract","Contract"],["future","Future cycle"],["out-of-scope","Out of scope"]].map(([s,l])=>{const sc2=FEATURE_SCOPE_C[s]||FEATURE_SCOPE_C.contract;const isAct=f.scope===s||(s==="out-of-scope"&&f.scope==="oos"); return <button key={s} onClick={()=>onUpdate({scope:s})} style={{flex:1,padding:"7px 4px",borderRadius:6,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${isAct?sc2.c:T.hairS}`,background:isAct?sc2.c+"18":T.bg,color:isAct?sc2.c:T.sub}}>{l}</button>;})}
+      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:6}}>Scope</label>
+        <div style={{display:"flex",gap:5}}>{SCOPES.map(([s,l])=>{const sc2=FEATURE_SCOPE_C[s]||FEATURE_SCOPE_C.contract;const on=f.scope===s||(s==="out-of-scope"&&f.scope==="oos"); return <button key={s} onClick={()=>onUpdate({scope:s})} style={{...VBtn.small,border:`1px solid ${on?sc2.c:S.border}`,background:on?sc2.c+"14":"#fff",color:on?sc2.c:S.inactiveText,fontSize:11}}>{l}</button>;})}
+        </div>
       </div>
-      <button onClick={onDelete} style={{width:"100%",padding:"9px",borderRadius:8,border:`1px solid ${T.redSoft}`,background:T.redSoft,color:T.red,fontFamily:sans,fontWeight:600,fontSize:12,cursor:"pointer"}}>Remove</button>
     </div>}
   </div>;
 }
@@ -1534,182 +1390,188 @@ function ContractImport({onImport,disabled}){
   </div>;
 }
 
-// ── CONTRACT HEALTH RING ──
-// Segmented donut: 5 dimensions, hard butt caps, tap to expand + show metric in center.
-// Matches the reference exactly: no rounded caps, hard edges between segments, shadow layer.
-// ── CONTRACT HEALTH RING — Apple Watch concentric ring style ──
-// One ring per metric. Each ring fills clockwise based on score 0-100.
-// Tap a ring or its legend row to highlight it. No clipping, no expansion issues.
 function ContractHealthRing({eco={},costs=[],obligations=[],chargebacks=[],kpis={},risks=[]}){
-  const [active,setActive]=useState(null);
-
-  const gmvScore  = eco.gmvProjected>0?Math.min(100,Math.round(100*(eco.gmvActual||0)/eco.gmvProjected)):0;
-  const fees      = (eco.gmvActual||0)*(eco.netTakePct||0)/100;
-  const tc        = costs.reduce((n,c)=>n+(c.computed||0),0);
-  const roiScore  = tc>0?Math.min(100,Math.round(100*fees/tc)):fees>0?100:50;
-  const oblMet    = obligations.filter(o=>o.status==="met").length;
-  const oblScore  = obligations.length?Math.round(100*oblMet/obligations.length):0;
-  const openCbs   = chargebacks.filter(c=>c.status==="Open").length;
-  const cbScore   = Math.max(0,100-openCbs*40);
-  const sentMap   = {Active:100,Contained:85,Watch:50,Cold:10,Negative:20};
-  const sentScore = sentMap[kpis.sentiment]||60;
-  const overall   = Math.round((gmvScore+roiScore+oblScore+cbScore+sentScore)/5);
-  const overallC  = overall>=70?T.green:overall>=40?T.yellow:T.red;
-
-  // Outermost ring first (index 0 = largest radius)
-  const RINGS=[
-    {key:"gmv",  label:"GMV",         score:gmvScore,  color:"#6C5FE0", detail:`${gmvScore}%`,    sub:`${fmtK(eco.gmvActual||0)} of ${fmtK(eco.gmvProjected||0)}`},
-    {key:"roi",  label:"ROI",         score:roiScore,  color:"#4C8DD6", detail:`${roiScore}%`,    sub:`${fmt(fees)} rev · ${fmt(tc)} cost`},
-    {key:"obl",  label:"Obligations", score:oblScore,  color:"#1E8F5C", detail:`${oblScore}%`,    sub:`${oblMet} of ${obligations.length} met`},
-    {key:"cb",   label:"Chargebacks", score:cbScore,   color:cbScore>=70?"#1E8F5C":"#D6443C", detail:`${cbScore}%`, sub:cbScore===100?"None open":`${openCbs} open`},
-    {key:"sent", label:"Sentiment",   score:sentScore, color:sentScore>=70?"#1E8F5C":sentScore>=40?"#BC8410":"#D6443C", detail:`${sentScore}%`, sub:kpis.sentiment||"Unknown"},
+  const gmvScore=eco.gmvProjected>0?Math.min(100,Math.round(100*(eco.gmvActual||0)/eco.gmvProjected)):0;
+  const fees=(eco.gmvActual||0)*(eco.netTakePct||0)/100;
+  const tc=costs.reduce((n,c)=>n+(c.computed||0),0);
+  const roiScore=tc>0?Math.min(100,Math.round(100*fees/tc)):fees>0?100:50;
+  const oblScore=obligations.length?Math.round(100*obligations.filter(o=>o.status==="met").length/obligations.length):0;
+  const openCbs=chargebacks.filter(c=>c.status==="Open").length;
+  const cbScore=Math.max(0,100-openCbs*40);
+  const sentMap={Active:100,Contained:85,Watch:50,Cold:10,Negative:20};
+  const sentScore=sentMap[kpis.sentiment]||60;
+  const overall=Math.round((gmvScore+roiScore+oblScore+cbScore+sentScore)/5);
+  const overallC=overall>=70?T.green:overall>=40?T.yellow:T.red;
+  const dims=[
+    {label:"GMV progress",score:gmvScore,c:"#6C5FE0",sub:`${fmt(eco.gmvActual||0)} of ${fmt(eco.gmvProjected||0)}`},
+    {label:"ROI efficiency",score:roiScore,c:"#4C8DD6",sub:`${fmt(fees)} rev · ${fmt(tc)} cost`},
+    {label:"Obligations",score:oblScore,c:T.green,sub:`${obligations.filter(o=>o.status==="met").length} of ${obligations.length} met`},
+    {label:"Chargebacks",score:cbScore,c:cbScore>=70?T.green:T.red,sub:openCbs===0?"None open":`${openCbs} open`},
+    {label:"Sentiment",score:sentScore,c:sentScore>=70?T.green:sentScore>=40?T.yellow:T.red,sub:kpis.sentiment||"Unknown"},
   ];
-
-  // Concentric ring geometry — viewBox 260x260, center 130,130
-  // SW=10, RGAP=8 → rings at R=108,90,72,54,36 → 31px center clear
-  const CX=130, CY=130, SW=10, RGAP=8;
-  const OUTER_R=108;
-
-  function toRad(deg){ return (deg-90)*Math.PI/180; }
-  function pt(deg,r){ const a=toRad(deg); return [CX+r*Math.cos(a), CY+r*Math.sin(a)]; }
-  function ring(score, r, color, isActive){
-    const deg = score/100*359.99;
-    if(deg<0.5) return null;
-    const[x1,y1]=pt(0,r),[x2,y2]=pt(deg,r);
-    const large=deg>180?1:0;
-    // No radius expansion — glow only, so rings never overlap
-    const sw=isActive?SW+2:SW;
-    return { path:`M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)}`, sw, color };
-  }
-
-  const activeD=active?RINGS.find(r=>r.key===active):null;
-
-  return <div style={{background:T.bg,border:BD,borderRadius:8,padding:"20px 16px 18px",marginTop:14}}>
-    <div style={{fontSize:10.5,fontWeight:700,letterSpacing:.6,textTransform:"uppercase",color:T.faint,marginBottom:4}}>AI Assessed</div>
-    <div style={{fontFamily:serif,fontSize:20,fontWeight:600,letterSpacing:-.3,marginBottom:8}}>Contract Health</div>
-
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-      <svg viewBox="0 0 260 260" width={240} height={240}>
-        <defs>
-          <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-        </defs>
-
-        {RINGS.map((d,i)=>{
-          const r=OUTER_R-i*(SW+RGAP);
-          const isAct=active===d.key;
-          const hasActive=active!==null;
-          const[tx1,ty1]=pt(0,r),[tx2,ty2]=pt(359.99,r);
-          const filled=ring(d.score,r,d.color,isAct);
-          return <g key={d.key} onClick={()=>setActive(active===d.key?null:d.key)}
-            style={{cursor:"pointer",opacity:hasActive&&!isAct?.12:1,transition:"opacity .2s"}}>
-            <path d={`M${tx1.toFixed(2)},${ty1.toFixed(2)} A${r},${r} 0 1,1 ${tx2.toFixed(2)},${ty2.toFixed(2)}`}
-              fill="none" stroke="#1C1E24" strokeWidth={SW} strokeLinecap="round"/>
-            {filled&&<path d={filled.path} fill="none" stroke={d.color} strokeWidth={filled.sw}
-              strokeLinecap="round" filter={isAct?"url(#glow)":undefined}/>}
-          </g>;
-        })}
-
-        {/* Center: overall or active detail */}
-        {activeD?(
-          <>
-            <text x={CX} y={CY-8} textAnchor="middle" fontSize="28" fontWeight="700" fontFamily={sans} fill={activeD.color}>{activeD.score}</text>
-            <text x={CX} y={CY+11} textAnchor="middle" fontSize="11" fontWeight="600" fontFamily={sans} fill={T.sub}>{activeD.label}</text>
-            <text x={CX} y={CY+25} textAnchor="middle" fontSize="10" fontFamily={sans} fill={T.faint}>{activeD.sub}</text>
-          </>
-        ):(
-          <>
-            <text x={CX} y={CY+10} textAnchor="middle" fontSize="36" fontWeight="700" fontFamily={sans} fill={overallC}>{overall}</text>
-            <text x={CX} y={CY+27} textAnchor="middle" fontSize="11" fontWeight="500" fontFamily={sans} fill={T.sub}>overall health</text>
-          </>
-        )}
-      </svg>
-
-      <div style={{display:"flex",alignItems:"center",gap:10,marginTop:-6,fontSize:13,color:T.sub,fontWeight:500}}>
-        Contract health score
-        <span style={{background:overallC,color:"#fff",fontSize:13,fontWeight:700,padding:"5px 14px",borderRadius:999}}>
-          {overall>=70?"Strong":overall>=40?"Watch":"At risk"}
-        </span>
-      </div>
+  return <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"20px",marginBottom:24}}>
+    <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:4}}>AI Assessed</div>
+    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+      <span style={{fontSize:28,fontWeight:700,color:overallC,letterSpacing:-1}}>{overall}</span>
+      <div><div style={{fontSize:15,fontWeight:600,color:T.ink}}>Contract Health</div><div style={{fontSize:12,color:S.inactiveText}}>{overall>=70?"Strong":overall>=40?"Watch":"At risk"}</div></div>
     </div>
-
-    {/* Legend — full-width rows, no grid misalignment */}
-    <div style={{marginTop:16,border:HD,borderRadius:8,overflow:"hidden"}}>
-      {RINGS.map((d,i)=>{
-        const on=active===d.key;
-        const r=OUTER_R-i*(SW+RGAP);
-        return <button key={d.key} onClick={()=>setActive(on?null:d.key)}
-          style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",width:"100%",
-            background:on?d.color+"0E":T.bg,border:"none",borderTop:i?HD:"none",
-            cursor:"pointer",font:"inherit",textAlign:"left",fontFamily:sans,
-            borderLeft:on?`3px solid ${d.color}`:"3px solid transparent"}}>
-          {/* Mini ring preview */}
-          <svg width={22} height={22} viewBox="0 0 22 22" style={{flexShrink:0}}>
-            <circle cx={11} cy={11} r={8} fill="none" stroke="#1C1E24" strokeWidth={4} strokeLinecap="round"/>
-            {d.score>0&&(()=>{
-              const deg=d.score/100*359.99;
-              const[x1,y1]=[11,3],[x2x,x2y]=[11+8*Math.cos((deg-90)*Math.PI/180),11+8*Math.sin((deg-90)*Math.PI/180)];
-              return <path d={`M${x1},${y1} A8,8 0 ${deg>180?1:0},1 ${x2x.toFixed(2)},${x2y.toFixed(2)}`}
-                fill="none" stroke={d.color} strokeWidth={4} strokeLinecap="round"/>;
-            })()}
-          </svg>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:on?d.color:T.ink}}>{d.label}</div>
-            <div style={{fontSize:11.5,color:T.sub,marginTop:1}}>{d.sub}</div>
-          </div>
-          {/* Score bar */}
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div style={{width:48,height:5,background:"#EBEBED",borderRadius:3,overflow:"hidden"}}>
-              <div style={{height:"100%",width:d.score+"%",background:d.color,borderRadius:3,transition:"width .3s"}}/>
-            </div>
-            <span style={{fontSize:13,fontWeight:700,color:d.color,minWidth:28,textAlign:"right"}}>{d.score}</span>
-          </div>
-        </button>;
-      })}
+    <div style={{display:"grid",gap:1,border:`1px solid ${S.border}`,borderRadius:6,overflow:"hidden"}}>
+      {dims.map((d,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:16,padding:"10px 14px",background:i%2?"#FAFAFA":"#fff"}}>
+          <div style={{flex:1}}><div style={{fontSize:13,fontWeight:500,color:T.ink}}>{d.label}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{d.sub}</div></div>
+          <div style={{width:80,height:4,background:"#EBEBED",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:d.score+"%",background:d.c,borderRadius:2}}/></div>
+          <span style={{fontSize:13,fontWeight:700,color:d.c,minWidth:28,textAlign:"right"}}>{d.score}</span>
+        </div>
+      ))}
     </div>
-    <div style={{fontSize:11,color:T.faint,marginTop:10,lineHeight:1.5,textAlign:"center"}}>Tap a ring or row to focus. Scores from live contract data.</div>
   </div>;
 }
 
-function WeeklyDigest({accounts=[]}){
-  const [state,setState]=useState("idle");
-  const today=new Date();
-  const reds=accounts.filter(a=>a.health==="red");
-  const yellows=accounts.filter(a=>a.health==="yellow");
-  const signals=accounts.flatMap(a=>(a.signals_pending||[]).map(s=>({...s,account:a.account})));
-  const upcoming=accounts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&daysDiff(m.date)>=0&&daysDiff(m.date)<=14).map(m=>({...m,account:a.account}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
+// ── AGENT PAGE ──
+// Two states: (1) integration hub when nothing connected, (2) digest output after pull
+// Connectors: Gmail, iMessage, Instantly, Expandi, Capsule CRM
+const CONNECTORS = [
+  {
+    id:"gmail", label:"Gmail", icon:"✉", category:"Email",
+    description:"Scans client email threads for signals, scope changes, and sentiment shifts.",
+    what:"Email threads, reply sentiment, attachment mentions",
+    status:"disconnected",
+    color:"#EA4335",
+  },
+  {
+    id:"imessage", label:"iMessage", icon:"💬", category:"Messages",
+    description:"Reads your iMessage threads with clients. Requires Full Disk Access on Mac.",
+    what:"Text threads, informal promises, out-of-scope requests",
+    status:"disconnected",
+    color:"#34C759",
+  },
+  {
+    id:"instantly", label:"Instantly", icon:"⚡", category:"Outbound",
+    description:"Ingests sequence replies and open rates from your outbound campaigns.",
+    what:"Reply rates, interested signals, bounce/unsubscribe data",
+    status:"disconnected",
+    color:"#F59E0B",
+  },
+  {
+    id:"expandi", label:"Expandi", icon:"🔗", category:"Outbound",
+    description:"Pulls LinkedIn outreach replies and connection signals into account context.",
+    what:"LinkedIn replies, connection acceptance, profile views",
+    status:"disconnected",
+    color:"#0077B5",
+  },
+  {
+    id:"capsule", label:"Capsule CRM", icon:"◎", category:"CRM",
+    description:"Syncs deal stage, contact notes, and pipeline value from your Capsule account.",
+    what:"Deal stage, contact activity, opportunity value",
+    status:"disconnected",
+    color:"#6C5FE0",
+  },
+  {
+    id:"discord", label:"Discord", icon:"◈", category:"Internal",
+    description:"Monitors your team Discord server for account mentions, deal updates, and internal signals.",
+    what:"Channel mentions, deal discussions, team updates",
+    status:"coming_soon",
+    color:"#5865F2",
+  },
+];
 
-  return <div style={{background:T.bg,border:BD,borderRadius:8,padding:16}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div><div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:T.faint}}>Agent · Weekly pull</div><div style={{fontFamily:serif,fontSize:18,fontWeight:600,marginTop:3}}>Pipeline digest</div></div>
-      <button onClick={()=>{setState("scanning");setTimeout(()=>setState("done"),1400);}} disabled={state==="scanning"} style={{padding:"9px 14px",borderRadius:8,border:"none",background:state==="scanning"?T.purpleSoft:T.purple,color:state==="scanning"?T.purple:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>
-        {state==="scanning"?"Scanning…":state==="done"?"Re-run ↺":"Run pull ⚡"}
+function AgentPage({accounts=[]}){
+  const [connections,setConnections]=useState(()=>{try{return JSON.parse(localStorage.getItem("tt_connections")||"{}");}catch{return{};}});
+  const [pullState,setPullState]=useState("idle");
+  const [digest,setDigest]=useState(null);
+  const [tab,setTab]=useState("integrations");
+  const connectedCount=Object.values(connections).filter(v=>v==="connected").length;
+  const CONNECTORS=[
+    {id:"gmail",label:"Gmail",category:"Email",desc:"Scans client email threads for signals and sentiment.",what:"Email threads, reply sentiment",color:"#EA4335"},
+    {id:"imessage",label:"iMessage",category:"Messages",desc:"Reads iMessage threads with clients. Requires Full Disk Access on Mac.",what:"Text threads, informal promises, OOS requests",color:"#34C759"},
+    {id:"instantly",label:"Instantly",category:"Outbound",desc:"Ingests sequence replies and open rates from outbound campaigns.",what:"Reply rates, interested signals",color:"#F59E0B"},
+    {id:"expandi",label:"Expandi",category:"Outbound",desc:"Pulls LinkedIn outreach replies and connection signals.",what:"LinkedIn replies, connection acceptance",color:"#0077B5"},
+    {id:"capsule",label:"Capsule CRM",category:"CRM",desc:"Syncs deal stage, contact notes, and pipeline value.",what:"Deal stage, contact activity, opportunity value",color:"#6C5FE0"},
+    {id:"discord",label:"Discord",category:"Internal",desc:"Monitors team Discord for account mentions and deal updates.",what:"Channel mentions, deal discussions",color:"#5865F2",soon:true},
+  ];
+  const STEPS=["Scanning iMessage threads…","Reading Gmail threads…","Checking Instantly replies…","Pulling Capsule deal stages…","Surfacing signals…","Building digest…"];
+  const [scanStep,setScanStep]=useState(0);
+  useEffect(()=>{if(pullState!=="scanning")return;const iv=setInterval(()=>setScanStep(s=>(s+1)%STEPS.length),700);return()=>clearInterval(iv);},[pullState]);
+  function toggle(id){if(CONNECTORS.find(c=>c.id===id)?.soon)return;setConnections(p=>{const n={...p,[id]:p[id]==="connected"?"disconnected":"connected"};localStorage.setItem("tt_connections",JSON.stringify(n));return n;});}
+  function runPull(){setPullState("scanning");setTimeout(()=>{setDigest({pulledAt:new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),accounts:accounts.map(a=>({name:a.account,tier:a.tier,topRisk:(a.risks||[])[0]||null,nextMs:(a.milestones||[]).filter(m=>!m.done).sort((x,y)=>new Date(x.date)-new Date(y.date))[0]||null,daysSince:a.kpis?.daysSinceContact||0})),actions:accounts.flatMap(a=>(a.risks||[]).filter(r=>r.severity==="high").map(r=>({...r,acct:a.account})))});setPullState("done");setTab("digest");},(STEPS.length+1)*700);}
+  return <div style={{padding:"32px 40px",maxWidth:860}}>
+    <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
+      <div>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Agent</div>
+        <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px"}}>Pipeline Agent</h1>
+        <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Connects to your comms and CRMs, scans for signals, surfaces a team-ready digest. Run Friday EOD or before all-hands.</p>
+      </div>
+      <button onClick={runPull} disabled={pullState==="scanning"} style={{...VBtn.primary,opacity:pullState==="scanning"?.6:1}}>
+        {pullState==="scanning"?"Scanning…":"Run pull"}
       </button>
     </div>
-    {state==="idle"&&<div style={{fontSize:13,color:T.faint,marginTop:12,lineHeight:1.5}}>Scans all account comms since the last pull and surfaces a team-ready digest. Run at end-of-week or before all-hands.</div>}
-    {state==="scanning"&&<div style={{marginTop:14}}>{["Scanning iMessage threads…","Checking email threads…","Reviewing contract obligations…","Flagging new signals…","Building digest…"].map((s,i)=><div key={i} style={{fontSize:13,color:T.purple,padding:"5px 0",display:"flex",gap:8,alignItems:"center"}}><span style={{width:6,height:6,borderRadius:"50%",background:T.purple,opacity:.7}}/>{s}</div>)}</div>}
-    {state==="done"&&<>
-      <div style={{height:1,background:T.hair,margin:"14px 0"}}/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
-        {[{k:"Action needed",v:reds.length,c:T.red,s:T.redSoft},{k:"Watch",v:yellows.length,c:T.yellow,s:T.yellowSoft},{k:"New signals",v:signals.length,c:T.purple,s:T.purpleSoft}].map((s,i)=><div key={i} style={{background:s.s,borderRadius:7,padding:"10px"}}>
-          <div style={{fontSize:24,fontWeight:700,color:s.c}}>{s.v}</div><div style={{fontSize:11,color:s.c,fontWeight:600,marginTop:2}}>{s.k}</div>
-        </div>)}
-      </div>
-      {[...reds,...yellows].map(a=><div key={a.id} style={{padding:"10px 0",borderTop:HD}}>
-        <div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontSize:14,fontWeight:600}}>{a.account}</span><Tag label={HEALTH[a.health].label} c={HEALTH[a.health].c} s={HEALTH[a.health].soft}/></div>
-        <div style={{fontSize:13,color:T.sub,marginTop:3,lineHeight:1.4}}>{(a.risks||[])[0]?.action||a.summary}</div>
+    <div style={{display:"flex",alignItems:"center",gap:16,padding:"10px 16px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8,marginBottom:20}}>
+      <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:"50%",background:connectedCount>0?T.green:"#D1D5DB"}}/><span style={{fontSize:13,fontWeight:500}}>{connectedCount} of {CONNECTORS.filter(c=>!c.soon).length} sources connected</span></div>
+      <div style={{width:1,height:16,background:S.border}}/>
+      <span style={{fontSize:13,color:S.inactiveText}}>Last pull: {digest?digest.pulledAt:"never"}</span>
+    </div>
+    {pullState==="scanning"&&<div style={{border:`1px solid ${T.purple}20`,background:T.purpleSoft,borderRadius:8,padding:"16px",marginBottom:20}}>
+      {STEPS.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"3px 0",opacity:i<=scanStep?1:.3}}>
+        <div style={{width:6,height:6,borderRadius:"50%",background:i<scanStep?T.green:i===scanStep?T.purple:"#D1D5DB",flexShrink:0}}/>
+        <span style={{fontSize:13,color:i<scanStep?T.green:i===scanStep?T.purple:S.inactiveText}}>{s}</span>
       </div>)}
-      {upcoming.length>0&&<><div style={{fontSize:11,fontWeight:700,letterSpacing:.5,textTransform:"uppercase",color:T.faint,margin:"14px 0 8px"}}>Next 14 days</div>
-        {upcoming.slice(0,4).map((m,i)=>{const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);
-          return <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:HD}}>
-            <span style={{fontSize:16}}>{mt.icon}</span>
-            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{m.title}</div><div style={{fontSize:12,color:T.sub}}>{m.account}</div></div>
-            <span style={{fontSize:11,fontWeight:700,color:d<=3?T.red:d<=7?T.yellow:T.sub}}>{d===0?"Today":d===1?"Tomorrow":`${d}d`}</span>
-          </div>;})}
-      </>}
-      <div style={{marginTop:14,padding:"12px 14px",background:T.soft,borderRadius:8,fontSize:12,color:T.sub,lineHeight:1.6}}>
-        <b style={{color:T.ink}}>Agent note:</b> In the live build, the agent scans iMessage, Gmail, and docs since the last pull, updates account health scores, and flags new signals before the team reviews. Suggested cadence: Friday EOD or before Monday all-hands.
-      </div>
+    </div>}
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${S.border}`,marginBottom:20}}>
+      {[["integrations","Integrations"],["digest","Digest"+(digest?"":" (run pull first)")]].map(([id,lbl])=>(
+        <button key={id} onClick={()=>id==="digest"&&!digest?null:setTab(id)} style={{padding:"8px 16px",border:"none",borderBottom:`2px solid ${tab===id?T.purple:"transparent"}`,background:"transparent",color:tab===id?T.purple:id==="digest"&&!digest?S.labelText:S.inactiveText,fontFamily:sans,fontSize:13,fontWeight:tab===id?600:400,cursor:id==="digest"&&!digest?"default":"pointer"}}>{lbl}</button>
+      ))}
+    </div>
+    {tab==="integrations"&&<>
+      {["Email","Messages","Outbound","CRM","Internal"].map(cat=>{
+        const cats=CONNECTORS.filter(c=>c.category===cat);
+        return <div key={cat} style={{marginBottom:24}}>
+          <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>{cat}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {cats.map(c=>{const on=connections[c.id]==="connected";return(
+              <div key={c.id} style={{border:`1px solid ${on?T.green:S.border}`,borderRadius:8,padding:"14px",background:on?"#F0FDF4":"#fff",opacity:c.soon?.6:1}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:600,color:T.ink}}>{c.label}</div>
+                    <div style={{fontSize:11,color:on?T.green:S.labelText,marginTop:1}}>{c.soon?"Coming soon":on?"Connected":"Not connected"}</div>
+                  </div>
+                  {!c.soon&&<button onClick={()=>toggle(c.id)} style={{...on?VBtn.secondary:VBtn.primary,fontSize:12,padding:"5px 12px"}}>{on?"Disconnect":"Connect"}</button>}
+                  {c.soon&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:4,background:"#F3F4F6",color:S.inactiveText}}>Soon</span>}
+                </div>
+                <div style={{fontSize:12,color:S.inactiveText,lineHeight:1.5,marginBottom:4}}>{c.desc}</div>
+                <div style={{fontSize:11,color:S.labelText}}><b style={{color:T.ink}}>Ingests:</b> {c.what}</div>
+              </div>
+            );})}
+          </div>
+        </div>;
+      })}
     </>}
+    {tab==="digest"&&digest&&<>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+        {[{label:"Action needed",n:digest.accounts.filter(a=>a.tier==="cold"||a.tier==="watch").length,c:T.red,s:T.redSoft},{label:"Watch",n:digest.accounts.filter(a=>a.tier==="watch").length,c:T.yellow,s:T.yellowSoft},{label:"Critical actions",n:digest.actions.length,c:T.purple,s:T.purpleSoft}].map((t,i)=>(
+          <div key={i} style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"14px",background:"#fff"}}>
+            <div style={{fontSize:26,fontWeight:700,color:t.c}}>{t.n}</div>
+            <div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>{t.label}</div>
+          </div>
+        ))}
+      </div>
+      {digest.accounts.map((a,i)=>(
+        <div key={i} style={{border:`1px solid ${S.border}`,borderRadius:8,marginBottom:10,background:"#fff",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:a.topRisk||a.nextMs?`1px solid ${S.border}`:"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:600}}>{a.name}</span><Tag label={(CRM_TIERS[a.tier]||CRM_TIERS.active).label} c={(CRM_TIERS[a.tier]||CRM_TIERS.active).c} s={(CRM_TIERS[a.tier]||CRM_TIERS.active).s}/></div>
+            <span style={{fontSize:12,color:a.daysSince>14?T.red:S.labelText}}>{a.daysSince}d since contact</span>
+          </div>
+          {(a.topRisk||a.nextMs)&&<div style={{padding:"10px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            {a.topRisk&&<div><div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,color:S.labelText,marginBottom:3}}>Top risk</div><div style={{fontSize:12,color:T.ink}}>{a.topRisk.risk}</div></div>}
+            {a.nextMs&&<div><div style={{fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,color:S.labelText,marginBottom:3}}>Next milestone</div><div style={{fontSize:12,color:T.ink}}>{a.nextMs.title} · {a.nextMs.date}</div></div>}
+          </div>}
+        </div>
+      ))}
+    </>}
+    {tab==="digest"&&!digest&&<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:8,color:S.inactiveText}}>
+      <div style={{fontSize:15,fontWeight:600,color:T.ink,marginBottom:6}}>No digest yet</div>
+      <div style={{fontSize:13,marginBottom:16}}>Connect a source and run a pull to generate your first digest.</div>
+      <button onClick={()=>setTab("integrations")} style={{...VBtn.secondary}}>Set up integrations →</button>
+    </div>}
   </div>;
 }
 
