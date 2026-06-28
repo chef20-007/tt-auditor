@@ -46,7 +46,7 @@ const CHARGEBACK_STATUS=["Open","Resolved — won","Resolved — lost","Disputed
 const FEATURE_STATUS=["Scoped","In progress","Shipped","On hold","Out of scope"];
 
 const fmt=n=>"$"+Math.round(n||0).toLocaleString();
-const fmtK=n=>Math.abs(n||0)>=1000?"$"+((n||0)/1000).toFixed(Math.abs(n||0)%1000?1:0)+"K":"$"+Math.round(n||0);
+const fmtK=n=>{const v=Math.abs(n||0);if(v>=1000000)return"$"+(((n||0)/1000000).toFixed(v%1000000?1:0))+"M";if(v>=1000)return"$"+((n||0)/1000).toFixed(v%1000?1:0)+"K";return"$"+Math.round(n||0);};
 const pct=(a,b)=>b?Math.min(100,Math.round(100*a/b)):0;
 const uid=()=>Math.random().toString(36).slice(2,9);
 const sumCosts=a=>(a.costs||[]).reduce((n,c)=>n+(c.computed||0),0);
@@ -310,7 +310,7 @@ const SEED_ACCTS=[
   },
   {
     id:"grass",orgId:"3tree",account:"Grass League",short:"GL",logo:"#2E9E6B",
-    health:"red",owner:"Carter",value:"Pre-contract · target <$25K",
+    tier:"cold",health:"red",owner:"Carter",value:"Pre-contract · target <$25K",
     products:["Primary ticketing"],eventType:"Paid event",sponsorMode:"We brought the sponsor",
     contractCycle:0,contract:null,costs:[],kpis:{daysSinceContact:21,sentiment:"Cold"},
     cycles:[],chargebacks:[],
@@ -368,10 +368,10 @@ const SEED_ACCTS=[
     summary:"1 event. Archived — no future events planned.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
   },
 ];
-async function sget(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}}
-async function sset(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}
-async function slist(p){try{const r=await window.storage.list(p);return r?.keys||[];}catch{return[];}}
-async function sdel(k){try{await window.storage.delete(k);}catch{}}
+async function sget(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
+async function sset(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+async function slist(p){try{return Object.keys(localStorage).filter(k=>k.startsWith(p));}catch{return[];}}
+async function sdel(k){try{localStorage.removeItem(k);}catch{}}
 
 // ── Atoms ──
 // Vercel-style tag: compact, text-only, tight padding, 4px radius, no emoji
@@ -445,19 +445,27 @@ export default function AppDesktop(){
   const [loaded,setLoaded]=useState(false);
   const [archiveTarget,setArchiveTarget]=useState(null);
 
-  useEffect(()=>{ (async()=>{
-    await sset(`org:${SEED_ORG.id}`,SEED_ORG);
-    for(const a of SEED_ACCTS) await sset(`acct:${a.orgId}:${a.id}`,a);
-    const oks=await slist("org:"); const os=[]; for(const k of oks){const o=await sget(k);if(o)os.push(o);}
-    const aks=await slist("acct:"); const as=[]; for(const k of aks){const a=await sget(k);if(a)as.push(a);}
-    setOrgs(os); setAccts(as); setOrgId(SEED_ORG.id); setLoaded(true);
-  })(); },[]);
+  useEffect(()=>{
+    // Always boot from SEED_ACCTS directly — localStorage only used for user edits
+    // Check if user has saved edits for any account
+    const savedAccts=SEED_ACCTS.map(a=>{
+      try{const saved=localStorage.getItem(`acct:${a.orgId}:${a.id}`);return saved?JSON.parse(saved):a;}
+      catch{return a;}
+    });
+    setOrgs([SEED_ORG]);
+    setAccts(savedAccts);
+    setOrgId(SEED_ORG.id);
+    setLoaded(true);
+  },[]);
 
   const org=orgs.find(o=>o.id===orgId);
   const orgAccts=accts.filter(a=>a.orgId===orgId);
   const selectedAcct=selected?orgAccts.find(a=>a.id===selected):null;
 
-  async function saveAcct(a){await sset(`acct:${a.orgId}:${a.id}`,a);setAccts(p=>{const i=p.findIndex(x=>x.id===a.id&&x.orgId===a.orgId);if(i>=0){const c=[...p];c[i]=a;return c;}return[...p,a];});}
+  async function saveAcct(a){
+    try{localStorage.setItem(`acct:${a.orgId}:${a.id}`,JSON.stringify(a));}catch{}
+    setAccts(p=>{const i=p.findIndex(x=>x.id===a.id&&x.orgId===a.orgId);if(i>=0){const c=[...p];c[i]=a;return c;}return[...p,a];});
+  }
   async function saveOrg(o){await sset(`org:${o.id}`,o);setOrgs(p=>[...p,o]);setOrgId(o.id);}
   async function delAcct(a){await sdel(`acct:${a.orgId}:${a.id}`);setAccts(p=>p.filter(x=>!(x.id===a.id&&x.orgId===a.orgId)));setSelected(null);}
 
@@ -678,39 +686,65 @@ export default function AppDesktop(){
 
         {/* TIMELINE */}
         {!showDetail&&nav==="timeline"&&<div style={{padding:"32px 40px"}}>
-          <div style={{marginBottom:24}}>
+          <div style={{marginBottom:28}}>
             <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Timeline</div>
             <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>All accounts</h1>
-            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Milestones, deadlines, and renewal windows across your active accounts.</p>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Milestones, deadlines, and renewal windows across active accounts.</p>
           </div>
-          {activeAccts.map(a=>(
-            <div key={a.id} style={{marginBottom:32}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${S.border}`}}>
-                <div style={{width:26,height:26,borderRadius:6,background:a.logo,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff"}}>{a.short}</div>
-                <span style={{fontSize:14,fontWeight:600,color:T.ink}}>{a.account}</span>
-                <Tag label={(CRM_TIERS[a.tier]||CRM_TIERS.active).label} c={(CRM_TIERS[a.tier]||CRM_TIERS.active).c} s={(CRM_TIERS[a.tier]||CRM_TIERS.active).s}/>
-                <button onClick={()=>{setSelected(a.id);setNav("accounts");setDetailTab("timeline");}} style={{marginLeft:"auto",fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500}}>Open →</button>
-              </div>
-              <div style={{paddingLeft:16,borderLeft:`2px solid ${S.border}`}}>
-                {(a.milestones||[]).sort((x,y)=>new Date(x.date)-new Date(y.date)).map(m=>{
-                  const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);
-                  return<div key={m.id} style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:14,opacity:m.done?.45:1}}>
-                    <div style={{width:20,height:20,borderRadius:"50%",background:m.done?"#F3F4F6":mt.color+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,flexShrink:0,marginLeft:-27,border:`1.5px solid ${m.done?S.border:mt.color}`,color:m.done?T.green:mt.color,fontWeight:700}}>{m.done?"✓":""}</div>
-                    <div style={{flex:1}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                        <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
-                        <Tag label={mt.label} c={mt.color} s={mt.color+"12"}/>
-                        {!m.done&&d<=3&&<span style={{fontSize:11,fontWeight:600,color:T.red}}>{d===0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
+          {activeAccts.filter(a=>(a.milestones||[]).length>0).map(a=>{
+            const tier=CRM_TIERS[a.tier]||CRM_TIERS.active;
+            const sorted=(a.milestones||[]).slice().sort((x,y)=>new Date(x.date)-new Date(y.date));
+            const upcoming=sorted.filter(m=>!m.done);
+            const past=sorted.filter(m=>m.done);
+            return(
+              <div key={a.id} style={{marginBottom:32,border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+                {/* Account header row */}
+                <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+                  <div style={{width:28,height:28,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short}</div>
+                  <div style={{flex:1}}>
+                    <span style={{fontSize:14,fontWeight:600,color:T.ink}}>{a.account}</span>
+                  </div>
+                  <Tag label={tier.label} c={tier.c} s={tier.s}/>
+                  <button onClick={()=>{setSelected(a.id);setDetailTab("timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,fontFamily:sans}}>Open →</button>
+                </div>
+                {/* Upcoming milestones */}
+                {upcoming.length>0&&<>
+                  <div style={{padding:"8px 20px 4px",fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>Upcoming</div>
+                  {upcoming.map((m,i)=>{
+                    const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
+                    const d=daysDiff(m.date);
+                    const urgent=d<=3&&!m.done;
+                    const soon=d<=7&&!m.done&&!urgent;
+                    return(
+                      <div key={m.id} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 20px",borderTop:`1px solid ${S.border}`}}>
+                        <div style={{width:8,height:8,borderRadius:"50%",background:urgent?T.red:soon?T.yellow:mt.color,flexShrink:0}}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
+                            <Tag label={mt.label} c={mt.color} s={mt.color+"18"}/>
+                          </div>
+                          {m.note&&<div style={{fontSize:12,color:S.inactiveText,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.note}</div>}
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                          {urgent&&<span style={{fontSize:12,fontWeight:700,color:T.red}}>{d<=0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
+                          {soon&&<span style={{fontSize:12,fontWeight:600,color:T.yellow}}>{d}d</span>}
+                          <span style={{fontSize:12,color:S.labelText}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+                        </div>
                       </div>
-                      {m.note&&<div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>{m.note}</div>}
-                    </div>
-                    <div style={{fontSize:12,color:S.labelText,flexShrink:0}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}</div>
-                  </div>;
-                })}
-                {(a.milestones||[]).length===0&&<div style={{fontSize:13,color:S.inactiveText,paddingBottom:8}}>No milestones added.</div>}
+                    );
+                  })}
+                </>}
+                {/* Past milestones — collapsed by default */}
+                {past.length>0&&<div style={{padding:"8px 20px",borderTop:`1px solid ${S.border}`,background:"#FAFAFA"}}>
+                  <span style={{fontSize:11,color:S.labelText}}>{past.length} completed milestone{past.length!==1?"s":""}</span>
+                </div>}
+                {upcoming.length===0&&past.length===0&&<div style={{padding:"16px 20px",fontSize:13,color:S.inactiveText}}>No milestones.</div>}
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {activeAccts.filter(a=>(a.milestones||[]).length>0).length===0&&(
+            <div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,color:S.inactiveText,fontSize:13}}>No milestones across active accounts.</div>
+          )}
         </div>}
 
         {/* AGENT */}
