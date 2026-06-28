@@ -368,10 +368,10 @@ const SEED_ACCTS=[
     summary:"1 event. Archived — no future events planned.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
   },
 ];
-async function sget(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}}
-async function sset(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}
-async function slist(p){try{const r=await window.storage.list(p);return r?.keys||[];}catch{return[];}}
-async function sdel(k){try{await window.storage.delete(k);}catch{}}
+async function sget(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
+async function sset(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
+async function slist(p){try{return Object.keys(localStorage).filter(k=>k.startsWith(p));}catch{return[];}}
+async function sdel(k){try{localStorage.removeItem(k);}catch{}}
 
 // ── Atoms ──
 // Vercel-style tag: compact, text-only, tight padding, 4px radius, no emoji
