@@ -529,7 +529,7 @@ export default function AppDesktop(){
       {/* MAIN CONTENT */}
       <div style={{flex:1,overflow:"auto",background:"#FFFFFF",minWidth:0}}>
 
-        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={setDetailTab} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
+        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
         {/* DASHBOARD */}
         {!showDetail&&nav==="dashboard"&&<div style={{padding:"32px 40px"}}>
@@ -910,6 +910,53 @@ function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
   </div>;
 }
 
+function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
+  const [open,setOpen]=useState(isActive||false);
+  const gmvActual=cy.gmvActual||0;
+  const gmvProj=cy.gmvProjected||0;
+  const take=cy.netTakePct||defaultTake||10;
+  const cyFees=gmvActual*take/100;
+  const pct=gmvProj>0?Math.round(100*gmvActual/gmvProj):0;
+  return <div style={{border:`1px solid ${isActive?T.purple:S.border}`,borderRadius:8,marginBottom:10,overflow:"hidden",background:"#fff"}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:isActive?"#FAFAFF":"#fff"}} onClick={()=>setOpen(!open)}>
+      <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block"}}>›</span>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13,fontWeight:600,color:T.ink}}>{cy.label||"Contract"}</span>
+          {isActive&&<Tag label="Active" c={T.purple} s={T.purpleSoft}/>}
+          {!isActive&&<Tag label="Completed" c={S.inactiveText} s="#F3F4F6"/>}
+        </div>
+        <div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>
+          {cy.start||"—"}{cy.end?` → ${cy.end}`:""} · {fmt(gmvActual)} realized · {fmt(cyFees)} fees
+        </div>
+      </div>
+      {gmvProj>0&&<span style={{fontSize:12,fontWeight:600,color:pct>=80?T.green:pct>=50?T.yellow:T.red,flexShrink:0}}>{pct}% of plan</span>}
+    </div>
+    {open&&<div style={{padding:"16px",borderTop:`1px solid ${S.border}`,background:"#F9FAFB"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+        <div>
+          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
+          <input type="number" value={gmvActual} onChange={e=>onUpdate({gmvActual:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        </div>
+        <div>
+          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
+          <input type="number" value={gmvProj} onChange={e=>onUpdate({gmvProjected:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        </div>
+        <div>
+          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
+          <input type="number" value={take} onChange={e=>onUpdate({netTakePct:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        </div>
+      </div>
+      <div style={{fontSize:12,color:S.inactiveText}}>
+        Fees at current GMV: <b style={{color:T.ink}}>{fmt(gmvActual*take/100)}</b>
+        {gmvProj>0&&<span> · {pct}% of plan</span>}
+      </div>
+      {cy.products?.length>0&&<div style={{marginTop:10,fontSize:12,color:S.inactiveText}}>Products: {cy.products.join(", ")}</div>}
+      {cy.note&&<div style={{marginTop:4,fontSize:12,color:S.inactiveText}}>{cy.note}</div>}
+    </div>}
+  </div>;
+}
+
 function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
   const [costs,setCosts]=useState(a.costs||[]);
   const [milestones,setMilestones]=useState(a.milestones||[]);
@@ -1182,54 +1229,73 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
           {tab==="contract"&&<>
             <ContractImport onImport={parsed=>{const n={...eco,...parsed};setEco(n);save({contract:n});setToast("Imported ✓");setTimeout(()=>setToast(null),2000);}}/>
 
-            {/* Quick GMV update — most common action */}
-            <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:16,background:"#F9FAFB"}}>
-              <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:12}}>Update GMV</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                <div>
-                  <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
-                  <input type="number" value={eco.gmvActual||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvActual:v}));save({contract:{...eco,gmvActual:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+            {/* Per-cycle contract cards */}
+            {cycles.length>0&&<div style={{marginTop:16}}>
+              <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:12}}>Contract cycles</div>
+              {[...cycles].sort((a,b)=>new Date(b.start||0)-new Date(a.start||0)).map((cy,i)=>{
+                const cyGmvActual=cy.gmvActual||0;
+                const cyGmvProj=cy.gmvProjected||0;
+                const cyTake=cy.netTakePct||eco.netTakePct||10;
+                const cyFees=cyGmvActual*cyTake/100;
+                const isActive=cy.active;
+                return <CycleContractCard key={cy.id} cy={cy} isActive={isActive} fees={cyFees}
+                  onUpdate={p=>{const updated=cycles.map(x=>x.id===cy.id?{...x,...p}:x);setCycles(updated);save({cycles:updated});}}
+                  defaultTake={eco.netTakePct||10}/>;
+              })}
+            </div>}
+
+            {/* Master contract — only if no cycles or as fallback */}
+            {cycles.length===0&&<>
+              <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:16,background:"#F9FAFB"}}>
+                <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:12}}>Update GMV</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                  <div>
+                    <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
+                    <input type="number" value={eco.gmvActual||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvActual:v}));save({contract:{...eco,gmvActual:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
+                    <input type="number" value={eco.gmvProjected||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvProjected:v}));save({contract:{...eco,gmvProjected:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
+                    <input type="number" value={eco.netTakePct||10} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,netTakePct:v}));save({contract:{...eco,netTakePct:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+                  </div>
                 </div>
-                <div>
-                  <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
-                  <input type="number" value={eco.gmvProjected||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvProjected:v}));save({contract:{...eco,gmvProjected:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
-                  <input type="number" value={eco.netTakePct||10} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,netTakePct:v}));save({contract:{...eco,netTakePct:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+                <div style={{marginTop:8,fontSize:12,color:S.inactiveText}}>
+                  Fees: <b style={{color:T.ink}}>{fmt((eco.gmvActual||0)*(eco.netTakePct||10)/100)}</b>
+                  {eco.gmvProjected>0&&<span> · {Math.round(100*(eco.gmvActual||0)/(eco.gmvProjected||1))}% of plan</span>}
                 </div>
               </div>
-              <div style={{marginTop:8,fontSize:12,color:S.inactiveText}}>
-                Fees at current GMV: <b style={{color:T.ink}}>{fmt((eco.gmvActual||0)*(eco.netTakePct||10)/100)}</b>
-                {eco.gmvProjected>0&&<span> · {Math.round(100*(eco.gmvActual||0)/(eco.gmvProjected||1))}% of projection</span>}
-              </div>
+            </>}
+
+            {/* Master contract terms */}
+            <div style={{marginTop:20}}>
+              <CollapsibleSection title="Master contract terms" defaultOpen={false}>
+                <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:8}}>
+                  {c?[
+                    ["Start → End",`${eco.start||"—"} → ${eco.end||"—"}`],
+                    ["Renewal",eco.renewal||"—"],
+                    ["Payment terms",eco.paymentTerms||"—"],
+                    ["Platform fee",`${eco.platformFeePct||10}%`],
+                    ["Net take",(eco.netTakePct||10)+"%"],
+                    ["Liability cap",eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
+                    ["SLA target",eco.slaTarget?eco.slaTarget+"%":"—"],
+                    ["Data rights",eco.dataRights||"—"],
+                    ["Termination notice",eco.terminationNotice||"—"],
+                    ["Auto-renew",eco.autoRenew?"Yes":"No"],
+                  ].map(([k,v2],i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"11px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
+                      <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
+                      <span style={{fontSize:13,fontWeight:500,color:String(v2).startsWith("⚠")?T.red:T.ink}}>{v2}</span>
+                    </div>
+                  )):
+                  <div style={{padding:"20px 16px",fontSize:13,color:S.inactiveText}}>No signed contract on file. Use Edit account to add terms.</div>}
+                </div>
+              </CollapsibleSection>
             </div>
 
-            {/* Contract terms — collapsible */}
-            <CollapsibleSection title="Contract terms" defaultOpen={false} style={{marginTop:20}}>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:8}}>
-                {c?[
-                  ["Start → End",`${eco.start||"—"} → ${eco.end||"—"}`],
-                  ["Renewal",eco.renewal||"—"],
-                  ["Payment terms",eco.paymentTerms||"—"],
-                  ["Liability cap",eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
-                  ["SLA target",eco.slaTarget?eco.slaTarget+"%":"—"],
-                  ["Data rights",eco.dataRights||"—"],
-                  ["Termination notice",eco.terminationNotice||"—"],
-                  ["Auto-renew",eco.autoRenew?"Yes":"No"],
-                  ["Exclusivity",eco.exclusive?"Yes":"No"],
-                  ["Audit rights",eco.auditRights?"Yes":"No"],
-                ].map(([k,v2],i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"11px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
-                    <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
-                    <span style={{fontSize:13,fontWeight:500,color:String(v2).startsWith("⚠")?T.red:T.ink}}>{v2}</span>
-                  </div>
-                )):
-                <div style={{padding:"24px 16px",fontSize:13,color:S.inactiveText}}>No signed contract on file.</div>}
-              </div>
-            </CollapsibleSection>
-
-            {(a.dismissed_signals||[]).length>0&&<div style={{marginTop:20}}>
+            {(a.dismissed_signals||[]).length>0&&<div style={{marginTop:12}}>
               <CollapsibleSection title="Dismissed signals" defaultOpen={false}>
                 <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:8}}>
                   {a.dismissed_signals.map((s,i)=>(
