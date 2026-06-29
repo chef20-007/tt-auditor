@@ -1414,7 +1414,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
           {a.health==="archived"?"↩ Restore to active":"Archive this account"}
         </button>
         {(a.kpis?.daysSinceContact||0)>=90&&a.health!=="archived"&&<div style={{fontSize:11,color:"#B45309",marginTop:8,lineHeight:1.5,textAlign:"center"}}>⏱ {a.kpis.daysSinceContact} days since last contact — consider archiving</div>}
-      </div>
+      </div>}
 
       {/* Toast */}
       {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:T.ink,color:"#fff",padding:"9px 18px",borderRadius:6,fontSize:13,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.18)"}}>{toast}</div>}
