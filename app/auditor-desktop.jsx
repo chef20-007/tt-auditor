@@ -420,13 +420,16 @@ const icbtn={width:40,height:40,borderRadius:8,background:T.bg,border:BD,display
 const S={bg:"#FFFFFF",activeBg:"#F3F4F6",activeText:"#111111",inactiveText:"#6B7280",labelText:"#9CA3AF",border:"#E5E7EB",activeBorder:"transparent",hoverBg:"#F3F4F6"};
 const SIDEBAR_W=220;
 const NAV_ITEMS=[
-  {id:"dashboard",label:"Home",     section:null},
-  {id:"accounts", label:"Accounts", section:null},
-  {id:"timeline", label:"Timeline", section:null},
-  {id:"digest",   label:"Agent",    section:null},
-  {id:"disputes", label:"Disputes", section:"Shortcuts"},
-  {id:"costs",    label:"Cost ledger",section:"Shortcuts"},
-  {id:"finance",  label:"Finances",  section:"Shortcuts"},
+  {id:"dashboard",label:"Home",       section:null},
+  {id:"accounts", label:"Accounts",   section:null},
+  {id:"timeline", label:"Timeline",   section:null},
+  {id:"finance",  label:"Finances",   section:null},
+  {id:"digest",   label:"Agent",      section:null},
+  {id:"disputes", label:"Disputes",   section:"Shortcuts"},
+  {id:"renewals", label:"Renewals due",section:"Shortcuts"},
+  {id:"oos",      label:"Out of scope",section:"Shortcuts"},
+  {id:"risks",    label:"Risk flags",  section:"Shortcuts"},
+  {id:"costs",    label:"Cost ledger", section:"Shortcuts"},
 ];
 const VBtn={
   primary:  {padding:"7px 14px",borderRadius:6,border:"none",background:T.black,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:-.1},
@@ -823,6 +826,99 @@ export default function AppDesktop(){
           allHistorical={allHistorical}
           pipelinePct={pipelinePct}
         />}
+
+        {/* RENEWALS DUE */}
+        {!showDetail&&nav==="renewals"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Renewals due</h1>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Active accounts with renewal milestones in the next 90 days.</p>
+          </div>
+          {(()=>{
+            const renewals=activeAccts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&m.type==="renewal"&&daysDiff(m.date)>=0&&daysDiff(m.date)<=90).map(m=>({...m,acct:a.account,aid:a.id,logo:a.logo,short:a.short}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
+            if(renewals.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No renewals due in the next 90 days.</div>;
+            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+              {renewals.map((m,i)=>{const d=daysDiff(m.date);return(
+                <button key={m.id} onClick={()=>{selectAcct(m.aid,"timeline");navigate("accounts");}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  <div style={{width:30,height:30,borderRadius:6,background:m.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{m.short}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</div>
+                    <div style={{fontSize:12,color:S.inactiveText,marginTop:1}}>{m.acct}{m.note?` · ${m.note}`:""}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:d<=14?T.red:d<=30?T.yellow:T.green}}>{d===0?"Today":d===1?"Tomorrow":`${d}d`}</div>
+                    <div style={{fontSize:11,color:S.labelText}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric"})} </div>
+                  </div>
+                </button>
+              );})}
+            </div>;
+          })()}
+        </div>}
+
+        {/* OUT OF SCOPE */}
+        {!showDetail&&nav==="oos"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Out of scope</h1>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Features flagged as outside contract scope across all accounts. Each one is a billing or risk conversation.</p>
+          </div>
+          {(()=>{
+            const oos=activeAccts.flatMap(a=>(a.features||[]).filter(f=>f.scope==="out-of-scope"||f.scope==="oos").map(f=>({...f,acct:a.account,aid:a.id,logo:a.logo,short:a.short})));
+            if(oos.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No out-of-scope features flagged.</div>;
+            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",padding:"9px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+                {["Feature","Account","Status"].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{h}</div>)}
+              </div>
+              {oos.map((f,i)=>(
+                <button key={f.id} onClick={()=>{selectAcct(f.aid,"timeline");navigate("accounts");}} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",padding:"13px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{f.name}</div>
+                    {f.note&&<div style={{fontSize:12,color:S.inactiveText,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.note}</div>}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:22,height:22,borderRadius:5,background:f.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff"}}>{f.short}</div>
+                    <span style={{fontSize:12,color:S.inactiveText}}>{f.acct}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center"}}><Tag label={f.status||"Scoped"} c={T.red} s={T.redSoft}/></div>
+                </button>
+              ))}
+              <div style={{padding:"10px 20px",background:"#FFFBEB",borderTop:`1px solid ${S.border}`,fontSize:12,color:"#92400E"}}>
+                {oos.length} out-of-scope item{oos.length!==1?"s":""} — each needs a scope change request, billing conversation, or documented absorption decision.
+              </div>
+            </div>;
+          })()}
+        </div>}
+
+        {/* RISK FLAGS */}
+        {!showDetail&&nav==="risks"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Risk flags</h1>
+            <p style={{fontSize:13,color:S.inactiveText,margin:0}}>All high and medium severity risks across active accounts.</p>
+          </div>
+          {(()=>{
+            const risks=activeAccts.flatMap(a=>(a.risks||[]).map(r=>({...r,acct:a.account,aid:a.id,logo:a.logo,short:a.short}))).sort((a,b)=>({high:0,medium:1,low:2}[a.severity]-{high:0,medium:1,low:2}[b.severity]));
+            if(risks.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No risk flags across active accounts.</div>;
+            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+              {risks.map((r,i)=>(
+                <button key={i} onClick={()=>{selectAcct(r.aid,"overview");navigate("accounts");}} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  <Tag label={r.severity==="high"?"Critical":r.severity==="medium"?"Watch":"Low"} c={SEV[r.severity]?.c||T.sub} s={SEV[r.severity]?.s||"#F3F4F6"}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:500,color:T.ink,marginBottom:2}}>{r.risk}</div>
+                    <div style={{fontSize:12,color:S.inactiveText}}>→ {r.action}</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                    <div style={{width:22,height:22,borderRadius:5,background:r.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff"}}>{r.short}</div>
+                    <span style={{fontSize:12,color:S.inactiveText}}>{r.acct}</span>
+                  </div>
+                </button>
+              ))}
+            </div>;
+          })()}
+        </div>}
 
         {/* COST LEDGER */}
         {!showDetail&&nav==="costs"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
@@ -1808,6 +1904,8 @@ function StatRow({label,value,sub,color,border}){
 }
 
 function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesContracted,feesMissed,totalCosts,netRev,netRevContracted,historicalGmv,historicalFees,allHistorical,pipelinePct}){
+  const [isMobile,setIsMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
+  useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [view,setView]=useState("overview"); // overview | accounts | history
 
   const maxGmv=Math.max(...activeAccts.map(a=>a.contract?.gmvProjected||0),1);
