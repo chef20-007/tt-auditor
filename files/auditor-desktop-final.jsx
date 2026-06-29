@@ -964,53 +964,6 @@ function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
   </div>;
 }
 
-function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
-  const [open,setOpen]=useState(isActive||false);
-  const gmvActual=cy.gmvActual||0;
-  const gmvProj=cy.gmvProjected||0;
-  const take=cy.netTakePct||defaultTake||10;
-  const cyFees=gmvActual*take/100;
-  const pct=gmvProj>0?Math.round(100*gmvActual/gmvProj):0;
-  return <div style={{border:`1px solid ${isActive?T.purple:S.border}`,borderRadius:8,marginBottom:10,overflow:"hidden",background:"#fff"}}>
-    <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:isActive?"#FAFAFF":"#fff"}} onClick={()=>setOpen(!open)}>
-      <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block"}}>›</span>
-      <div style={{flex:1}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:13,fontWeight:600,color:T.ink}}>{cy.label||"Contract"}</span>
-          {isActive&&<Tag label="Active" c={T.purple} s={T.purpleSoft}/>}
-          {!isActive&&<Tag label="Completed" c={S.inactiveText} s="#F3F4F6"/>}
-        </div>
-        <div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>
-          {cy.start||"—"}{cy.end?` → ${cy.end}`:""} · {fmt(gmvActual)} realized · {fmt(cyFees)} fees
-        </div>
-      </div>
-      {gmvProj>0&&<span style={{fontSize:12,fontWeight:600,color:pct>=80?T.green:pct>=50?T.yellow:T.red,flexShrink:0}}>{pct}% of plan</span>}
-    </div>
-    {open&&<div style={{padding:"16px",borderTop:`1px solid ${S.border}`,background:"#F9FAFB"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
-        <div>
-          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
-          <input type="number" value={gmvActual} onChange={e=>onUpdate({gmvActual:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-        </div>
-        <div>
-          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
-          <input type="number" value={gmvProj} onChange={e=>onUpdate({gmvProjected:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-        </div>
-        <div>
-          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
-          <input type="number" value={take} onChange={e=>onUpdate({netTakePct:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-        </div>
-      </div>
-      <div style={{fontSize:12,color:S.inactiveText}}>
-        Fees at current GMV: <b style={{color:T.ink}}>{fmt(gmvActual*take/100)}</b>
-        {gmvProj>0&&<span> · {pct}% of plan</span>}
-      </div>
-      {cy.products?.length>0&&<div style={{marginTop:10,fontSize:12,color:S.inactiveText}}>Products: {cy.products.join(", ")}</div>}
-      {cy.note&&<div style={{marginTop:4,fontSize:12,color:S.inactiveText}}>{cy.note}</div>}
-    </div>}
-  </div>;
-}
-
 function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
   const [mobile,setMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
   useEffect(()=>{const fn=()=>setMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
