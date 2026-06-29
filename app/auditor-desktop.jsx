@@ -75,7 +75,7 @@ const SEED_ACCTS=[
     value:"$257,501 GMV · 29 events",
     products:["Primary ticketing","Sponsor Portal"],eventType:"Paid event",sponsorMode:"They brought the sponsor",
     contractCycle:1,
-    cycles:[{id:"cy1",label:"Sail4th 250 — inaugural event",start:"May 2026",end:"Jul 2026",products:["Primary ticketing","Sponsor Portal"],events:["Sail4th 250 · Jul 3, 2026"],note:"First contract. Paid anchorage ticketing + free boat tour time-select.",active:true}],
+    cycles:[{id:"cy1",label:"Sail4th 250 — inaugural event",start:"May 2026",end:"Jul 2026",products:["Primary ticketing","Sponsor Portal"],events:["Sail4th 250 · Jul 3, 2026"],note:"First contract. Paid anchorage ticketing + free boat tour time-select.",active:true,gmvProjected:1000000,gmvActual:257501,netTakePct:8.5,platformFeePct:8.5,kickbackPct:0,paymentTerms:"Net 30",liabilityCap:200000,slaTarget:99.9,dataRights:"Fan profiles retained by Ticket Tree",terminationNotice:"30 days"}],
     chargebacks:[{id:"cb1",amount:0,reason:"Misbooking — incorrect pier allocation from client CSV",status:"Open",date:"2026-06-10",disputedBy:"Lisa Vitanza",note:"Client allocation error. Informal refund promise made in text. Resolve before Jul 3."}],
     features:[
       {id:"f1",name:"Paid anchorage ticketing — 8 piers",status:"Shipped",scope:"contract",note:"Live since May 2026"},
@@ -84,7 +84,7 @@ const SEED_ACCTS=[
       {id:"f4",name:"Per-pier GMV report for sponsors",status:"In progress",scope:"out-of-scope",note:"Gwen requested Jun 15. NOT in signed scope."},
       {id:"f5",name:"Vitanza refund handling",status:"In progress",scope:"out-of-scope",note:"NOT in contract. Informal promise."},
     ],
-    contract:{start:"May 2026",end:"Jul 2026",renewal:"TBD post-event",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:1000000,gmvActual:257501,liabilityCap:200000,slaTarget:99.9,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    contract:{start:"May 2026",end:"Jul 2026",renewal:"TBD post-event",paymentTerms:"Net 30",platformFeePct:8.5,kickbackPct:0,kickbackTo:"",netTakePct:8.5,gmvProjected:1000000,gmvActual:257501,liabilityCap:200000,slaTarget:99.9,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
     costs:[{id:"c1",type:"time",label:"Carter account mgmt",fields:{rate:150,hours:20},computed:3000,note:"Jun 2026",when:"Jun 2026"}],
     kpis:{daysSinceContact:2,slaActual:99.9,sentiment:"Watch",chargebacks:1},
     milestones:[
@@ -509,7 +509,7 @@ export default function AppDesktop(){
 
       {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
       {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
-        {NAV_ITEMS.filter(n=>!n.section).map(n=>{const isActive=(nav===n.id)&&!showDetail;return<button key={n.id} onClick={()=>{navigate(n.id);if(n.id!=="accounts")selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.ink:S.inactiveText,gap:2,padding:"6px 0"}}>
+        {NAV_ITEMS.filter(n=>!n.section).map(n=>{const isActive=(nav===n.id)&&!showDetail;return<button key={n.id} onClick={()=>{navigate(n.id);selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.ink:S.inactiveText,gap:2,padding:"6px 0"}}>
           <span style={{fontSize:16}}>{n.id==="dashboard"?"⊞":n.id==="accounts"?"≡":n.id==="timeline"?"◷":"⚡"}</span>
           {n.label}
         </button>;})}
@@ -523,7 +523,7 @@ export default function AppDesktop(){
         </div>
         <div style={{padding:"8px 0",flex:1,overflowY:"auto"}}>
           {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&!showDetail;return<div key={n.id}>{showLabel&&<div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 5px"}}>{n.section}</div>}<button
-  onClick={()=>{navigate(n.id);if(n.id!=="accounts")selectAcct(null);}}
+  onClick={()=>{navigate(n.id);selectAcct(null);}}
   onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background=S.hoverBg;e.currentTarget.style.color=T.ink;}}
   onMouseLeave={e=>{e.currentTarget.style.background=isActive?S.activeBg:"transparent";e.currentTarget.style.color=isActive?S.activeText:S.inactiveText;}}
   style={{width:"100%",display:"flex",alignItems:"center",padding:"6px 16px",border:"none",borderRadius:6,margin:"1px 8px",width:"calc(100% - 16px)",cursor:"pointer",fontFamily:sans,fontSize:13,fontWeight:isActive?600:400,background:isActive?S.activeBg:"transparent",color:isActive?S.activeText:S.inactiveText,textAlign:"left",transition:"background .1s,color .1s"}}>{n.label}</button></div>;});})()}
@@ -1952,13 +1952,15 @@ function ContractWizard({a, onSave, onCancel}){
   const reviewStep= STEPS.indexOf("Review");
   const cycleStep = STEPS.indexOf("Source cycle");
 
+  // canNext[i] = true means step i is COMPLETE (you can leave it)
   const canNext = STEPS.map((_,i)=>{
-    if(i===0) return true;
-    if(i===cycleStep) return !!sourceCycle;
+    if(i===0) return true; // event type always selected
+    if(needsCycleSelect && i===1) return !!sourceCycle; // must pick a cycle
     if(i===econStep) return (econ.gmvProjected||0)>0 && (econ.netTakePct||0)>0;
     if(i===termsStep) return !!terms.start && !!terms.label;
     return true;
   });
+  const currentStepComplete = canNext[step];
 
   function handleConfirm(){
     const newCycle = {
@@ -2024,7 +2026,7 @@ function ContractWizard({a, onSave, onCancel}){
               {id:"renewal",label:"Renewal",desc:"Same client, new cycle. You'll pick which previous contract to build from — terms and economics pre-fill.",icon:"↻"},
               {id:"amendment",label:"Amendment",desc:"Mid-cycle scope or terms change to an existing contract. Adds to the active cycle without closing it.",icon:"✎"},
             ].map(opt=>(
-              <div key={opt.id} onClick={()=>{setEventType(opt.id);setSourceCycle(null);}} style={{border:`1px solid ${eventType===opt.id?T.purple:S.border}`,borderRadius:8,padding:"14px 16px",marginBottom:10,cursor:"pointer",background:eventType===opt.id?T.purpleSoft:"#fff",display:"flex",gap:14,alignItems:"flex-start"}}>
+              <div key={opt.id} onClick={()=>{setEventType(opt.id);setSourceCycle(null);setStep(0);}} style={{border:`1px solid ${eventType===opt.id?T.purple:S.border}`,borderRadius:8,padding:"14px 16px",marginBottom:10,cursor:"pointer",background:eventType===opt.id?T.purpleSoft:"#fff",display:"flex",gap:14,alignItems:"flex-start"}}>
                 <div style={{width:32,height:32,borderRadius:7,background:eventType===opt.id?T.purple:S.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:eventType===opt.id?"#fff":S.inactiveText,flexShrink:0}}>{opt.icon}</div>
                 <div>
                   <div style={{fontSize:13,fontWeight:600,color:eventType===opt.id?T.purple:T.ink,marginBottom:3}}>{opt.label}</div>
@@ -2181,7 +2183,7 @@ function ContractWizard({a, onSave, onCancel}){
             {STEPS.map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:i===step?T.purple:i<step?T.green:"#D1D5DB"}}/>)}
           </div>
           {step<STEPS.length-1
-            ?<button disabled={!canNext[step+1]} onClick={()=>setStep(step+1)} style={{...VBtn.primary,fontSize:13,opacity:canNext[step+1]?1:.4}}>Next →</button>
+            ?<button disabled={!currentStepComplete} onClick={()=>setStep(step+1)} style={{...VBtn.primary,fontSize:13,opacity:currentStepComplete?1:.4}}>Next →</button>
             :<button onClick={handleConfirm} style={{...VBtn.primary,fontSize:13,background:T.green}}>Create ✓</button>
           }
         </div>
