@@ -1,6 +1,5 @@
 "use client";
 "use client";
-"use client";
 import { useState, useEffect } from "react";
 
 const T = {
@@ -74,7 +73,7 @@ const SEED_ACCTS=[
   // ── ACTIVE ──
   {
     id:"sail4th",orgId:"3tree",account:"Sail4th 250",short:"S4",logo:"#2E6BD6",
-    tier:"active",health:"yellow",owner:"Carter",
+    tier:"active",health:"yellow",owner:"Carter",vertical:"Festival",
     value:"$257,501 GMV · 29 events",
     products:["Primary ticketing","Sponsor Portal"],eventType:"Paid event",sponsorMode:"They brought the sponsor",
     contractCycle:1,
@@ -120,7 +119,7 @@ const SEED_ACCTS=[
   },
   {
     id:"cagetitans",orgId:"3tree",account:"Cage Titans",short:"CT",logo:"#D64040",
-    tier:"active",health:"green",owner:"Carter",
+    tier:"active",health:"green",owner:"Carter",vertical:"Combat sports",
     value:"$422,116 GMV · 13 events",
     products:["Primary ticketing","Sponsor Portal","Moments (collectibles)"],eventType:"Combat sports",sponsorMode:"They brought the sponsor",
     contractCycle:2,
@@ -153,7 +152,7 @@ const SEED_ACCTS=[
   },
   {
     id:"nxtwwe",orgId:"3tree",account:"NXT from WWE",short:"NX",logo:"#1A1C22",
-    tier:"active",health:"green",owner:"Elijah",
+    tier:"active",health:"green",owner:"Elijah",vertical:"Combat sports",
     value:"$92,753 GMV · 1 event",
     products:["Primary ticketing"],eventType:"Professional wrestling",sponsorMode:"No sponsor",
     contractCycle:1,cycles:[{id:"cy1",label:"WWE NXT Plymouth",start:"Nov 2025",end:"Dec 2025",products:["Primary ticketing"],events:["WWE NXT Plymouth"],note:"$92K gross, 123% sell-through.",active:false,gmvActual:92753,gmvProjected:75000,netTakePct:6,paymentTerms:"Net 14"}],
@@ -174,7 +173,7 @@ const SEED_ACCTS=[
   // ── MOJO (combined: Happy Valley + Amherst + Boston small events) ──
   {
     id:"mojo",orgId:"3tree",account:"Mojo",short:"MO",logo:"#7C3AED",
-    tier:"watch",health:"yellow",owner:"Carter",
+    tier:"watch",health:"yellow",owner:"Carter",vertical:"Festival",
     value:"$222,279 GMV · 8 events",
     products:["Primary ticketing"],eventType:"Music & entertainment",sponsorMode:"No sponsor",
     contractCycle:3,
@@ -236,7 +235,7 @@ const SEED_ACCTS=[
   },
   {
     id:"cesboxing",orgId:"3tree",account:"CES Boxing",short:"CB",logo:"#DC2626",
-    tier:"cold",health:"red",owner:"Elijah",
+    tier:"cold",health:"red",owner:"Elijah",vertical:"Combat sports",
     value:"$44,550 GMV · 1 event",
     products:["Primary ticketing"],eventType:"Combat sports",sponsorMode:"No sponsor",
     contractCycle:1,cycles:[{id:"cy1",label:"CES Boxing — Oct 2025",start:"Oct 2025",end:"Nov 2025",products:["Primary ticketing"],active:false,gmvActual:44550,gmvProjected:40000,netTakePct:7,paymentTerms:"Net 14"}],chargebacks:[],features:[],
@@ -314,7 +313,7 @@ const SEED_ACCTS=[
   },
   {
     id:"grass",orgId:"3tree",account:"Grass League",short:"GL",logo:"#2E9E6B",
-    tier:"cold",health:"red",owner:"Carter",value:"Pre-contract · target <$25K",
+    tier:"cold",health:"red",owner:"Carter",value:"Pre-contract · target <$25K",vertical:"Sports",
     products:["Primary ticketing"],eventType:"Paid event",sponsorMode:"We brought the sponsor",
     contractCycle:0,contract:null,costs:[],kpis:{daysSinceContact:21,sentiment:"Cold"},
     cycles:[],chargebacks:[],
@@ -341,7 +340,7 @@ const SEED_ACCTS=[
   },
   {
     id:"easy991",orgId:"3tree",account:"Easy 99.1",short:"E9",logo:"#0EA5E9",
-    tier:"watch",health:"yellow",owner:"Carter",value:"$51,890 GMV · 4 events",
+    tier:"watch",health:"yellow",owner:"Carter",value:"$51,890 GMV · 4 events",vertical:"Media / Radio",
     products:["Primary ticketing"],eventType:"Radio/media events",sponsorMode:"They brought the sponsor",
     contractCycle:1,cycles:[{id:"cy1",label:"Easy 99.1 — 2026 season",start:"Jan 2026",end:"Jun 2026",products:["Primary ticketing"],active:false,gmvActual:51890,gmvProjected:60000,netTakePct:7,paymentTerms:"Net 30"}],chargebacks:[],
     features:[{id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"4 events completed."}],
@@ -353,7 +352,7 @@ const SEED_ACCTS=[
   },
   {
     id:"havoc",orgId:"3tree",account:"Havoc Fighting Championship",short:"HF",logo:"#6B7280",
-    tier:"archived",health:"archived",owner:"Carter",value:"$22,455 GMV · 1 event",
+    tier:"archived",health:"archived",owner:"Carter",value:"$22,455 GMV · 1 event",vertical:"Combat sports",
     products:["Primary ticketing"],eventType:"Combat sports",sponsorMode:"No sponsor",
     contractCycle:1,cycles:[],chargebacks:[],features:[],
     contract:{start:"Sep 2025",end:"Oct 2025",renewal:"N/A",paymentTerms:"Net 14",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:20000,gmvActual:22455,liabilityCap:25000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
@@ -363,13 +362,48 @@ const SEED_ACCTS=[
   },
   {
     id:"graystone",orgId:"3tree",account:"Graystone Promotions",short:"GP",logo:"#6B7280",
-    tier:"archived",health:"archived",owner:"Elijah",value:"$16,354 GMV · 1 event",
+    tier:"archived",health:"archived",owner:"Elijah",value:"$16,354 GMV · 1 event",vertical:"Combat sports",
     products:["Primary ticketing"],eventType:"Boxing promotion",sponsorMode:"No sponsor",
     contractCycle:1,cycles:[],chargebacks:[],features:[],
     contract:{start:"Aug 2025",end:"Sep 2025",renewal:"N/A",paymentTerms:"Net 14",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:15000,gmvActual:16354,liabilityCap:20000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
     costs:[],kpis:{daysSinceContact:200,slaActual:99.9,sentiment:"Cold",chargebacks:0},
     milestones:[],risks:[],signals_pending:[],flags:[],
     summary:"1 event. Archived — no future events planned.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+  {
+    id:"xfactor",orgId:"3tree",account:"X-Factor Community",short:"XF",logo:"#0EA5E9",
+    tier:"watch",health:"yellow",owner:"Carter",value:"$14,860 GMV · 10 events",vertical:"Community",
+    products:["Primary ticketing"],eventType:"Community events",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[{id:"cy1",label:"X-Factor Community — 2025-26",start:"Jun 2025",end:"Jun 2026",products:["Primary ticketing"],active:true,gmvActual:14860,gmvProjected:18000,netTakePct:7,paymentTerms:"Net 30"}],chargebacks:[],
+    features:[{id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"10 events run — highest event count in the book."}],
+    contract:{start:"Jun 2025",end:"Jun 2026",renewal:"TBD",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:18000,gmvActual:14860,liabilityCap:25000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:24,slaActual:99.7,sentiment:"Contained",chargebacks:0},
+    milestones:[{id:"m1",type:"renewal",date:"2026-07-15",title:"Annual renewal conversation",note:"10-event cadence — strong repeat behavior, low GMV per event.",done:false}],
+    risks:[{risk:"Low GMV per event despite high volume",severity:"low",action:"High event frequency but small gates — explore Moments to lift per-event value."}],
+    signals_pending:[],flags:[],summary:"Community events host. 10 events, highest event frequency in the book but low per-event GMV. Sticky relationship.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+  {
+    id:"prosportplex",orgId:"3tree",account:"ProSportPlex",short:"PS",logo:"#2E9E6B",
+    tier:"cold",health:"red",owner:"Elijah",value:"$6,797 GMV · 1 event",vertical:"Venue",
+    products:["Primary ticketing"],eventType:"Sports venue",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[{id:"cy1",label:"ProSportPlex — pilot",start:"Mar 2026",end:"Apr 2026",products:["Primary ticketing"],active:false,gmvActual:6797,gmvProjected:8000,netTakePct:7,paymentTerms:"Net 30"}],chargebacks:[],features:[],
+    contract:{start:"Mar 2026",end:"Apr 2026",renewal:"TBD",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:8000,gmvActual:6797,liabilityCap:15000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:62,slaActual:99.8,sentiment:"Cold",chargebacks:0},
+    milestones:[{id:"m1",type:"review",date:"2026-07-10",title:"Re-engagement check-in",note:"Single pilot event — no follow-up booked.",done:false}],
+    risks:[{risk:"Single event, no repeat booked",severity:"medium",action:"Pilot ran clean but no second event scheduled — re-engage venue ops."}],
+    signals_pending:[],flags:[],summary:"Sports venue pilot. One clean event, no repeat booked yet.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
+  },
+  {
+    id:"plymouthhall",orgId:"3tree",account:"Plymouth Memorial Hall",short:"PM",logo:"#7C3AED",
+    tier:"watch",health:"yellow",owner:"Carter",value:"$6,583 GMV · 3 events",vertical:"Venue",
+    products:["Primary ticketing","Box Office / POS"],eventType:"Civic venue",sponsorMode:"No sponsor",
+    contractCycle:1,cycles:[{id:"cy1",label:"Plymouth Memorial Hall — 2026",start:"Jan 2026",end:"Dec 2026",products:["Primary ticketing","Box Office / POS"],active:true,gmvActual:6583,gmvProjected:12000,netTakePct:7,paymentTerms:"Monthly"}],chargebacks:[],
+    features:[{id:"f1",name:"Box Office / POS",status:"Shipped",scope:"contract",note:"Walk-up POS for civic events."}],
+    contract:{start:"Jan 2026",end:"Dec 2026",renewal:"Jan 2027",paymentTerms:"Monthly",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:12000,gmvActual:6583,liabilityCap:25000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
+    costs:[],kpis:{daysSinceContact:18,slaActual:99.9,sentiment:"Contained",chargebacks:0},
+    milestones:[{id:"m1",type:"upsell",date:"2026-08-01",title:"Sponsor Portal pitch",note:"Town venue — recurring civic calendar, good Moments candidate.",done:false}],
+    risks:[{risk:"Tracking below GMV plan",severity:"low",action:"3 events in, pacing under plan — surface the rest of the civic calendar."}],
+    signals_pending:[],flags:[],summary:"Civic venue (Town of Plymouth). 3 events, ongoing calendar, Box Office + POS live.",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
   },
 ];
 async function sget(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
@@ -378,7 +412,41 @@ async function slist(p){try{return Object.keys(localStorage).filter(k=>k.startsW
 async function sdel(k){try{localStorage.removeItem(k);}catch{}}
 
 // ── Atoms ──
-// Vercel-style tag: compact, text-only, tight padding, 4px radius, no emoji
+// ── Pipeline & GTM config ──
+const PIPE_STAGES={
+  targeted:{label:"Targeted",c:T.sub,s:"#F0F1F3",order:0},
+  contacted:{label:"Contacted",c:T.blue,s:T.blueLt+"33",order:1},
+  in_talks:{label:"In talks",c:T.yellow,s:T.yellowSoft,order:2},
+  signed:{label:"Signed",c:T.green,s:T.greenSoft,order:3},
+  lost:{label:"Lost",c:T.red,s:T.redSoft,order:4},
+};
+const PIPE_TIERS={
+  1:{label:"Tier 1",desc:"Anchor targets — flagship logos",c:T.purple},
+  2:{label:"Tier 2",desc:"Mid-market — full-stack fit",c:T.blue},
+  3:{label:"Tier 3",desc:"Long-tail — bolt-on / Moments",c:T.sub},
+};
+const GTM_VERTICALS=["Combat sports","Sports","Festival","Venue","Media / Radio","Community","Collegiate"];
+// Seeded host-acquisition pipeline. Replace/extend with the real 200-org Tier 1/2/3 list.
+const TT_TARGETS_SEED=[
+  {id:"tg1",name:"Cage Titans",tier:1,vertical:"Combat sports",stage:"signed",owner:"Carter",note:"Closed — multi-event MMA series.",linkedAcct:"cagetitans"},
+  {id:"tg2",name:"NXT from WWE",tier:1,vertical:"Combat sports",stage:"signed",owner:"Elijah",note:"Anchor logo. Monitor post-event retention.",linkedAcct:"nxtwwe"},
+  {id:"tg3",name:"Sail4th 250",tier:1,vertical:"Festival",stage:"signed",owner:"Carter",note:"Single-event anchor, renewal TBD.",linkedAcct:"sail4th"},
+  {id:"tg4",name:"Mojo",tier:2,vertical:"Festival",stage:"signed",owner:"Carter",note:"Repeat festivals across calendar year.",linkedAcct:"mojo"},
+  {id:"tg5",name:"Boston Glory",tier:2,vertical:"Sports",stage:"signed",owner:"Carter",note:"Closed.",linkedAcct:""},
+  {id:"tg6",name:"Grass League",tier:2,vertical:"Sports",stage:"in_talks",owner:"Carter",note:"Par-3 golf. Has a vendor — open if sponsorship bundled. Budget <$25K.",linkedAcct:"grass"},
+  {id:"tg7",name:"Daina Falk",tier:2,vertical:"Festival",stage:"in_talks",owner:"Carter",note:"Partnership proposal out — 0.25% equity cap, 2% royalty Y1.",linkedAcct:""},
+  {id:"tg8",name:"UPSHOT",tier:3,vertical:"Sports",stage:"contacted",owner:"Elijah",note:"Stalled — hockey season timing.",linkedAcct:""},
+  {id:"tg9",name:"Man City / Rico Lewis event",tier:1,vertical:"Sports",stage:"in_talks",owner:"Carter",note:"EU sprint anchor — Jul 12.",linkedAcct:""},
+  {id:"tg10",name:"Leyton Orient FC",tier:3,vertical:"Sports",stage:"contacted",owner:"Carter",note:"EU outbound — Championship/EFL.",linkedAcct:""},
+  {id:"tg11",name:"Detroit City FC",tier:2,vertical:"Sports",stage:"targeted",owner:"Elijah",note:"USL — full-stack fit.",linkedAcct:""},
+  {id:"tg12",name:"Real American Freestyle",tier:3,vertical:"Combat sports",stage:"targeted",owner:"Carter",note:"Early outbound.",linkedAcct:""},
+  {id:"tg13",name:"Easy 99.1",tier:3,vertical:"Media / Radio",stage:"signed",owner:"Carter",note:"Radio events — fall renewal.",linkedAcct:"easy991"},
+  {id:"tg14",name:"Plymouth Memorial Hall",tier:3,vertical:"Venue",stage:"signed",owner:"Carter",note:"Civic venue, recurring calendar.",linkedAcct:"plymouthhall"},
+  {id:"tg15",name:"X-Factor Community",tier:3,vertical:"Community",stage:"signed",owner:"Carter",note:"High event frequency.",linkedAcct:"xfactor"},
+];
+// Tier 1/2/3 targets you're working toward (the denominator for signed-vs-targeted)
+const GTM_TARGET_GOALS={1:6,2:8,3:12};
+
 const Tag=({label,c,s})=><span style={{
   display:"inline-flex",alignItems:"center",
   fontSize:11.5,fontWeight:500,
@@ -1920,6 +1988,290 @@ function ChangeTag({value,isPositiveGood=true}){
   return <span style={{fontSize:11,fontWeight:600,padding:"2px 6px",borderRadius:4,background:good?"#DCFCE7":T.redSoft,color:good?T.green:T.red}}>{pos?"+":""}{value.toFixed(1)}%</span>;
 }
 
+// ── Portfolio Intelligence (BI roll-up) ──
+function hostLifetimeGmv(a){
+  const cyc=(a.cycles||[]).reduce((n,c)=>n+(c.gmvActual||0),0);
+  const master=a.contract?.gmvActual||0;
+  return Math.max(cyc,master);
+}
+function IntelligenceView({orgAccts,isMobile}){
+  const GMV_FLOOR=500;
+  const hosts=orgAccts
+    .map(a=>({name:a.account,gmv:hostLifetimeGmv(a),vertical:a.vertical||"Uncategorized",tier:a.tier,
+      events:(a.cycles||[]).reduce((n,c)=>n+((c.events||[]).length||0),0),
+      daysSince:a.kpis?.daysSinceContact||0,health:a.health}))
+    .filter(h=>h.gmv>=GMV_FLOOR)
+    .sort((x,y)=>y.gmv-x.gmv);
+  const totalGmv=hosts.reduce((n,h)=>n+h.gmv,0);
+  const top3=hosts.slice(0,3).reduce((n,h)=>n+h.gmv,0);
+  const top5=hosts.slice(0,5).reduce((n,h)=>n+h.gmv,0);
+  const top3Share=totalGmv>0?100*top3/totalGmv:0;
+  const top5Share=totalGmv>0?100*top5/totalGmv:0;
+  const concRisk=top3Share>=60?{l:"High concentration",c:T.red,s:T.redSoft}:top3Share>=40?{l:"Moderate",c:T.yellow,s:T.yellowSoft}:{l:"Diversified",c:T.green,s:T.greenSoft};
+  const ranAny=hosts.filter(h=>h.events>=1);
+  const repeat=hosts.filter(h=>h.events>=2);
+  const repeatRate=ranAny.length>0?100*repeat.length/ranAny.length:0;
+  const churn=hosts.filter(h=>h.daysSince>=90).sort((x,y)=>y.daysSince-x.daysSince);
+  const byVert=Object.values(hosts.reduce((m,h)=>{(m[h.vertical]??={vertical:h.vertical,gmv:0,hosts:0});m[h.vertical].gmv+=h.gmv;m[h.vertical].hosts++;return m;},{})).sort((a,b)=>b.gmv-a.gmv);
+  const MILES=[
+    {label:"$100K",date:"Apr 29, 2025",val:100000},
+    {label:"$250K",date:"Sep 6, 2025",val:250000},
+    {label:"$500K",date:"Dec 22, 2025",val:500000},
+    {label:"$1M",date:"May 5, 2026",val:1000000},
+  ];
+  const VC=["#1E8F5C","#3FA86F","#62C088","#8AD3A6","#B2E3C5","#CBD5E1"];
+  const maxVert=byVert[0]?.gmv||1;
+
+  const KPI=({label,value,sub,tag,tagC,tagS,big})=>(
+    <div style={{border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",background:"#fff",display:"flex",flexDirection:"column",justifyContent:"space-between",minHeight:120}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+        <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>{label}</span>
+        {tag&&<span style={{fontSize:10.5,fontWeight:600,padding:"3px 8px",borderRadius:5,background:tagS,color:tagC}}>{tag}</span>}
+      </div>
+      <div>
+        <div style={{fontSize:big?30:26,fontWeight:700,letterSpacing:-1,color:T.ink,lineHeight:1,marginBottom:4}}>{value}</div>
+        <div style={{fontSize:12,color:S.labelText}}>{sub}</div>
+      </div>
+    </div>
+  );
+
+  return <div>
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
+      <KPI label="Lifetime GMV" value={fmtK(totalGmv)} sub={`${hosts.length} verified hosts ≥ $500`} big/>
+      <KPI label="Top 3 host share" value={top3Share.toFixed(1)+"%"} sub={`${fmtK(top3)} of ${fmtK(totalGmv)}`} tag={concRisk.l} tagC={concRisk.c} tagS={concRisk.s}/>
+      <KPI label="Host repeat rate" value={repeatRate.toFixed(1)+"%"} sub={`${repeat.length} of ${ranAny.length} ran 2+ events`}/>
+      <KPI label="Churn-risk hosts" value={String(churn.length)} sub="No contact in 90+ days" tag={churn.length?"Watch":"Clear"} tagC={churn.length?T.red:T.green} tagS={churn.length?T.redSoft:T.greenSoft}/>
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.3fr 1fr",gap:20,marginBottom:24}}>
+      <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff"}}>
+        <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Host concentration</div>
+            <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Lifetime GMV by host</div>
+            <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Ranked by lifetime gross volume</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:18,fontWeight:700,color:T.ink,letterSpacing:-.5}}>{top5Share.toFixed(0)}%</div>
+            <div style={{fontSize:11,color:S.labelText}}>top 5 hosts</div>
+          </div>
+        </div>
+        <div style={{padding:"6px 20px 14px"}}>
+          {hosts.map((h,i)=>{const share=totalGmv>0?100*h.gmv/totalGmv:0;return(
+            <div key={h.name} style={{padding:"10px 0",borderTop:i?`1px solid ${S.border}`:"none"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+                <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{i+1}. {h.name}</span>
+                <span style={{fontSize:12,color:S.inactiveText}}>{fmt(h.gmv)} · {share.toFixed(1)}% · {h.events} {h.events===1?"event":"events"}</span>
+              </div>
+              <div style={{height:5,borderRadius:3,background:"#F1F2F4",overflow:"hidden"}}>
+                <div style={{width:Math.max(2,(h.gmv/hosts[0].gmv)*100)+"%",height:"100%",borderRadius:3,background:i<3?T.green:i<5?"#62C088":"#CBD5E1"}}/>
+              </div>
+            </div>
+          );})}
+        </div>
+      </div>
+
+      <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff"}}>
+        <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
+          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Market mix</div>
+          <div style={{fontSize:15,fontWeight:600,color:T.ink}}>GMV by vertical</div>
+          <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Lifetime gross volume by host category</div>
+        </div>
+        <div style={{padding:"14px 20px"}}>
+          {byVert.map((v,i)=>{const share=totalGmv>0?100*v.gmv/totalGmv:0;return(
+            <div key={v.vertical} style={{marginBottom:i<byVert.length-1?14:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}}>
+                <span style={{display:"flex",alignItems:"center",gap:7,fontSize:13,color:T.ink}}>
+                  <span style={{width:9,height:9,borderRadius:2,background:VC[i%VC.length]}}/>{v.vertical}
+                  <span style={{fontSize:11,color:S.labelText}}>· {v.hosts} {v.hosts===1?"host":"hosts"}</span>
+                </span>
+                <span style={{fontSize:12,fontWeight:600,color:T.ink}}>{fmtK(v.gmv)} <span style={{color:S.labelText,fontWeight:400}}>{share.toFixed(1)}%</span></span>
+              </div>
+              <div style={{height:8,borderRadius:4,background:"#F1F2F4",overflow:"hidden"}}>
+                <div style={{width:Math.max(2,100*v.gmv/maxVert)+"%",height:"100%",borderRadius:4,background:VC[i%VC.length]}}/>
+              </div>
+            </div>
+          );})}
+        </div>
+      </div>
+    </div>
+
+    <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
+      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
+        <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Cumulative revenue</div>
+        <div style={{fontSize:15,fontWeight:600,color:T.ink}}>GMV milestone crossings</div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:1,background:S.border}}>
+        {MILES.map((m)=>(
+          <div key={m.label} style={{background:"#fff",padding:"16px 20px"}}>
+            <div style={{fontSize:20,fontWeight:700,color:m.val<=totalGmv?T.green:S.labelText,letterSpacing:-.5}}>{m.label}</div>
+            <div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>{m.val<=totalGmv?m.date:"not yet crossed"}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {churn.length>0&&<div style={{border:`1px solid #FECACA`,borderRadius:12,background:"#FEF2F2",padding:"16px 20px",marginBottom:8}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:T.red,marginBottom:4}}>Churn flags</div>
+      <div style={{fontSize:12,color:"#B45309",marginBottom:10}}>Hosts ≥ $500 with no contact in 90+ days</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+        {churn.map(h=>(
+          <span key={h.name} style={{fontSize:12,padding:"6px 12px",borderRadius:6,background:"#fff",border:"1px solid #FECACA",color:T.ink}}>{h.name} · {h.daysSince}d idle</span>
+        ))}
+      </div>
+    </div>}
+
+    <div style={{fontSize:11,color:S.labelText,marginTop:14,lineHeight:1.5}}>
+      Milestone dates are placeholders until live transaction data is wired (Phase 4). Hosts below $500 lifetime GMV are excluded.
+    </div>
+  </div>;
+}
+
+// ── Pipeline & GTM (host acquisition) ──
+function PipelineView({isMobile}){
+  const [targets,setTargets]=useState(()=>{try{const v=localStorage.getItem("tt_targets");return v?JSON.parse(v):TT_TARGETS_SEED;}catch{return TT_TARGETS_SEED;}});
+  const [editing,setEditing]=useState(null);
+  const [adding,setAdding]=useState(false);
+  const [filterTier,setFilterTier]=useState(0);
+  const blank={name:"",tier:2,vertical:"Combat sports",stage:"targeted",owner:"Carter",note:"",linkedAcct:""};
+  const [form,setForm]=useState(blank);
+
+  function persist(next){setTargets(next);try{localStorage.setItem("tt_targets",JSON.stringify(next));}catch{}}
+  function save(){if(!form.name)return;
+    if(editing){persist(targets.map(t=>t.id===editing?{...t,...form}:t));setEditing(null);}
+    else{persist([...targets,{...form,id:"tg_"+uid()}]);setAdding(false);}
+    setForm(blank);
+  }
+  function del(id){persist(targets.filter(t=>t.id!==id));if(editing===id){setEditing(null);setForm(blank);}}
+  function setStage(id,stage){persist(targets.map(t=>t.id===id?{...t,stage}:t));}
+
+  const view=filterTier?targets.filter(t=>t.tier===filterTier):targets;
+  const signed=targets.filter(t=>t.stage==="signed");
+  const totalGoal=GTM_TARGET_GOALS[1]+GTM_TARGET_GOALS[2]+GTM_TARGET_GOALS[3];
+  const inFlight=targets.filter(t=>t.stage==="contacted"||t.stage==="in_talks").length;
+  const lost=targets.filter(t=>t.stage==="lost").length;
+
+  const tierStats=[1,2,3].map(tier=>{
+    const inTier=targets.filter(t=>t.tier===tier);
+    const s=inTier.filter(t=>t.stage==="signed").length;
+    return {tier,signed:s,goal:GTM_TARGET_GOALS[tier],total:inTier.length,
+      stages:Object.keys(PIPE_STAGES).map(st=>({st,n:inTier.filter(t=>t.stage===st).length}))};
+  });
+  const byVert=Object.values(targets.reduce((m,t)=>{(m[t.vertical]??={vertical:t.vertical,total:0,signed:0});m[t.vertical].total++;if(t.stage==="signed")m[t.vertical].signed++;return m;},{})).sort((a,b)=>b.total-a.total);
+
+  const Field=({label,children})=><div><div style={{fontSize:11,fontWeight:600,color:S.labelText,marginBottom:4}}>{label}</div>{children}</div>;
+  const inp={padding:"7px 10px",borderRadius:6,border:`1px solid ${S.border}`,fontFamily:sans,fontSize:13,color:T.ink,width:"100%",background:"#fff",boxSizing:"border-box"};
+
+  return <div>
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
+      {[
+        {label:"Hosts signed",value:`${signed.length} / ${totalGoal}`,sub:"vs. Tier 1/2/3 goal"},
+        {label:"In flight",value:String(inFlight),sub:"Contacted + in talks"},
+        {label:"Goal progress",value:Math.round(100*signed.length/totalGoal)+"%",sub:"Signed toward target"},
+        {label:"Lost",value:String(lost),sub:"Closed-lost targets"},
+      ].map((t,i)=>(
+        <div key={i} style={{border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",background:"#fff"}}>
+          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>{t.label}</div>
+          <div style={{fontSize:26,fontWeight:700,letterSpacing:-1,color:T.ink,lineHeight:1,marginBottom:4}}>{t.value}</div>
+          <div style={{fontSize:12,color:S.labelText}}>{t.sub}</div>
+        </div>
+      ))}
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:12,marginBottom:24}}>
+      {tierStats.map(ts=>{const pct=ts.goal>0?Math.min(100,100*ts.signed/ts.goal):0;const tc=PIPE_TIERS[ts.tier].c;return(
+        <div key={ts.tier} style={{border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",background:"#fff"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:3}}>
+            <span style={{fontSize:13,fontWeight:600,color:tc}}>{PIPE_TIERS[ts.tier].label}</span>
+            <span style={{fontSize:13,fontWeight:700,color:T.ink}}>{ts.signed} / {ts.goal}</span>
+          </div>
+          <div style={{fontSize:11,color:S.labelText,marginBottom:10}}>{PIPE_TIERS[ts.tier].desc}</div>
+          <div style={{height:6,borderRadius:3,background:"#F1F2F4",overflow:"hidden",marginBottom:10}}>
+            <div style={{width:pct+"%",height:"100%",borderRadius:3,background:tc}}/>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {ts.stages.filter(x=>x.n>0).map(x=>(
+              <span key={x.st} style={{fontSize:11,padding:"3px 8px",borderRadius:5,background:PIPE_STAGES[x.st].s,color:PIPE_STAGES[x.st].c}}>{PIPE_STAGES[x.st].label} {x.n}</span>
+            ))}
+          </div>
+        </div>
+      );})}
+    </div>
+
+    <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
+      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
+        <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Pipeline by vertical</div>
+        <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Targets and signed by category</div>
+      </div>
+      <div style={{padding:"14px 20px"}}>
+        {byVert.map((v,i)=>(
+          <div key={v.vertical} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 0",borderTop:i?`1px solid ${S.border}`:"none"}}>
+            <span style={{fontSize:13,color:T.ink,width:isMobile?100:140,flexShrink:0}}>{v.vertical}</span>
+            <div style={{flex:1,height:6,borderRadius:3,background:"#F1F2F4",overflow:"hidden"}}>
+              <div style={{width:(100*v.signed/Math.max(1,v.total))+"%",height:"100%",borderRadius:3,background:T.green}}/>
+            </div>
+            <span style={{fontSize:12,color:S.inactiveText,width:80,textAlign:"right",flexShrink:0}}>{v.signed}/{v.total} signed</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:10}}>
+      <div style={{display:"flex",gap:6}}>
+        {[[0,"All"],[1,"Tier 1"],[2,"Tier 2"],[3,"Tier 3"]].map(([t,l])=>(
+          <button key={t} onClick={()=>setFilterTier(t)} style={{padding:"5px 12px",borderRadius:6,border:`1px solid ${filterTier===t?T.ink:S.border}`,background:filterTier===t?T.ink:"#fff",color:filterTier===t?"#fff":S.inactiveText,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer"}}>{l}</button>
+        ))}
+      </div>
+      {!adding&&!editing&&<button onClick={()=>{setAdding(true);setForm(blank);}} style={{...VBtn.secondary,fontSize:13}}>+ Add target</button>}
+    </div>
+
+    {(adding||editing)&&<div style={{border:`1px solid ${T.purple}`,borderRadius:10,padding:"16px",marginBottom:14,background:T.purpleSoft+"40"}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.5fr .8fr 1fr .8fr",gap:10,marginBottom:10}}>
+        <Field label="Host / target name"><input style={inp} value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Detroit City FC"/></Field>
+        <Field label="Tier"><select style={inp} value={form.tier} onChange={e=>setForm(f=>({...f,tier:+e.target.value}))}>{[1,2,3].map(t=><option key={t} value={t}>{PIPE_TIERS[t].label}</option>)}</select></Field>
+        <Field label="Vertical"><select style={inp} value={form.vertical} onChange={e=>setForm(f=>({...f,vertical:e.target.value}))}>{GTM_VERTICALS.map(v=><option key={v}>{v}</option>)}</select></Field>
+        <Field label="Owner"><select style={inp} value={form.owner} onChange={e=>setForm(f=>({...f,owner:e.target.value}))}>{["Carter","Elijah","Hunter"].map(o=><option key={o}>{o}</option>)}</select></Field>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 2fr",gap:10,marginBottom:10}}>
+        <Field label="Stage"><select style={inp} value={form.stage} onChange={e=>setForm(f=>({...f,stage:e.target.value}))}>{Object.entries(PIPE_STAGES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}</select></Field>
+        <Field label="Note"><input style={inp} value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} placeholder="Context, budget, blockers…"/></Field>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={save} disabled={!form.name} style={{...VBtn.primary,opacity:form.name?1:.5,fontSize:13}}>{editing?"Save":"Add target"}</button>
+        <button onClick={()=>{setAdding(false);setEditing(null);setForm(blank);}} style={{...VBtn.secondary,fontSize:13}}>Cancel</button>
+      </div>
+    </div>}
+
+    <div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2fr .9fr 1fr 1.4fr auto",padding:"10px 16px",background:"#F9FAFB",borderBottom:`1px solid ${S.border}`,fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>
+        <span>Host</span>{!isMobile&&<span>Tier</span>}{!isMobile&&<span>Vertical</span>}<span>Stage</span><span></span>
+      </div>
+      {view.slice().sort((a,b)=>a.tier-b.tier||PIPE_STAGES[b.stage].order-PIPE_STAGES[a.stage].order).map((t,i)=>(
+        <div key={t.id} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2fr .9fr 1fr 1.4fr auto",alignItems:"center",padding:"11px 16px",borderTop:i?`1px solid ${S.border}`:"none",fontSize:13}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:500,color:T.ink}}>{t.name}{t.linkedAcct&&<span style={{fontSize:11,color:T.green,marginLeft:6}}>● account</span>}</div>
+            {t.note&&<div style={{fontSize:11.5,color:S.inactiveText,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.note}</div>}
+            {isMobile&&<div style={{fontSize:11,color:S.labelText,marginTop:2}}>{PIPE_TIERS[t.tier].label} · {t.vertical} · {t.owner}</div>}
+          </div>
+          {!isMobile&&<span style={{fontSize:12,fontWeight:600,color:PIPE_TIERS[t.tier].c}}>{PIPE_TIERS[t.tier].label}</span>}
+          {!isMobile&&<span style={{fontSize:12,color:S.inactiveText}}>{t.vertical}</span>}
+          <select value={t.stage} onChange={e=>setStage(t.id,e.target.value)} style={{fontSize:11.5,fontWeight:600,padding:"4px 8px",borderRadius:5,border:"none",background:PIPE_STAGES[t.stage].s,color:PIPE_STAGES[t.stage].c,fontFamily:sans,cursor:"pointer",width:"fit-content"}}>
+            {Object.entries(PIPE_STAGES).map(([k,v])=><option key={k} value={k} style={{background:"#fff",color:T.ink}}>{v.label}</option>)}
+          </select>
+          <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+            <button onClick={()=>{setEditing(t.id);setAdding(false);setForm({name:t.name,tier:t.tier,vertical:t.vertical,stage:t.stage,owner:t.owner,note:t.note,linkedAcct:t.linkedAcct||""});}} style={{...VBtn.small,padding:"4px 9px",fontSize:11}}>Edit</button>
+            <button onClick={()=>del(t.id)} style={{...VBtn.small,padding:"4px 9px",fontSize:11,color:T.red,borderColor:S.border}}>×</button>
+          </div>
+        </div>
+      ))}
+      {view.length===0&&<div style={{padding:"28px",textAlign:"center",fontSize:13,color:S.inactiveText}}>No targets in this tier yet.</div>}
+    </div>
+    <div style={{fontSize:11,color:S.labelText,marginTop:12,lineHeight:1.5}}>
+      Tier goals: {GTM_TARGET_GOALS[1]} / {GTM_TARGET_GOALS[2]} / {GTM_TARGET_GOALS[3]} (T1/T2/T3). Stage changes will sync from Capsule once connected.
+    </div>
+  </div>;
+}
+
 function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesContracted,feesMissed,totalCosts,netRev,netRevContracted,historicalGmv,historicalFees,allHistorical,pipelinePct}){
   const [isMobile,setIsMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
   useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
@@ -2114,7 +2466,7 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
 
     {/* View tabs */}
     <div style={{display:"flex",gap:0,borderBottom:`1px solid ${S.border}`,marginBottom:24,overflowX:"auto"}}>
-      {[["overview","Overview"],["accounts","By account"],["history","History"],["scenario","Scenario builder"]].map(([id,lbl])=>(
+      {[["overview","Overview"],["intelligence","Intelligence"],["pipeline","Pipeline & GTM"],["accounts","By account"],["history","History"],["scenario","Scenario builder"]].map(([id,lbl])=>(
         <button key={id} onClick={()=>setView(id)} style={{padding:"8px 16px",border:"none",borderBottom:`2px solid ${view===id?CHART_BLUE:"transparent"}`,background:"transparent",color:view===id?CHART_BLUE:S.inactiveText,fontFamily:sans,fontSize:13,fontWeight:view===id?600:400,cursor:"pointer",whiteSpace:"nowrap"}}>
           {lbl}
         </button>
@@ -2122,6 +2474,9 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
     </div>
 
     {/* OVERVIEW */}
+    {view==="intelligence"&&<IntelligenceView orgAccts={orgAccts} isMobile={isMobile}/>}
+    {view==="pipeline"&&<PipelineView isMobile={isMobile}/>}
+
     {view==="overview"&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:20}}>
 
       {/* Chart with full time range selector */}
