@@ -509,7 +509,7 @@ export default function AppDesktop(){
 
       {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
       {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
-        {NAV_ITEMS.filter(n=>!n.section).map(n=>{const isActive=(nav===n.id)&&!showDetail;return<button key={n.id} onClick={()=>{navigate(n.id);selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.ink:S.inactiveText,gap:2,padding:"6px 0"}}>
+        {NAV_ITEMS.filter(n=>!n.section).map(n=>{const isActive=(nav===n.id)&&(n.id==="accounts"||!showDetail);return<button key={n.id} onClick={()=>{navigate(n.id);selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.ink:S.inactiveText,gap:2,padding:"6px 0"}}>
           <span style={{fontSize:16}}>{n.id==="dashboard"?"⊞":n.id==="accounts"?"≡":n.id==="timeline"?"◷":"⚡"}</span>
           {n.label}
         </button>;})}
@@ -522,7 +522,7 @@ export default function AppDesktop(){
           </div>
         </div>
         <div style={{padding:"8px 0",flex:1,overflowY:"auto"}}>
-          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&!showDetail;return<div key={n.id}>{showLabel&&<div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 5px"}}>{n.section}</div>}<button
+          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&(n.id==="accounts"||!showDetail);return<div key={n.id}>{showLabel&&<div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,padding:"16px 20px 5px"}}>{n.section}</div>}<button
   onClick={()=>{navigate(n.id);selectAcct(null);}}
   onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background=S.hoverBg;e.currentTarget.style.color=T.ink;}}
   onMouseLeave={e=>{e.currentTarget.style.background=isActive?S.activeBg:"transparent";e.currentTarget.style.color=isActive?S.activeText:S.inactiveText;}}
