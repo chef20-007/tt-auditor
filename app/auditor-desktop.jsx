@@ -1324,7 +1324,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
       </div>
 
       {/* RIGHT SIDEBAR — hidden on mobile, shown inline below tabs */}
-      {!isMobile&&<div style={{width:280,flexShrink:0,borderLeft:`1px solid ${S.border}`,overflow:"auto",background:"#fff",padding:"24px 20px"}}>
+      {!mobile&&<div style={{width:280,flexShrink:0,borderLeft:`1px solid ${S.border}`,overflow:"auto",background:"#fff",padding:"24px 20px"}}>
         <h2 style={{fontSize:14,fontWeight:700,color:T.ink,margin:"0 0 16px"}}>Details</h2>
         {[
           ["Deal value", a.value||"—"],
@@ -1717,6 +1717,8 @@ const CONNECTORS = [
 ];
 
 function AgentPage({accounts=[]}){
+  const [isMobile,setIsMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
+  useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [connections,setConnections]=useState(()=>{try{return JSON.parse(localStorage.getItem("tt_connections")||"{}");}catch{return{};}});
   const [pullState,setPullState]=useState("idle");
   const [digest,setDigest]=useState(null);
