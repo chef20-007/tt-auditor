@@ -439,6 +439,8 @@ export default function AppDesktop(){
   const [orgs,setOrgs]=useState([]);
   const [accts,setAccts]=useState([]);
   const [orgId,setOrgId]=useState(null);
+  const [isMobile,setIsMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
+  useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
   const [selected,setSelected]=useState(()=>{try{return sessionStorage.getItem('tt_selected')||null;}catch{return null;}});
   const [detailTab,setDetailTab]=useState(()=>{try{return sessionStorage.getItem('tt_tab')||'overview';}catch{return'overview';}});
@@ -502,10 +504,16 @@ export default function AppDesktop(){
   function selectAcct(id,tab){const t=tab||'overview';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
 
   return(
-    <div style={{display:"flex",height:"100vh",background:"#FAFAFA",fontFamily:sans,color:T.ink,letterSpacing:-.1,overflow:"hidden"}}>
+    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:"#FAFAFA",fontFamily:sans,color:T.ink,letterSpacing:-.1,overflow:"hidden"}}>
 
-      {/* SIDEBAR */}
-      <div style={{width:SIDEBAR_W,flexShrink:0,background:S.bg,borderRight:`1px solid ${S.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
+      {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
+        {NAV_ITEMS.filter(n=>!n.section).map(n=>{const isActive=(nav===n.id)&&!showDetail;return<button key={n.id} onClick={()=>{navigate(n.id);if(n.id!=="accounts")selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.purple:S.inactiveText,gap:2,padding:"6px 0"}}>
+          <span style={{fontSize:16}}>{n.id==="dashboard"?"⊞":n.id==="accounts"?"≡":n.id==="timeline"?"◷":"⚡"}</span>
+          {n.label}
+        </button>;})}
+      </div>}
+      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:S.bg,borderRight:`1px solid ${S.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"16px 16px 12px",borderBottom:`1px solid ${S.border}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <div style={{width:30,height:30,borderRadius:7,background:T.black,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:12,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
@@ -524,15 +532,15 @@ export default function AppDesktop(){
           <div style={{fontSize:11,color:S.inactiveText,marginBottom:10}}>Last run: not yet</div>
           <button onClick={()=>navigate("digest")} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:12}}>Run pull</button>
         </div>
-      </div>
+      </div>}
 
       {/* MAIN CONTENT */}
-      <div style={{flex:1,overflow:"auto",background:"#FFFFFF",minWidth:0}}>
+      <div style={{flex:1,overflow:"auto",background:"#FFFFFF",minWidth:0,paddingBottom:isMobile?56:0}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
         {/* DASHBOARD */}
-        {!showDetail&&nav==="dashboard"&&<div style={{padding:"32px 40px"}}>
+        {!showDetail&&nav==="dashboard"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:28}}>
             <div>
               <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}><span style={{color:T.purple,cursor:"pointer"}}>Accounts</span> → Dashboard</div>
@@ -552,7 +560,7 @@ export default function AppDesktop(){
             <button onClick={()=>navigate("accounts")} style={{...VBtn.small,borderColor:"#FDE68A",color:"#92400E"}}>Review →</button>
           </div>}
 
-          <div style={{display:"grid",gridTemplateColumns:"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:28}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:28}}>
             <div style={{background:T.black,borderRadius:12,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,color:"#fff"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"auto"}}><span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:"#9CA0AB"}}>AI Forecast</span><span style={{fontSize:13,color:"#9CA0AB"}}>✦</span></div>
               <div style={{fontSize:32,fontWeight:800,letterSpacing:-1.2,lineHeight:1,margin:"10px 0 8px"}}>{fmtK(forecast)}</div>
@@ -611,7 +619,7 @@ export default function AppDesktop(){
         </div>}
 
         {/* ACCOUNTS */}
-        {!showDetail&&nav==="accounts"&&<div style={{padding:"32px 40px"}}>
+        {!showDetail&&nav==="accounts"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
             <div>
               <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Accounts</h1>
@@ -623,7 +631,7 @@ export default function AppDesktop(){
             const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
             if(allRows.length===0)return<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText,border:`1px solid ${S.border}`,borderRadius:8}}>No accounts yet.</div>;
             return<>
-              <div style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"8px 20px",background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:"8px 8px 0 0"}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"8px 14px":"8px 20px",background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:"8px 8px 0 0"}}>
                 {["Account","Tier","GMV realized","Fees earned","Net revenue",""].map((h,i)=>(
                   <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>=2&&i<5?"right":"left"}}>{h}</div>
                 ))}
@@ -640,7 +648,7 @@ export default function AppDesktop(){
                     {showTierHeader&&i>0&&<div style={{padding:"8px 20px 5px",background:"#F9FAFB",borderTop:`1px solid ${S.border}`}}>
                       <span style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:tier.c}}>{tier.label}</span>
                     </div>}
-                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
+                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -688,7 +696,7 @@ export default function AppDesktop(){
         </div>}
 
         {/* TIMELINE */}
-        {!showDetail&&nav==="timeline"&&<div style={{padding:"32px 40px"}}>
+        {!showDetail&&nav==="timeline"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:28}}>
             <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Timeline</div>
             <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>All accounts</h1>
@@ -754,7 +762,7 @@ export default function AppDesktop(){
         {!showDetail&&nav==="digest"&&<AgentPage accounts={activeAccts}/>}
 
         {/* DISPUTES */}
-        {!showDetail&&nav==="disputes"&&<div style={{padding:"32px 40px"}}>
+        {!showDetail&&nav==="disputes"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:20}}>
             <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
             <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Disputes</h1>
@@ -780,7 +788,7 @@ export default function AppDesktop(){
         </div>}
 
         {/* COST LEDGER */}
-        {!showDetail&&nav==="costs"&&<div style={{padding:"32px 40px"}}>
+        {!showDetail&&nav==="costs"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:20}}>
             <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
             <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Cost ledger</h1>
@@ -957,7 +965,56 @@ function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
   </div>;
 }
 
+function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
+  const [open,setOpen]=useState(isActive||false);
+  const gmvActual=cy.gmvActual||0;
+  const gmvProj=cy.gmvProjected||0;
+  const take=cy.netTakePct||defaultTake||10;
+  const cyFees=gmvActual*take/100;
+  const pct=gmvProj>0?Math.round(100*gmvActual/gmvProj):0;
+  return <div style={{border:`1px solid ${isActive?T.purple:S.border}`,borderRadius:8,marginBottom:10,overflow:"hidden",background:"#fff"}}>
+    <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:isActive?"#FAFAFF":"#fff"}} onClick={()=>setOpen(!open)}>
+      <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block"}}>›</span>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13,fontWeight:600,color:T.ink}}>{cy.label||"Contract"}</span>
+          {isActive&&<Tag label="Active" c={T.purple} s={T.purpleSoft}/>}
+          {!isActive&&<Tag label="Completed" c={S.inactiveText} s="#F3F4F6"/>}
+        </div>
+        <div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>
+          {cy.start||"—"}{cy.end?` → ${cy.end}`:""} · {fmt(gmvActual)} realized · {fmt(cyFees)} fees
+        </div>
+      </div>
+      {gmvProj>0&&<span style={{fontSize:12,fontWeight:600,color:pct>=80?T.green:pct>=50?T.yellow:T.red,flexShrink:0}}>{pct}% of plan</span>}
+    </div>
+    {open&&<div style={{padding:"16px",borderTop:`1px solid ${S.border}`,background:"#F9FAFB"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
+        <div>
+          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
+          <input type="number" value={gmvActual} onChange={e=>onUpdate({gmvActual:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        </div>
+        <div>
+          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
+          <input type="number" value={gmvProj} onChange={e=>onUpdate({gmvProjected:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        </div>
+        <div>
+          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
+          <input type="number" value={take} onChange={e=>onUpdate({netTakePct:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        </div>
+      </div>
+      <div style={{fontSize:12,color:S.inactiveText}}>
+        Fees at current GMV: <b style={{color:T.ink}}>{fmt(gmvActual*take/100)}</b>
+        {gmvProj>0&&<span> · {pct}% of plan</span>}
+      </div>
+      {cy.products?.length>0&&<div style={{marginTop:10,fontSize:12,color:S.inactiveText}}>Products: {cy.products.join(", ")}</div>}
+      {cy.note&&<div style={{marginTop:4,fontSize:12,color:S.inactiveText}}>{cy.note}</div>}
+    </div>}
+  </div>;
+}
+
 function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
+  const [mobile,setMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
+  useEffect(()=>{const fn=()=>setMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [costs,setCosts]=useState(a.costs||[]);
   const [milestones,setMilestones]=useState(a.milestones||[]);
   const [eco,setEco]=useState(a.contract||{});
@@ -1145,9 +1202,10 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
 
             <CollapsibleSection title="Contract cycles" defaultOpen={true}
               badge={cycles.length||null}
-              onAdd={()=>addContractCycle({id:uid(),label:"",start:"",end:"",products:[],events:[],note:"",active:true})}
-              addLabel="+ Add cycle">
+              onAdd={()=>addContractCycle({id:uid(),label:"New cycle "+new Date().getFullYear(),start:"",end:"",products:a.products||[],events:[],note:"",active:true,gmvActual:0,gmvProjected:0,netTakePct:eco.netTakePct||10})}
+              addLabel="+ New cycle">
               <ContractCycles cycles={cycles} currentProducts={a.products||[]} onAdd={addContractCycle} onUpdate={updateContractCycle} onDelete={delContractCycle}/>
+              <button onClick={()=>onTabChange("contract")} style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:8,fontSize:12,color:T.purple,background:"none",border:`1px solid ${T.purpleBar}`,borderRadius:6,padding:"5px 12px",cursor:"pointer",fontFamily:sans,fontWeight:500}}>↑ Import contract terms →</button>
             </CollapsibleSection>
 
             <CollapsibleSection title="Chargebacks" defaultOpen={true}
@@ -1312,8 +1370,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
         </div>
       </div>
 
-      {/* ── RIGHT: meta sidebar — Stripe "Details" panel ── */}
-      <div style={{width:280,flexShrink:0,borderLeft:`1px solid ${S.border}`,overflow:"auto",background:"#fff",padding:"24px 20px"}}>
+      {/* RIGHT SIDEBAR — hidden on mobile, shown inline below tabs */}
+      {!isMobile&&<div style={{width:280,flexShrink:0,borderLeft:`1px solid ${S.border}`,overflow:"auto",background:"#fff",padding:"24px 20px"}}>
         <h2 style={{fontSize:14,fontWeight:700,color:T.ink,margin:"0 0 16px"}}>Details</h2>
         {[
           ["Deal value", a.value||"—"],
@@ -1724,7 +1782,7 @@ function AgentPage({accounts=[]}){
   useEffect(()=>{if(pullState!=="scanning")return;const iv=setInterval(()=>setScanStep(s=>(s+1)%STEPS.length),700);return()=>clearInterval(iv);},[pullState]);
   function toggle(id){if(CONNECTORS.find(c=>c.id===id)?.soon)return;setConnections(p=>{const n={...p,[id]:p[id]==="connected"?"disconnected":"connected"};localStorage.setItem("tt_connections",JSON.stringify(n));return n;});}
   function runPull(){setPullState("scanning");setTimeout(()=>{setDigest({pulledAt:new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),accounts:accounts.map(a=>({name:a.account,tier:a.tier,topRisk:(a.risks||[])[0]||null,nextMs:(a.milestones||[]).filter(m=>!m.done).sort((x,y)=>new Date(x.date)-new Date(y.date))[0]||null,daysSince:a.kpis?.daysSinceContact||0})),actions:accounts.flatMap(a=>(a.risks||[]).filter(r=>r.severity==="high").map(r=>({...r,acct:a.account})))});setPullState("done");setTab("digest");},(STEPS.length+1)*700);}
-  return <div style={{padding:"32px 40px",maxWidth:860}}>
+  return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px",maxWidth:860}}>
     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
       <div>
         <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Agent</div>
