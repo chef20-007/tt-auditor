@@ -425,6 +425,7 @@ const NAV_ITEMS=[
   {id:"digest",   label:"Agent",    section:null},
   {id:"disputes", label:"Disputes", section:"Shortcuts"},
   {id:"costs",    label:"Cost ledger",section:"Shortcuts"},
+  {id:"finance",  label:"Finances",  section:"Shortcuts"},
 ];
 const VBtn={
   primary:  {padding:"7px 14px",borderRadius:6,border:"none",background:T.black,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:-.1},
@@ -487,16 +488,28 @@ export default function AppDesktop(){
   function unarchiveAcct(id){const a=orgAccts.find(x=>x.id===id);if(a)saveAcct({...a,tier:"active",health:"green"});}
 
   const allC=activeAccts.filter(a=>a.contract);
+  // GMV from active contracts — use gmvActual for what's realized
   const gmvActual=allC.reduce((n,a)=>n+(a.contract.gmvActual||0),0);
   const gmvProj=allC.reduce((n,a)=>n+(a.contract.gmvProjected||0),0);
-  const feesEarned=allC.reduce((n,a)=>n+(a.contract.gmvActual||0)*(a.contract.netTakePct||0)/100,0);
+  // Fees realized = gmvActual * each account's actual take rate
+  const feesEarned=allC.reduce((n,a)=>n+(a.contract.gmvActual||0)*(a.contract.netTakePct||10)/100,0);
+  // Fees contracted = what we expect to earn when fully realized
+  const feesContracted=allC.reduce((n,a)=>n+(a.contract.gmvProjected||0)*(a.contract.netTakePct||10)/100,0);
+  // Fees missed = contracted minus earned (opportunity gap)
+  const feesMissed=feesContracted-feesEarned;
   const totalCosts=activeAccts.reduce((n,a)=>n+sumCosts(a),0);
   const netRev=feesEarned-totalCosts;
+  const netRevContracted=feesContracted-totalCosts;
   const pipelinePct=gmvProj>0?Math.round(100*gmvActual/gmvProj):0;
   const coverage=gmvProj>0?(gmvActual/gmvProj).toFixed(1)+"x":"—";
   const coverageHealthy=gmvActual/gmvProj>=0.3;
-  const forecast=gmvProj*(allC[0]?.contract?.netTakePct||7)/100;
-  const confidence=pipelinePct>=60?"High":pipelinePct>=35?"Medium":"Low";
+  // Forecast = fees we expect to earn total across all active contracts
+  const forecast=feesContracted;
+  const confidence=pipelinePct>=70?"High":pipelinePct>=40?"Medium":"Low";
+  // Historical from completed cycles
+  const allHistorical=orgAccts.flatMap(a=>(a.cycles||[]).filter(c=>!c.active&&(c.gmvActual||0)>0).map(c=>({...c,acct:a.account,aid:a.id,take:c.netTakePct||a.contract?.netTakePct||10})));
+  const historicalGmv=allHistorical.reduce((n,c)=>n+(c.gmvActual||0),0);
+  const historicalFees=allHistorical.reduce((n,c)=>n+(c.gmvActual||0)*(c.netTakePct||c.take||10)/100,0);
   const actions=activeAccts.flatMap(a=>(a.risks||[]).map(r=>({...r,acct:a.account,aid:a.id}))).sort((x,y)=>({high:0,medium:1,low:2}[x.severity]-{high:0,medium:1,low:2}[y.severity]));
   const allMilestones=activeAccts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&daysDiff(m.date)>=0&&daysDiff(m.date)<=14).map(m=>({...m,acct:a.account,aid:a.id}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const velocity=activeAccts.length>0?Math.round(activeAccts.reduce((n,a)=>{const ms=(a.milestones||[]).filter(m=>m.done);return n+(ms.length>0?14:21);},0)/activeAccts.length):0;
@@ -572,9 +585,9 @@ export default function AppDesktop(){
               <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:600,padding:"5px 12px",borderRadius:6,background:"#fff",color:T.black,width:"fit-content"}}>↑ {confidence} Confidence</span>
             </div>
             {[
-              {label:"Active GMV",value:fmtK(gmvActual),sub:`${pipelinePct}% of plan`},
+              {label:"GMV realized",value:fmtK(gmvActual),sub:`${pipelinePct}% of ${fmtK(gmvProj)} contracted`},
               {label:"Pipeline",value:coverage,sub:coverageHealthy?"Healthy":"Watch"},
-              {label:"Net Revenue",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),sub:netRev>=0?"Positive":"Underwater",col:netRev<0?T.red:undefined},
+              {label:"Net realized",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),sub:netRev>=0?`${fmt(feesEarned)} fees earned`:"Underwater",col:netRev<0?T.red:undefined},
             ].map((t,i)=>(
               <div key={i} style={{background:"#fff",border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,justifyContent:"space-between"}}>
                 <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>{t.label}</span>
@@ -791,6 +804,24 @@ export default function AppDesktop(){
             </div>;
           })()}
         </div>}
+
+        {/* FINANCE */}
+        {!showDetail&&nav==="finance"&&<FinancePage
+          activeAccts={activeAccts}
+          orgAccts={orgAccts}
+          gmvActual={gmvActual}
+          gmvProj={gmvProj}
+          feesEarned={feesEarned}
+          feesContracted={feesContracted}
+          feesMissed={feesMissed}
+          totalCosts={totalCosts}
+          netRev={netRev}
+          netRevContracted={netRevContracted}
+          historicalGmv={historicalGmv}
+          historicalFees={historicalFees}
+          allHistorical={allHistorical}
+          pipelinePct={pipelinePct}
+        />}
 
         {/* COST LEDGER */}
         {!showDetail&&nav==="costs"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
@@ -1750,6 +1781,237 @@ const CONNECTORS = [
     color:"#5865F2",
   },
 ];
+
+// ── FINANCE PAGE ──
+// Stripe/Vercel blend — white bg, Vercel blue (#0070F3) for charts, green for positive, red for gaps
+// Shows: contracted revenue, realized fees, gap analysis, per-account breakdown, historical performance
+
+const CHART_BLUE="#0070F3";
+const CHART_BLUE_SOFT="rgba(0,112,243,0.08)";
+
+function MiniBar({value,max,color}){
+  const pct=max>0?Math.min(100,Math.round(100*value/max)):0;
+  return <div style={{width:"100%",height:4,background:"#F3F4F6",borderRadius:2,overflow:"hidden"}}>
+    <div style={{height:"100%",width:pct+"%",background:color||CHART_BLUE,borderRadius:2,transition:"width .3s"}}/>
+  </div>;
+}
+
+function StatRow({label,value,sub,color,border}){
+  return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderTop:border?`1px solid #F3F4F6`:"none"}}>
+    <span style={{fontSize:13,color:S.inactiveText}}>{label}</span>
+    <div style={{textAlign:"right"}}>
+      <div style={{fontSize:14,fontWeight:600,color:color||T.ink}}>{value}</div>
+      {sub&&<div style={{fontSize:11.5,color:S.labelText,marginTop:1}}>{sub}</div>}
+    </div>
+  </div>;
+}
+
+function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesContracted,feesMissed,totalCosts,netRev,netRevContracted,historicalGmv,historicalFees,allHistorical,pipelinePct}){
+  const [view,setView]=useState("overview"); // overview | accounts | history
+
+  const maxGmv=Math.max(...activeAccts.map(a=>a.contract?.gmvProjected||0),1);
+
+  return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px",maxWidth:1100}}>
+
+    {/* Page header */}
+    <div style={{marginBottom:28}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Finances</div>
+      <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Revenue & contract performance</h1>
+      <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Contracted revenue, realized fees, gap analysis, and historical cycle performance.</p>
+    </div>
+
+    {/* Top KPI strip — Stripe style */}
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:1,border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",marginBottom:28,background:S.border}}>
+      {[
+        {label:"Contracted revenue",value:fmtK(feesContracted),sub:`From ${fmtK(gmvProj)} contracted GMV`,color:CHART_BLUE},
+        {label:"Fees realized",value:fmtK(feesEarned),sub:`${pipelinePct}% of contracted`,color:T.green},
+        {label:"Revenue gap",value:fmtK(feesMissed),sub:"Contracted not yet realized",color:feesMissed>0?T.yellow:T.green},
+        {label:"Net revenue",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),sub:`After ${fmt(totalCosts)} costs`,color:netRev>=0?T.ink:T.red},
+      ].map((t,i)=>(
+        <div key={i} style={{padding:"20px 24px",background:"#fff"}}>
+          <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>{t.label}</div>
+          <div style={{fontSize:26,fontWeight:700,letterSpacing:-1,color:t.color,marginBottom:4}}>{t.value}</div>
+          <div style={{fontSize:12,color:S.inactiveText}}>{t.sub}</div>
+        </div>
+      ))}
+    </div>
+
+    {/* View tabs */}
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${S.border}`,marginBottom:24}}>
+      {[["overview","Overview"],["accounts","By account"],["history","History"]].map(([id,lbl])=>(
+        <button key={id} onClick={()=>setView(id)} style={{padding:"8px 16px",border:"none",borderBottom:`2px solid ${view===id?CHART_BLUE:"transparent"}`,background:"transparent",color:view===id?CHART_BLUE:S.inactiveText,fontFamily:sans,fontSize:13,fontWeight:view===id?600:400,cursor:"pointer"}}>
+          {lbl}
+        </button>
+      ))}
+    </div>
+
+    {/* OVERVIEW */}
+    {view==="overview"&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:20}}>
+
+      {/* Revenue waterfall */}
+      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+        <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:16}}>Revenue waterfall</div>
+        {[
+          {label:"GMV projected",value:gmvProj,bar:true,color:CHART_BLUE,pct:null},
+          {label:"GMV realized",value:gmvActual,bar:true,color:T.green,pct:gmvProj?Math.round(100*gmvActual/gmvProj):0},
+          {label:"Fees contracted",value:feesContracted,bar:true,color:CHART_BLUE,pct:gmvProj?+(feesContracted/gmvProj*100).toFixed(1):0,indent:true},
+          {label:"Fees realized",value:feesEarned,bar:true,color:T.green,pct:feesContracted?Math.round(100*feesEarned/feesContracted):0,indent:true},
+          {label:"Running costs",value:totalCosts,bar:false,color:T.red,negative:true},
+          {label:"Net revenue",value:netRev,bar:false,color:netRev>=0?T.green:T.red,bold:true},
+        ].map((row,i)=>(
+          <div key={i} style={{paddingLeft:row.indent?16:0,marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <span style={{fontSize:12,color:row.bold?T.ink:S.inactiveText,fontWeight:row.bold?600:400}}>{row.label}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                {row.pct!==null&&<span style={{fontSize:11,color:S.labelText}}>{row.pct}%</span>}
+                <span style={{fontSize:13,fontWeight:600,color:row.color}}>{row.negative&&"-"}{fmtK(Math.abs(row.value))}</span>
+              </div>
+            </div>
+            {row.bar&&<MiniBar value={row.indent?row.value:row.value} max={row.indent?gmvProj:gmvProj} color={row.color}/>}
+          </div>
+        ))}
+      </div>
+
+      {/* Revenue mix by account */}
+      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+        <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:16}}>Active contract summary</div>
+        {activeAccts.filter(a=>a.contract?.gmvProjected>0).sort((a,b)=>(b.contract?.gmvProjected||0)-(a.contract?.gmvProjected||0)).map((a,i)=>{
+          const proj=a.contract?.gmvProjected||0;
+          const real=a.contract?.gmvActual||0;
+          const take=a.contract?.netTakePct||10;
+          const feesA=real*take/100;
+          const costs=sumCosts(a);
+          const pct=proj>0?Math.round(100*real/proj):0;
+          return <div key={a.id} style={{marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:22,height:22,borderRadius:5,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short}</div>
+                <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{a.account}</span>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:13,fontWeight:600,color:CHART_BLUE}}>{fmtK(feesA)}</div>
+                <div style={{fontSize:11,color:S.labelText}}>{pct}% of {fmtK(proj)}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:2,alignItems:"center"}}>
+              <MiniBar value={real} max={proj} color={pct>=80?T.green:pct>=50?CHART_BLUE:T.yellow}/>
+            </div>
+          </div>;
+        })}
+        {activeAccts.filter(a=>a.contract?.gmvProjected>0).length===0&&<div style={{fontSize:13,color:S.inactiveText,padding:"16px 0"}}>No active contracts with projections.</div>}
+      </div>
+
+      {/* Key metrics */}
+      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+        <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:4}}>Key metrics</div>
+        <div style={{fontSize:11,color:S.inactiveText,marginBottom:16}}>Across all active contracts</div>
+        <StatRow label="Average take rate" value={(activeAccts.filter(a=>a.contract).reduce((n,a)=>n+(a.contract.netTakePct||10),0)/Math.max(activeAccts.filter(a=>a.contract).length,1)).toFixed(1)+"%"} border={false}/>
+        <StatRow label="Accounts with contracts" value={activeAccts.filter(a=>a.contract).length+" of "+activeAccts.length} border={true}/>
+        <StatRow label="Open chargebacks" value={activeAccts.reduce((n,a)=>n+(a.chargebacks||[]).filter(c=>c.status==="Open").length,0)+" disputes"} color={activeAccts.reduce((n,a)=>n+(a.chargebacks||[]).filter(c=>c.status==="Open").length,0)>0?T.red:T.green} border={true}/>
+        <StatRow label="Historical GMV (completed cycles)" value={fmtK(historicalGmv)} sub={`${allHistorical.length} completed cycle${allHistorical.length!==1?"s":""}`} border={true}/>
+        <StatRow label="Historical fees earned" value={fmtK(historicalFees)} sub={historicalGmv>0?+(historicalFees/historicalGmv*100).toFixed(1)+"% blended take":"—"} border={true}/>
+      </div>
+
+      {/* Net revenue projected */}
+      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+        <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:4}}>Projected vs realized</div>
+        <div style={{fontSize:11,color:S.inactiveText,marginBottom:20}}>If all active contracts fully realize</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {[
+            {label:"Projected net",value:fmtK(netRevContracted),sub:"If fully realized",color:CHART_BLUE},
+            {label:"Realized net",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),sub:"Earned to date",color:netRev>=0?T.green:T.red},
+            {label:"Upside remaining",value:fmtK(Math.max(0,netRevContracted-netRev)),sub:"Still to come",color:T.yellow},
+            {label:"Cost ratio",value:feesEarned>0?Math.round(100*totalCosts/feesEarned)+"%" :"—",sub:"Costs / fees earned",color:totalCosts/feesEarned>0.3?T.red:T.green},
+          ].map((t,i)=>(
+            <div key={i} style={{padding:"14px",background:"#F9FAFB",borderRadius:8}}>
+              <div style={{fontSize:11,color:S.labelText,fontWeight:500,marginBottom:5}}>{t.label}</div>
+              <div style={{fontSize:20,fontWeight:700,color:t.color,letterSpacing:-.5}}>{t.value}</div>
+              <div style={{fontSize:11,color:S.labelText,marginTop:2}}>{t.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>}
+
+    {/* BY ACCOUNT */}
+    {view==="accounts"&&<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+        {["Account","GMV projected","GMV realized","% realized","Fees earned","Net"].map((h,i)=>(
+          <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>0?"right":"left"}}>{h}</div>
+        ))}
+      </div>
+      {activeAccts.filter(a=>a.contract).sort((a,b)=>(b.contract?.gmvActual||0)-(a.contract?.gmvActual||0)).map((a,i)=>{
+        const proj=a.contract?.gmvProjected||0;
+        const real=a.contract?.gmvActual||0;
+        const take=a.contract?.netTakePct||10;
+        const fees=real*take/100;
+        const costs=sumCosts(a);
+        const net=fees-costs;
+        const pct=proj>0?Math.round(100*real/proj):0;
+        return <div key={a.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:i?`1px solid ${S.border}`:"none",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:26,height:26,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short}</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{a.account}</div>
+              <div style={{fontSize:11,color:S.labelText}}>{take}% take · {a.contract?.paymentTerms||"—"}</div>
+            </div>
+          </div>
+          <div style={{fontSize:13,textAlign:"right",color:S.inactiveText}}>{fmtK(proj)}</div>
+          <div style={{fontSize:13,textAlign:"right",fontWeight:500,color:T.ink}}>{fmtK(real)}</div>
+          <div style={{textAlign:"right"}}>
+            <span style={{fontSize:12,fontWeight:600,color:pct>=80?T.green:pct>=50?CHART_BLUE:T.yellow}}>{pct}%</span>
+          </div>
+          <div style={{fontSize:13,textAlign:"right",fontWeight:600,color:CHART_BLUE}}>{fmtK(fees)}</div>
+          <div style={{fontSize:13,textAlign:"right",fontWeight:600,color:net>=0?T.green:T.red}}>{net<0?"-":""}{fmtK(Math.abs(net))}</div>
+        </div>;
+      })}
+      {/* Totals row */}
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:`2px solid ${S.border}`,background:"#FAFAFA"}}>
+        <div style={{fontSize:13,fontWeight:700,color:T.ink}}>Total</div>
+        <div style={{fontSize:13,textAlign:"right",fontWeight:700}}>{fmtK(gmvProj)}</div>
+        <div style={{fontSize:13,textAlign:"right",fontWeight:700}}>{fmtK(gmvActual)}</div>
+        <div style={{textAlign:"right"}}><span style={{fontSize:12,fontWeight:700,color:pipelinePct>=70?T.green:CHART_BLUE}}>{pipelinePct}%</span></div>
+        <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:CHART_BLUE}}>{fmtK(feesEarned)}</div>
+        <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:netRev>=0?T.green:T.red}}>{netRev<0?"-":""}{fmtK(Math.abs(netRev))}</div>
+      </div>
+    </div>}
+
+    {/* HISTORY */}
+    {view==="history"&&<>
+      {allHistorical.length===0&&<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,color:S.inactiveText}}>
+        <div style={{fontSize:14,fontWeight:500,color:T.ink,marginBottom:6}}>No completed cycles yet</div>
+        <div style={{fontSize:13}}>Historical data appears here once a contract cycle is completed and replaced by a renewal.</div>
+      </div>}
+      {allHistorical.length>0&&<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+          {["Cycle","Account","GMV realized","Take rate","Fees earned"].map((h,i)=>(
+            <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>1?"right":"left"}}>{h}</div>
+          ))}
+        </div>
+        {[...allHistorical].sort((a,b)=>new Date(b.start||0)-new Date(a.start||0)).map((c,i)=>{
+          const fees=(c.gmvActual||0)*(c.netTakePct||c.take||10)/100;
+          return <div key={c.id||i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:i?`1px solid ${S.border}`:"none",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{c.label||"Unnamed cycle"}</div>
+              <div style={{fontSize:11,color:S.labelText}}>{c.start||"—"}{c.end?` → ${c.end}`:""}</div>
+            </div>
+            <div style={{fontSize:13,color:S.inactiveText}}>{c.acct}</div>
+            <div style={{fontSize:13,textAlign:"right",fontWeight:500}}>{fmtK(c.gmvActual||0)}</div>
+            <div style={{fontSize:13,textAlign:"right",color:S.inactiveText}}>{c.netTakePct||c.take||10}%</div>
+            <div style={{fontSize:13,textAlign:"right",fontWeight:600,color:CHART_BLUE}}>{fmtK(fees)}</div>
+          </div>;
+        })}
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:`2px solid ${S.border}`,background:"#FAFAFA"}}>
+          <div style={{fontSize:13,fontWeight:700}}>Historical total</div>
+          <div/>
+          <div style={{fontSize:13,textAlign:"right",fontWeight:700}}>{fmtK(historicalGmv)}</div>
+          <div style={{fontSize:13,textAlign:"right",color:S.labelText}}>{historicalGmv>0?+(historicalFees/historicalGmv*100).toFixed(1)+"% avg":""}</div>
+          <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:CHART_BLUE}}>{fmtK(historicalFees)}</div>
+        </div>
+      </div>}
+    </>}
+  </div>;
+}
 
 function AgentPage({accounts=[]}){
   const [isMobile,setIsMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
