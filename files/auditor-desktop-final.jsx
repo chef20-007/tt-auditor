@@ -1951,11 +1951,114 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
   const scenarioFees=scenarioRevenue;
   const scenarioNet=scenarioFees-totalCosts;
 
-  // Monthly GMV chart data — from historical + current active
-  const monthlyData=[
-    ...allHistorical.map(c=>({label:c.start||"",v:(c.gmvActual||0)*(c.netTakePct||10)/100})),
-    {label:"Active",v:feesEarned},
-  ].filter(d=>d.v>0).slice(-8);
+  // ── CHART TIME RANGE ENGINE ──
+  const TIME_RANGES=[
+    {id:"1d",   label:"Daily",         days:1},
+    {id:"7d",   label:"Weekly",        days:7},
+    {id:"4w",   label:"Last 4 weeks",  days:28},
+    {id:"mtd",  label:"Month to date", days:null,mode:"mtd"},
+    {id:"1m",   label:"Monthly",       days:30},
+    {id:"qtd",  label:"Quarter to date",days:null,mode:"qtd"},
+    {id:"6m",   label:"Last 6 months", days:180},
+    {id:"ytd",  label:"Year to date",  days:null,mode:"ytd"},
+    {id:"all",  label:"All time",      days:null,mode:"all"},
+  ];
+  const [chartRange,setChartRange]=useState("all");
+  const [chartMetric,setChartMetric]=useState("fees"); // fees | gmv
+
+  // Build all cycle data points — distribute GMV linearly across each cycle period
+  const allCycleData=(()=>{
+    const allCycles=[
+      ...orgAccts.flatMap(a=>[
+        ...(a.cycles||[]).map(c=>({...c,acct:a.account,take:c.netTakePct||a.contract?.netTakePct||10})),
+        // Also treat the master contract as a data point if no cycles
+        ...((a.cycles||[]).length===0&&a.contract?[{
+          id:"master_"+a.id,label:a.account,
+          start:a.contract.start,end:a.contract.end||new Date().toISOString().slice(0,7),
+          gmvActual:a.contract.gmvActual||0,gmvProjected:a.contract.gmvProjected||0,
+          take:a.contract.netTakePct||10,acct:a.account,active:true,
+        }]:[])
+      ])
+    ].filter(c=>(c.gmvActual||c.gmvProjected||0)>0&&c.start);
+
+    // Parse YYYY-MM string to Date
+    function parseMonth(s){if(!s)return null;const [y,m]=s.split("-");return new Date(+y,+m-1,1);}
+
+    // Generate monthly data points from each cycle
+    const pts=[];
+    allCycles.forEach(c=>{
+      const start=parseMonth(c.start);
+      const endRaw=c.end?parseMonth(c.end):new Date();
+      if(!start||!endRaw) return;
+      const months=Math.max(1,Math.round((endRaw-start)/(1000*60*60*24*30)));
+      const gmvPerMonth=(c.gmvActual||c.gmvProjected||0)/months;
+      const feesPerMonth=gmvPerMonth*(c.take/100);
+      for(let i=0;i<months;i++){
+        const d=new Date(start);
+        d.setMonth(d.getMonth()+i);
+        pts.push({
+          date:d,
+          year:d.getFullYear(),
+          month:d.getMonth(),
+          key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`,
+          label:d.toLocaleDateString("en-US",{month:"short",year:"2-digit"}),
+          gmv:gmvPerMonth,
+          fees:feesPerMonth,
+          acct:c.acct,
+          active:c.active,
+        });
+      }
+    });
+    return pts.sort((a,b)=>a.date-b.date);
+  })();
+
+  // Filter and aggregate by time range
+  const chartData=(()=>{
+    const now=new Date();
+    const range=TIME_RANGES.find(r=>r.id===chartRange)||TIME_RANGES[TIME_RANGES.length-1];
+    let filtered=allCycleData;
+
+    if(range.mode==="mtd"){
+      filtered=allCycleData.filter(p=>p.year===now.getFullYear()&&p.month===now.getMonth());
+    } else if(range.mode==="qtd"){
+      const q=Math.floor(now.getMonth()/3);
+      filtered=allCycleData.filter(p=>p.year===now.getFullYear()&&Math.floor(p.month/3)===q);
+    } else if(range.mode==="ytd"){
+      filtered=allCycleData.filter(p=>p.year===now.getFullYear());
+    } else if(range.mode==="all"){
+      filtered=allCycleData;
+    } else if(range.days){
+      const cutoff=new Date(now-range.days*24*60*60*1000);
+      filtered=allCycleData.filter(p=>p.date>=cutoff);
+    }
+
+    // Aggregate by month key
+    const byKey={};
+    filtered.forEach(p=>{
+      if(!byKey[p.key]) byKey[p.key]={label:p.label,gmv:0,fees:0};
+      byKey[p.key].gmv+=p.gmv;
+      byKey[p.key].fees+=p.fees;
+    });
+    const agg=Object.values(byKey).map(d=>({
+      label:d.label,
+      v:chartMetric==="fees"?d.fees:d.gmv,
+    }));
+    // For very short ranges with no data, show all time
+    return agg.length>0?agg:allCycleData.slice(-1).map(d=>({label:d.label,v:chartMetric==="fees"?d.fees:d.gmv}));
+  })();
+
+  const chartTotal=chartData.reduce((n,d)=>n+d.v,0);
+  const prevChartTotal=(()=>{
+    // Compare to same-length prior period
+    if(chartData.length===0) return 0;
+    const range=TIME_RANGES.find(r=>r.id===chartRange);
+    if(!range?.days) return historicalFees; // for MTD/QTD/YTD compare to all historical
+    const now=new Date();
+    const cutoff=new Date(now-range.days*24*60*60*1000);
+    const prevCutoff=new Date(now-range.days*2*24*60*60*1000);
+    return allCycleData.filter(p=>p.date>=prevCutoff&&p.date<cutoff).reduce((n,p)=>n+(chartMetric==="fees"?p.fees:p.gmv),0);
+  })();
+  const chartChange=prevChartTotal>0?+(100*(chartTotal-prevChartTotal)/prevChartTotal).toFixed(1):null;
 
   const avgTake=activeAccts.filter(a=>a.contract).length>0
     ?activeAccts.filter(a=>a.contract).reduce((n,a)=>n+(a.contract?.netTakePct||10),0)/activeAccts.filter(a=>a.contract).length
@@ -1970,7 +2073,7 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
       <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Contracted revenue, realized fees, gap analysis, and scenario modeling.</p>
     </div>
 
-    {/* KPI strip — Vercel analytics style: all black numbers, change tags only color */}
+    {/* KPI strip */}
     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",borderRadius:10,border:`1px solid ${S.border}`,overflow:"hidden",background:S.border,gap:1,marginBottom:28}}>
       {[
         {label:"Contracted revenue",value:fmtK(feesContracted),change:null,sub:`from ${fmtK(gmvProj)} GMV`},
@@ -1990,7 +2093,7 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
     </div>
 
     {/* View tabs */}
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${S.border}`,marginBottom:24}}>
+    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${S.border}`,marginBottom:24,overflowX:"auto"}}>
       {[["overview","Overview"],["accounts","By account"],["history","History"],["scenario","Scenario builder"]].map(([id,lbl])=>(
         <button key={id} onClick={()=>setView(id)} style={{padding:"8px 16px",border:"none",borderBottom:`2px solid ${view===id?CHART_BLUE:"transparent"}`,background:"transparent",color:view===id?CHART_BLUE:S.inactiveText,fontFamily:sans,fontSize:13,fontWeight:view===id?600:400,cursor:"pointer",whiteSpace:"nowrap"}}>
           {lbl}
@@ -2001,20 +2104,53 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
     {/* OVERVIEW */}
     {view==="overview"&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:20}}>
 
-      {/* Chart — fee earnings over time */}
+      {/* Chart with full time range selector */}
       <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+        {/* Chart header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
           <div>
-            <div style={{fontSize:11,fontWeight:500,color:S.labelText,marginBottom:4}}>Fee earnings trend</div>
-            <div style={{fontSize:22,fontWeight:700,color:T.ink,letterSpacing:-1}}>{fmtK(feesEarned+historicalFees)}</div>
-            <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Lifetime fees across all cycles</div>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+              <div style={{fontSize:28,fontWeight:700,color:T.ink,letterSpacing:-1}}>{fmtK(chartTotal)}</div>
+              {chartChange!==null&&<ChangeTag value={chartChange}/>}
+            </div>
+            <div style={{fontSize:12,color:S.labelText}}>
+              {chartMetric==="fees"?"Fee earnings":"GMV"} · {TIME_RANGES.find(r=>r.id===chartRange)?.label}
+            </div>
           </div>
-          <ChangeTag value={historicalFees>0?+(100*(feesEarned-historicalFees/Math.max(allHistorical.length,1))/(historicalFees/Math.max(allHistorical.length,1))).toFixed(1):null}/>
+          {/* Metric toggle */}
+          <div style={{display:"flex",gap:1,background:"#F3F4F6",borderRadius:6,padding:2}}>
+            {[["fees","Fees"],["gmv","GMV"]].map(([id,lbl])=>(
+              <button key={id} onClick={()=>setChartMetric(id)} style={{padding:"4px 10px",borderRadius:5,border:"none",background:chartMetric===id?"#fff":"transparent",color:chartMetric===id?T.ink:S.inactiveText,fontSize:12,fontWeight:chartMetric===id?600:400,cursor:"pointer",fontFamily:sans,boxShadow:chartMetric===id?"0 1px 2px rgba(0,0,0,.08)":"none"}}>
+                {lbl}
+              </button>
+            ))}
+          </div>
         </div>
-        <AreaChart data={monthlyData} color={CHART_BLUE}/>
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:8,fontSize:11,color:S.labelText}}>
-          {monthlyData.slice(0,1).map(d=><span key="s">{d.label||"Earliest"}</span>)}
-          <span>Current</span>
+
+        {/* Chart */}
+        <div style={{marginBottom:12}}>
+          <AreaChart data={chartData} height={140} color={CHART_BLUE}/>
+        </div>
+
+        {/* X-axis labels */}
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:16,fontSize:11,color:S.labelText}}>
+          <span>{chartData[0]?.label||"—"}</span>
+          {chartData.length>2&&<span>{chartData[Math.floor(chartData.length/2)]?.label}</span>}
+          <span>{chartData[chartData.length-1]?.label||"Now"}</span>
+        </div>
+
+        {/* Time range selector — all 9 options */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+          {TIME_RANGES.map(r=>(
+            <button key={r.id} onClick={()=>setChartRange(r.id)} style={{
+              padding:"4px 10px",borderRadius:5,border:`1px solid ${chartRange===r.id?CHART_BLUE:S.border}`,
+              background:chartRange===r.id?CHART_BLUE_SOFT:"transparent",
+              color:chartRange===r.id?CHART_BLUE:S.inactiveText,
+              fontSize:11.5,fontWeight:chartRange===r.id?600:400,cursor:"pointer",fontFamily:sans,
+            }}>
+              {r.label}
+            </button>
+          ))}
         </div>
       </div>
 
