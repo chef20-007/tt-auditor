@@ -124,7 +124,7 @@ const SEED_ACCTS=[
     contractCycle:2,
     cycles:[
       {id:"cy1",label:"Cage Titans — Year 1",start:"Jan 2025",end:"Dec 2025",products:["Primary ticketing"],events:["CT 59","CT 60","CT 61","CT 62","CT 63"],note:"Initial contract. Ticketing only.",active:false,gmvActual:180000,gmvProjected:150000,netTakePct:7,paymentTerms:"Net 30"},
-      {id:"cy2",label:"Cage Titans — Year 2",start:"Jan 2026",end:"Dec 2026",products:["Primary ticketing","Sponsor Portal","Moments (collectibles)"],events:["CT 64 onward"],note:"Expanded: Sponsor Portal + Moments added.",active:true},
+      {id:"cy2",label:"Cage Titans — Year 2",start:"Jan 2026",end:"Dec 2026",products:["Primary ticketing","Sponsor Portal","Moments (collectibles)"],events:["CT 64 onward"],note:"Expanded.",active:true,gmvActual:422116,gmvProjected:450000,netTakePct:7,paymentTerms:"Net 30"},
     ],
     chargebacks:[],features:[
       {id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"All CT events"},
@@ -154,7 +154,7 @@ const SEED_ACCTS=[
     tier:"active",health:"green",owner:"Elijah",
     value:"$92,753 GMV · 1 event",
     products:["Primary ticketing"],eventType:"Professional wrestling",sponsorMode:"No sponsor",
-    contractCycle:1,cycles:[{id:"cy1",label:"WWE NXT Plymouth",start:"Dec 2025",end:"Dec 2025",products:["Primary ticketing"],events:["WWE NXT Plymouth"],note:"$92K gross, 123% sell-through, 1,431 fan profiles built from zero.",active:false}],
+    contractCycle:1,cycles:[{id:"cy1",label:"WWE NXT Plymouth",start:"Nov 2025",end:"Dec 2025",products:["Primary ticketing"],events:["WWE NXT Plymouth"],note:"$92K gross, 123% sell-through.",active:false,gmvActual:92753,gmvProjected:75000,netTakePct:6,paymentTerms:"Net 14"}],
     chargebacks:[],features:[{id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"123% sell-through achieved."}],
     contract:{start:"Nov 2025",end:"Dec 2025",renewal:"TBD",paymentTerms:"Net 14",platformFeePct:6,kickbackPct:0,kickbackTo:"",netTakePct:6,gmvProjected:75000,gmvActual:92753,liabilityCap:100000,slaTarget:99.9,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
     costs:[],
@@ -237,7 +237,7 @@ const SEED_ACCTS=[
     tier:"cold",health:"red",owner:"Elijah",
     value:"$44,550 GMV · 1 event",
     products:["Primary ticketing"],eventType:"Combat sports",sponsorMode:"No sponsor",
-    contractCycle:1,cycles:[],chargebacks:[],features:[],
+    contractCycle:1,cycles:[{id:"cy1",label:"CES Boxing — Oct 2025",start:"Oct 2025",end:"Nov 2025",products:["Primary ticketing"],active:false,gmvActual:44550,gmvProjected:40000,netTakePct:7,paymentTerms:"Net 14"}],chargebacks:[],features:[],
     contract:{start:"Oct 2025",end:"Nov 2025",renewal:"TBD",paymentTerms:"Net 14",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:40000,gmvActual:44550,liabilityCap:50000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
     costs:[],kpis:{daysSinceContact:90,slaActual:99.8,sentiment:"Cold",chargebacks:0},
     milestones:[{id:"m1",type:"renewal",date:"2026-07-01",title:"CES Boxing Year 2 outreach",done:false}],
@@ -341,7 +341,7 @@ const SEED_ACCTS=[
     id:"easy991",orgId:"3tree",account:"Easy 99.1",short:"E9",logo:"#0EA5E9",
     tier:"watch",health:"yellow",owner:"Carter",value:"$51,890 GMV · 4 events",
     products:["Primary ticketing"],eventType:"Radio/media events",sponsorMode:"They brought the sponsor",
-    contractCycle:1,cycles:[],chargebacks:[],
+    contractCycle:1,cycles:[{id:"cy1",label:"Easy 99.1 — 2026 season",start:"Jan 2026",end:"Jun 2026",products:["Primary ticketing"],active:false,gmvActual:51890,gmvProjected:60000,netTakePct:7,paymentTerms:"Net 30"}],chargebacks:[],
     features:[{id:"f1",name:"Primary ticketing",status:"Shipped",scope:"contract",note:"4 events completed."}],
     contract:{start:"Jan 2026",end:"Jun 2026",renewal:"TBD",paymentTerms:"Net 30",platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,gmvProjected:60000,gmvActual:51890,liabilityCap:75000,slaTarget:99.5,dataRights:"Fan profiles retained by Ticket Tree",autoRenew:false,terminationNotice:"30 days"},
     costs:[],kpis:{daysSinceContact:38,slaActual:99.6,sentiment:"Contained",chargebacks:0},
@@ -1983,7 +1983,24 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
     ].filter(c=>(c.gmvActual||c.gmvProjected||0)>0&&c.start);
 
     // Parse YYYY-MM string to Date
-    function parseMonth(s){if(!s)return null;const [y,m]=s.split("-");return new Date(+y,+m-1,1);}
+    // Parse both "YYYY-MM" and "Jan 2026" / "May 2026" formats
+    const MONTHS={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    function parseMonth(s){
+      if(!s) return null;
+      s=s.trim();
+      // YYYY-MM format
+      if(/^\d{4}-\d{2}$/.test(s)){const[y,m]=s.split("-");return new Date(+y,+m-1,1);}
+      // "Jan 2026" or "January 2026" format
+      const parts=s.split(/\s+/);
+      if(parts.length===2){
+        const mIdx=MONTHS[parts[0].slice(0,3).toLowerCase()];
+        const yr=+parts[1];
+        if(mIdx!==undefined&&yr>2000) return new Date(yr,mIdx,1);
+      }
+      // Try Date parse as fallback
+      const d=new Date(s);
+      return isNaN(d)?null:d;
+    }
 
     // Generate monthly data points from each cycle
     const pts=[];
