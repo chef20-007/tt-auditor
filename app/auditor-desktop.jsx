@@ -446,6 +446,7 @@ export default function AppDesktop(){
   const [detailTab,setDetailTab]=useState(()=>{try{return sessionStorage.getItem('tt_tab')||'overview';}catch{return'overview';}});
   const [editMode,setEditMode]=useState(false);
   const [loaded,setLoaded]=useState(false);
+  const [wizardOpen,setWizardOpen]=useState(false);
   const [archiveTarget,setArchiveTarget]=useState(null);
 
   useEffect(()=>{
@@ -537,7 +538,7 @@ export default function AppDesktop(){
       {/* MAIN CONTENT */}
       <div style={{flex:1,overflow:"auto",background:"#FFFFFF",minWidth:0,paddingBottom:isMobile?56:0}}>
 
-        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
+        {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
         {/* DASHBOARD */}
         {!showDetail&&nav==="dashboard"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
@@ -839,6 +840,14 @@ export default function AppDesktop(){
         </div>
       )}
 
+      {/* CONTRACT WIZARD */}
+      {wizardOpen&&selectedAcct&&<ContractWizard
+        a={selectedAcct}
+        lastCycle={(selectedAcct.cycles||[]).find(c=>c.active)||null}
+        onSave={async updated=>{await saveAcct(updated);}}
+        onCancel={()=>setWizardOpen(false)}
+      />}
+
       {/* EDIT / NEW ACCOUNT MODAL */}
       {editMode&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={()=>setEditMode(false)}>
@@ -965,7 +974,7 @@ function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
   </div>;
 }
 
-function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
+function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDelete, onSave}){
   const [mobile,setMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
   useEffect(()=>{const fn=()=>setMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [costs,setCosts]=useState(a.costs||[]);
@@ -1037,7 +1046,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
               </div>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <button onClick={onEdit} style={{...VBtn.secondary,fontSize:12}}>Edit account</button>
+              <button onClick={onNewContract} style={{...VBtn.primary,fontSize:12}}>+ Contract</button>
+        <button onClick={onEdit} style={{...VBtn.secondary,fontSize:12}}>Edit</button>
               <button onClick={onDelete} style={{...VBtn.danger,fontSize:12}}>Delete</button>
             </div>
           </div>
@@ -1156,7 +1166,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
             <CollapsibleSection title="Contract cycles" defaultOpen={true}
               badge={cycles.length||null}
               onAdd={()=>addContractCycle({id:uid(),label:"New cycle "+new Date().getFullYear(),start:"",end:"",products:a.products||[],events:[],note:"",active:true,gmvActual:0,gmvProjected:0,netTakePct:eco.netTakePct||10})}
-              addLabel="+ New cycle">
+              addLabel="+ New cycle" onHeaderClick={onNewContract}>
               <ContractCycles cycles={cycles} currentProducts={a.products||[]} onAdd={addContractCycle} onUpdate={updateContractCycle} onDelete={delContractCycle}/>
               <button onClick={()=>onTabChange("contract")} style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:8,fontSize:12,color:T.purple,background:"none",border:`1px solid ${T.purpleBar}`,borderRadius:6,padding:"5px 12px",cursor:"pointer",fontFamily:sans,fontWeight:500}}>↑ Import contract terms →</button>
             </CollapsibleSection>
@@ -1238,6 +1248,10 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onDelete, onSave}){
 
           {/* CONTRACT */}
           {tab==="contract"&&<>
+            <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+              <button onClick={onNewContract} style={{...VBtn.primary,fontSize:13}}>+ New contract / Renewal</button>
+              <span style={{fontSize:12,color:S.inactiveText}}>or import terms below</span>
+            </div>
             <ContractImport onImport={parsed=>{const n={...eco,...parsed};setEco(n);save({contract:n});setToast("Imported ✓");setTimeout(()=>setToast(null),2000);}}/>
 
             {/* Per-cycle contract cards */}
@@ -1850,72 +1864,317 @@ function NewOrg({onCancel,onSave}){
   </>;
 }
 
+// ── CONTRACT WIZARD ──
+// 4-step flow for new contracts, renewals, and amendments
+// Step 1: Event type  Step 2: Economics  Step 3: Terms  Step 4: Review
+
+const CW_STEPS = ["Event","Economics","Terms","Review"];
+
+function ContractWizard({a, lastCycle, onSave, onCancel}){
+  const isRenewal = !!lastCycle;
+  const [step, setStep] = useState(0);
+  const [eventType, setEventType] = useState(isRenewal?"renewal":"new");
+  const today = new Date().toISOString().slice(0,7); // YYYY-MM
+
+  // Pre-fill from last cycle if renewal
+  const [econ, setEcon] = useState({
+    gmvProjected: lastCycle?.gmvProjected || a.contract?.gmvProjected || 0,
+    netTakePct:   lastCycle?.netTakePct   || a.contract?.netTakePct   || 10,
+    kickbackPct:  lastCycle?.kickbackPct  || a.contract?.kickbackPct  || 0,
+    kickbackTo:   lastCycle?.kickbackTo   || a.contract?.kickbackTo   || "",
+    platformFeePct: lastCycle?.platformFeePct || a.contract?.platformFeePct || 10,
+    processingRate: a.contract?.processingRate || 2.9,
+  });
+
+  const [terms, setTerms] = useState({
+    label:             isRenewal ? `${a.account} — Year ${(a.contractCycle||1)+1}` : `${a.account} — Contract 1`,
+    start:             today,
+    end:               "",
+    paymentTerms:      lastCycle?.paymentTerms  || a.contract?.paymentTerms  || "Net 30",
+    liabilityCap:      lastCycle?.liabilityCap  || a.contract?.liabilityCap  || 0,
+    slaTarget:         lastCycle?.slaTarget      || a.contract?.slaTarget      || 99.9,
+    dataRights:        a.contract?.dataRights || "Fan profiles retained by Ticket Tree",
+    terminationNotice: a.contract?.terminationNotice || "30 days",
+    autoRenew:         false,
+    exclusive:         false,
+    products:          [...(a.products||[])],
+    notes:             isRenewal ? `Renewal from previous cycle.` : "",
+  });
+
+  const upE = (k,v) => setEcon(p=>({...p,[k]:v}));
+  const upT = (k,v) => setTerms(p=>({...p,[k]:v}));
+
+  const fees = (econ.gmvProjected||0) * (econ.netTakePct||10) / 100;
+  const deviations = [];
+  if((econ.netTakePct||10) < 10) deviations.push(`Take rate ${econ.netTakePct}% is below your 10% standard`);
+  if((terms.liabilityCap||0) === 0) deviations.push("No liability cap — uncapped exposure");
+  if(!terms.end) deviations.push("No end date set");
+
+  function handleConfirm(){
+    const newCycle = {
+      id: uid(),
+      label: terms.label,
+      start: terms.start,
+      end: terms.end,
+      products: terms.products,
+      gmvActual: 0,
+      gmvProjected: econ.gmvProjected,
+      netTakePct: econ.netTakePct,
+      kickbackPct: econ.kickbackPct,
+      kickbackTo: econ.kickbackTo,
+      platformFeePct: econ.platformFeePct,
+      paymentTerms: terms.paymentTerms,
+      liabilityCap: terms.liabilityCap,
+      slaTarget: terms.slaTarget,
+      dataRights: terms.dataRights,
+      terminationNotice: terms.terminationNotice,
+      autoRenew: terms.autoRenew,
+      exclusive: terms.exclusive,
+      notes: terms.notes,
+      active: true,
+      type: eventType,
+    };
+
+    // Auto-generate milestones
+    const newMilestones = [...(a.milestones||[])];
+    if(terms.end){
+      newMilestones.push({id:uid(),type:"event_date",date:terms.end,title:`${terms.label} — end date`,note:"Contract period ends.",done:false});
+    }
+    if(terms.end){
+      // Payment due 30 days after end
+      const payDue = new Date(terms.end);
+      payDue.setMonth(payDue.getMonth()+1);
+      newMilestones.push({id:uid(),type:"payment",date:payDue.toISOString().slice(0,10),title:`Payment due — ${terms.label}`,note:terms.paymentTerms,done:false});
+    }
+    // Renewal window — 2 months before end
+    if(terms.end){
+      const renewWin = new Date(terms.end);
+      renewWin.setMonth(renewWin.getMonth()-2);
+      newMilestones.push({id:uid(),type:"renewal",date:renewWin.toISOString().slice(0,10),title:`Renewal conversation — ${terms.label}`,note:"Start renewal outreach 2 months before contract end.",done:false});
+    }
+
+    const updatedCycles = [...(a.cycles||[]).map(c=>({...c,active:false})), newCycle];
+    onSave({
+      ...a,
+      tier: "active",
+      health: "green",
+      contractCycle: (a.contractCycle||0)+1,
+      cycles: updatedCycles,
+      milestones: newMilestones,
+      contract: {
+        ...a.contract,
+        ...econ,
+        ...terms,
+        gmvActual: 0,
+        gmvProjected: econ.gmvProjected,
+        start: terms.start,
+        end: terms.end,
+      },
+    });
+    onCancel();
+  }
+
+  const canNext = [
+    true, // step 0 always valid
+    econ.gmvProjected > 0 && econ.netTakePct > 0,
+    !!terms.start && !!terms.label,
+    true,
+  ];
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300}} onClick={onCancel}>
+      <div style={{width:560,maxHeight:"90vh",overflow:"auto",background:"#fff",borderRadius:12,boxShadow:"0 20px 60px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{padding:"20px 24px",borderBottom:`1px solid ${S.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:3}}>
+              {isRenewal?"Contract renewal":"New contract"} · {a.account}
+            </div>
+            <div style={{fontSize:16,fontWeight:700,color:T.ink}}>{CW_STEPS[step]}</div>
+          </div>
+          <button onClick={onCancel} style={{background:"none",border:`1px solid ${S.border}`,borderRadius:6,width:28,height:28,cursor:"pointer",fontSize:16,color:S.inactiveText,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
+        </div>
+
+        {/* Step progress */}
+        <div style={{display:"flex",padding:"0 24px",borderBottom:`1px solid ${S.border}`}}>
+          {CW_STEPS.map((s,i)=>(
+            <div key={i} style={{flex:1,padding:"10px 0",fontSize:11.5,fontWeight:i===step?600:400,color:i===step?T.purple:i<step?T.green:S.labelText,borderBottom:`2px solid ${i===step?T.purple:i<step?T.green:"transparent"}`,textAlign:"center",cursor:i<step?"pointer":"default"}} onClick={()=>i<step&&setStep(i)}>
+              {i<step?"✓ ":""}{s}
+            </div>
+          ))}
+        </div>
+
+        {/* Step content */}
+        <div style={{padding:"24px"}}>
+
+          {/* STEP 1 — Event type */}
+          {step===0&&<>
+            <div style={{fontSize:13,color:S.inactiveText,marginBottom:20,lineHeight:1.6}}>What kind of contract event is this? This determines what gets pre-filled and what milestones get created.</div>
+            {[
+              {id:"new",      label:"New contract",  desc:"First engagement with this account. Starts fresh."},
+              {id:"renewal",  label:"Renewal",       desc:"Same client, new cycle. Pre-fills from last contract."},
+              {id:"amendment",label:"Amendment",     desc:"Mid-cycle scope or terms change. Adds to existing cycle."},
+            ].map(opt=>(
+              <div key={opt.id} onClick={()=>setEventType(opt.id)} style={{border:`1px solid ${eventType===opt.id?T.purple:S.border}`,borderRadius:8,padding:"14px 16px",marginBottom:10,cursor:"pointer",background:eventType===opt.id?T.purpleSoft:"#fff"}}>
+                <div style={{fontSize:13,fontWeight:600,color:eventType===opt.id?T.purple:T.ink,marginBottom:3}}>{opt.label}</div>
+                <div style={{fontSize:12,color:S.inactiveText,lineHeight:1.45}}>{opt.desc}</div>
+              </div>
+            ))}
+            {isRenewal&&<div style={{marginTop:12,padding:"10px 14px",background:"#F0FDF4",border:`1px solid ${T.green}`,borderRadius:7,fontSize:12,color:T.green}}>
+              Pre-filling from: <b>{lastCycle.label}</b> ({lastCycle.netTakePct}% take, {fmtK(lastCycle.gmvProjected)} projected)
+            </div>}
+          </>}
+
+          {/* STEP 2 — Economics */}
+          {step===1&&<>
+            <div style={{fontSize:13,color:S.inactiveText,marginBottom:20,lineHeight:1.6}}>Set the financial terms for this contract cycle. These feed directly into your dashboard GMV and fee calculations.</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              <div>
+                <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>GMV projected ($)</label>
+                <input type="number" value={econ.gmvProjected||""} onChange={e=>upE("gmvProjected",+e.target.value)} placeholder="e.g. 500000" style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Platform fee %</label>
+                <input type="number" value={econ.platformFeePct||""} onChange={e=>{upE("platformFeePct",+e.target.value);upE("netTakePct",+((+e.target.value)-(econ.kickbackPct||0)).toFixed(2));}} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Kickback % (if any)</label>
+                <input type="number" value={econ.kickbackPct||""} onChange={e=>{upE("kickbackPct",+e.target.value);upE("netTakePct",+((econ.platformFeePct||0)-(+e.target.value)).toFixed(2));}} placeholder="0" style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Net take % (auto)</label>
+                <input type="number" value={econ.netTakePct||""} onChange={e=>upE("netTakePct",+e.target.value)} style={{width:"100%",padding:"9px 12px",border:`2px solid ${T.purple}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box",fontWeight:600}}/>
+              </div>
+            </div>
+            {econ.gmvProjected>0&&<div style={{padding:"14px 16px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8}}>
+              <div style={{fontSize:12,color:S.inactiveText,marginBottom:4}}>Projected fees at {econ.netTakePct}% net take</div>
+              <div style={{fontSize:24,fontWeight:700,color:T.ink,letterSpacing:-1}}>{fmt(fees)}</div>
+              {econ.kickbackPct>0&&<div style={{fontSize:12,color:S.inactiveText,marginTop:4}}>Platform fee {fmt((econ.gmvProjected||0)*(econ.platformFeePct||0)/100)} − kickback {fmt((econ.gmvProjected||0)*(econ.kickbackPct||0)/100)} = net {fmt(fees)}</div>}
+            </div>}
+            {deviations.filter(d=>d.includes("rate")||d.includes("cap")||d.includes("Take")).length>0&&<div style={{marginTop:12,padding:"10px 14px",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:7}}>
+              {deviations.filter(d=>d.includes("rate")||d.includes("Take")).map((d,i)=><div key={i} style={{fontSize:12,color:"#92400E"}}>⚠ {d}</div>)}
+            </div>}
+          </>}
+
+          {/* STEP 3 — Terms */}
+          {step===2&&<>
+            <div style={{fontSize:13,color:S.inactiveText,marginBottom:20,lineHeight:1.6}}>Set the contract terms. These feed into your risk flags and compliance tracking.</div>
+            <div style={{marginBottom:12}}>
+              <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Cycle label</label>
+              <input value={terms.label} onChange={e=>upT("label",e.target.value)} placeholder="e.g. Cage Titans — Year 2" style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Start</label><input type="month" value={terms.start} onChange={e=>upT("start",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>End</label><input type="month" value={terms.end} onChange={e=>upT("end",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Payment terms</label><input value={terms.paymentTerms} onChange={e=>upT("paymentTerms",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Liability cap ($)</label><input type="number" value={terms.liabilityCap||""} onChange={e=>upT("liabilityCap",+e.target.value)} placeholder="0 = uncapped" style={{width:"100%",padding:"9px 12px",border:`1px solid ${!terms.liabilityCap?T.red:S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>SLA target %</label><input type="number" value={terms.slaTarget} onChange={e=>upT("slaTarget",+e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Termination notice</label><input value={terms.terminationNotice} onChange={e=>upT("terminationNotice",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+            </div>
+            <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Data rights</label><input value={terms.dataRights} onChange={e=>upT("dataRights",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box",marginBottom:12}}/></div>
+            <div style={{display:"flex",gap:10,marginBottom:12}}>
+              {[["Auto-renew","autoRenew"],["Exclusivity","exclusive"]].map(([l,k])=>(
+                <div key={k} onClick={()=>upT(k,!terms[k])} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"space-between",border:`1px solid ${terms[k]?T.purple:S.border}`,borderRadius:7,padding:"10px 14px",cursor:"pointer",background:terms[k]?T.purpleSoft:"#fff"}}>
+                  <span style={{fontSize:13,fontWeight:500,color:terms[k]?T.purple:T.ink}}>{l}</span>
+                  <div style={{width:36,height:20,borderRadius:10,background:terms[k]?T.purple:"#D1D5DB",padding:2,display:"flex",alignItems:"center",transition:"background .2s"}}><div style={{width:16,height:16,borderRadius:"50%",background:"#fff",transform:terms[k]?"translateX(16px)":"translateX(0)",transition:"transform .2s"}}/></div>
+                </div>
+              ))}
+            </div>
+            <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Notes (optional)</label><textarea value={terms.notes} onChange={e=>upT("notes",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:13,fontFamily:sans,outline:"none",resize:"none",minHeight:60,boxSizing:"border-box"}}/></div>
+            {deviations.length>0&&<div style={{marginTop:12,padding:"12px 14px",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:7}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#92400E",marginBottom:4}}>Non-standard terms flagged</div>
+              {deviations.map((d,i)=><div key={i} style={{fontSize:12,color:"#92400E"}}>⚠ {d}</div>)}
+            </div>}
+          </>}
+
+          {/* STEP 4 — Review */}
+          {step===3&&<>
+            <div style={{fontSize:13,color:S.inactiveText,marginBottom:16,lineHeight:1.6}}>Review before creating. This will add a new cycle, archive the current active cycle, and auto-generate milestones.</div>
+            <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginBottom:16}}>
+              {[
+                ["Cycle",terms.label],
+                ["Type",eventType==="new"?"New contract":eventType==="renewal"?"Renewal":"Amendment"],
+                ["Period",`${terms.start||"—"} → ${terms.end||"—"}`],
+                ["GMV projected",fmtK(econ.gmvProjected)],
+                ["Net take",econ.netTakePct+"%"],
+                ["Projected fees",fmt(fees)],
+                ["Payment",terms.paymentTerms],
+                ["Liability cap",terms.liabilityCap?fmt(terms.liabilityCap):"⚠ Uncapped"],
+                ["SLA",terms.slaTarget+"%"],
+                ["Data rights",terms.dataRights||"—"],
+              ].map(([k,v],i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
+                  <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
+                  <span style={{fontSize:13,fontWeight:500,color:String(v).startsWith("⚠")?T.red:T.ink}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{padding:"12px 14px",background:"#F0FDF4",border:`1px solid ${T.green}`,borderRadius:7,marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:600,color:T.green,marginBottom:4}}>Auto-generated milestones</div>
+              {terms.end&&<div style={{fontSize:12,color:T.green}}>· Contract end date · Payment due · Renewal conversation window</div>}
+              {!terms.end&&<div style={{fontSize:12,color:T.yellow}}>⚠ Set an end date to generate payment and renewal milestones</div>}
+            </div>
+            {deviations.length>0&&<div style={{padding:"10px 14px",background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:7,marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:600,color:"#92400E",marginBottom:4}}>Flagged before you confirm</div>
+              {deviations.map((d,i)=><div key={i} style={{fontSize:12,color:"#92400E"}}>⚠ {d}</div>)}
+            </div>}
+          </>}
+        </div>
+
+        {/* Footer nav */}
+        <div style={{padding:"16px 24px",borderTop:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <button onClick={()=>step>0?setStep(step-1):onCancel()} style={{...VBtn.secondary,fontSize:13}}>{step===0?"Cancel":"← Back"}</button>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            {CW_STEPS.map((_,i)=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:i===step?T.purple:i<step?T.green:"#D1D5DB"}}/>)}
+          </div>
+          {step<3
+            ?<button disabled={!canNext[step]} onClick={()=>setStep(step+1)} style={{...VBtn.primary,fontSize:13,opacity:canNext[step]?1:.4}}>Next →</button>
+            :<button onClick={handleConfirm} style={{...VBtn.primary,fontSize:13,background:T.green}}>Create contract ✓</button>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ACCOUNT FORM — identity fields only ──
+// Contract terms handled by ContractWizard (+ Contract button)
 function AccountForm({orgId,existing,onCancel,onSave}){
-  const blank={id:uid(),orgId,account:"",short:"",logo:"#6C5FE0",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:1,milestones:[],comms:"",summary:"",signal:"",shift:"",impact:{pct:"",dir:"neg",label:"",withAction:""},fault:{verdict:"unclear",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:{start:"",end:"",renewal:"",paymentTerms:"Net 30",platformFeePct:10,kickbackPct:0,kickbackTo:"",netTakePct:10,processingPassThru:true,processingRate:2.9,gmvProjected:0,gmvActual:0,liabilityCap:0,slaTarget:99.9,exclusive:false,dataRights:"",autoRenew:false,terminationNotice:"30 days",auditRights:false,ipOwnership:"",revenueShareOnUpsells:false,whiteLabel:false,notes:""}};
-  const [f,setF]=useState(existing||blank);const [hasContract,setHasContract]=useState(!!existing?.contract);const [scanning,setScanning]=useState(false);
-  const up=(k,v)=>setF(p=>({...p,[k]:v}));const upC=(k,v)=>setF(p=>({...p,contract:{...p.contract,[k]:v}}));
+  const blank={id:uid(),orgId,account:"",short:"",logo:"#6C5FE0",tier:"active",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:0,milestones:[],cycles:[],chargebacks:[],features:[],comms:"",summary:"",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:null};
+  const [f,setF]=useState(existing||blank);
+  const up=(k,v)=>setF(p=>({...p,[k]:v}));
   const toggleProduct=p=>{const cur=f.products||[];up("products",cur.includes(p)?cur.filter(x=>x!==p):[...cur,p]);};
-  function runScan(){setScanning(true);setTimeout(()=>{const lines=(f.comms||"").split("\n").filter(Boolean);up("summary",f.summary||`Auto-draft from ${lines.length} messages.`);up("signal",f.signal||(lines.length?`Most recent: "${lines[lines.length-1].replace(/^\[.*?\]\s*(ME|THEM):\s*/,"")}"`:"No comms yet."));setScanning(false);},900);}
-  const ls={fontSize:11,color:T.sub,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,margin:"18px 2px 8px"};
-  const ta={width:"100%",border:BD,borderRadius:8,padding:"11px 13px",font:"inherit",fontSize:14,fontFamily:sans,color:T.ink,outline:"none",resize:"vertical",minHeight:80,background:T.bg};
-  return <><div style={{padding:"18px 0 6px"}}><button style={icbtn} onClick={onCancel}>‹</button></div>
-    <h1 style={{fontFamily:serif,fontSize:26,fontWeight:600,letterSpacing:-.4,margin:"14px 0 4px"}}>{existing?"Edit account":"New account"}</h1>
-    <div style={ls}>Basics</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
-      <EF label="Account name" value={f.account} onChange={v=>{up("account",v);up("short",v.slice(0,2).toUpperCase());}} placeholder="Sail4th 250"/>
-      <EF label="Owner" value={f.owner} onChange={v=>up("owner",v)}/>
-      <EF label="Deal value" value={f.value} onChange={v=>up("value",v)} placeholder="~$1.0M GMV"/>
-    </div>
-    <div style={{display:"flex",gap:8,marginTop:9}}>{Object.keys(HEALTH).map(k=><button key={k} onClick={()=>up("health",k)} style={{flex:1,padding:"9px",borderRadius:8,fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer",border:`1px solid ${f.health===k?HEALTH[k].c:T.hairS}`,background:f.health===k?HEALTH[k].soft:T.bg,color:f.health===k?HEALTH[k].c:T.sub}}>{HEALTH[k].label}</button>)}</div>
-    <div style={ls}>Products sold</div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{PRODUCTS.map(p=><button key={p} onClick={()=>toggleProduct(p)} style={{padding:"9px 8px",borderRadius:8,fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer",border:`1px solid ${(f.products||[]).includes(p)?T.purple:T.hairS}`,background:(f.products||[]).includes(p)?T.purpleSoft:T.bg,color:(f.products||[]).includes(p)?T.purple:T.sub,textAlign:"left"}}>{p}</button>)}</div>
-    <div style={ls}>Event type & sponsor</div>
-    <div style={{display:"grid",gap:9}}>
-      {[["Event type",f.eventType,EVENT_TYPES,"eventType"],["Sponsor",f.sponsorMode,SPONSOR_MODES,"sponsorMode"]].map(([l,v,opts,k])=><div key={k} style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}><label style={{fontSize:11,color:T.sub,fontWeight:500,display:"block"}}>{l}</label><select value={v} onChange={e=>up(k,e.target.value)} style={{border:"none",outline:"none",font:"inherit",fontSize:15,fontWeight:600,color:T.ink,width:"100%",marginTop:3,background:"none",fontFamily:sans,WebkitAppearance:"none"}}>{opts.map(o=><option key={o}>{o}</option>)}</select></div>)}
-    </div>
-    <div style={ls}>Comms</div>
-    <textarea style={ta} value={f.comms} onChange={e=>up("comms",e.target.value)} placeholder={"[2026-06-14] ME: ...\n[2026-06-14] THEM: ..."}/>
-    <button onClick={runScan} disabled={scanning} style={{width:"100%",marginTop:9,padding:12,borderRadius:8,border:`1px solid ${T.purple}`,background:T.purpleSoft,color:T.purple,fontFamily:sans,fontWeight:600,fontSize:14,cursor:"pointer"}}>{scanning?"Scanning…":"⚡ Run audit scan"}</button>
-    <div style={ls}>Summary & signal</div>
-    <div style={{display:"grid",gap:9}}>
-      {[["Summary",f.summary,"summary","One-line status"],["Signal",f.signal,"signal","What changed"]].map(([l,v,k,ph])=><div key={k} style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}><label style={{fontSize:11,color:T.sub,fontWeight:500}}>{l}</label><textarea value={v} onChange={e=>up(k,e.target.value)} placeholder={ph} style={{display:"block",width:"100%",border:"none",outline:"none",font:"inherit",fontSize:14,color:T.ink,marginTop:3,background:"none",fontFamily:sans,resize:"none",minHeight:45}}/></div>)}
-    </div>
-    <div style={{display:"flex",alignItems:"center",gap:9,margin:"20px 2px 0",cursor:"pointer"}} onClick={()=>setHasContract(!hasContract)}>
-      <div style={{width:20,height:20,borderRadius:5,border:BD,background:hasContract?T.ink:T.bg,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13}}>{hasContract?"✓":""}</div>
-      <span style={{fontSize:14,fontWeight:600}}>This account has a signed contract</span>
-    </div>
-    {hasContract&&<>
-      <div style={ls}>Revenue structure</div>
+  return <>
+    <div style={{marginBottom:18}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>Basics</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
-        <EF label="Platform fee %" type="number" value={f.contract.platformFeePct} onChange={v=>{upC("platformFeePct",+v);upC("netTakePct",+(+v-(f.contract.kickbackPct||0)).toFixed(2));}}/>
-        <EF label="Kickback %" type="number" value={f.contract.kickbackPct||0} onChange={v=>{upC("kickbackPct",+v);upC("netTakePct",+((f.contract.platformFeePct||0)-+v).toFixed(2));}}/>
-        <EF label="Kickback to" value={f.contract.kickbackTo||""} onChange={v=>upC("kickbackTo",v)} placeholder="Mojo, partner…"/>
-        <EF label="Net take %" type="number" value={f.contract.netTakePct} onChange={v=>upC("netTakePct",+v)}/>
-        <EF label="Processing %" type="number" value={f.contract.processingRate||2.9} onChange={v=>upC("processingRate",+v)}/>
-        <EF label="GMV projected" type="number" value={f.contract.gmvProjected} onChange={v=>upC("gmvProjected",+v)}/>
+        <div style={{gridColumn:"1/-1"}}><EF label="Account name" value={f.account} onChange={v=>{up("account",v);up("short",v.slice(0,2).toUpperCase());}} placeholder="e.g. Cage Titans"/></div>
+        <EF label="Owner" value={f.owner} onChange={v=>up("owner",v)}/>
+        <EF label="Deal value" value={f.value} onChange={v=>up("value",v)} placeholder="~$422K GMV"/>
       </div>
-      <div style={ls}>Contract terms</div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
-        <EF label="Start" value={f.contract.start} onChange={v=>upC("start",v)} placeholder="May 2026"/>
-        <EF label="End" value={f.contract.end} onChange={v=>upC("end",v)} placeholder="Jul 2026"/>
-        <EF label="Renewal date" value={f.contract.renewal} onChange={v=>upC("renewal",v)}/>
-        <EF label="Payment terms" value={f.contract.paymentTerms} onChange={v=>upC("paymentTerms",v)}/>
-        <EF label="Liability cap ($)" type="number" value={f.contract.liabilityCap} onChange={v=>upC("liabilityCap",+v)}/>
-        <EF label="SLA target (%)" type="number" value={f.contract.slaTarget} onChange={v=>upC("slaTarget",+v)}/>
-        <EF label="Termination notice" value={f.contract.terminationNotice} onChange={v=>upC("terminationNotice",v)}/>
-        <EF label="Data rights" value={f.contract.dataRights} onChange={v=>upC("dataRights",v)}/>
-        <EF label="IP ownership" value={f.contract.ipOwnership} onChange={v=>upC("ipOwnership",v)}/>
+    </div>
+    <div style={{marginBottom:18}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>CRM tier</div>
+      <div style={{display:"flex",gap:8}}>
+        {Object.entries(CRM_TIERS).filter(([k])=>k!=="archived").map(([k,v])=>(
+          <button key={k} onClick={()=>up("tier",k)} style={{flex:1,padding:"7px",borderRadius:6,fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer",border:`1px solid ${f.tier===k?v.c:S.border}`,background:f.tier===k?v.s:"#fff",color:f.tier===k?v.c:S.inactiveText}}>{v.label}</button>
+        ))}
       </div>
-      <div style={{display:"grid",gap:8,marginTop:9}}>
-        {[["Auto-renew",f.contract.autoRenew,"autoRenew"],["Exclusivity",f.contract.exclusive,"exclusive"],["Audit rights",f.contract.auditRights,"auditRights"],["Rev share on upsells",f.contract.revenueShareOnUpsells,"revenueShareOnUpsells"],["White-label",f.contract.whiteLabel,"whiteLabel"],["Processing pass-through",f.contract.processingPassThru,"processingPassThru"]].map(([l,v,k])=><div key={k} onClick={()=>upC(k,!v)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:T.bg,border:HD,borderRadius:8,padding:"12px 14px",cursor:"pointer"}}>
-          <span style={{fontSize:14,fontWeight:500}}>{l}</span>
-          <div style={{width:40,height:22,borderRadius:11,background:v?T.purple:"#D0D3D9",padding:2,display:"flex",alignItems:"center",transition:"background .2s"}}><div style={{width:18,height:18,borderRadius:"50%",background:"#fff",transform:v?"translateX(18px)":"translateX(0)",transition:"transform .2s"}}/></div>
-        </div>)}
+    </div>
+    <div style={{marginBottom:18}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>Products</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+        {PRODUCTS.map(p=><button key={p} onClick={()=>toggleProduct(p)} style={{padding:"8px 10px",borderRadius:6,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",border:`1px solid ${(f.products||[]).includes(p)?T.purple:S.border}`,background:(f.products||[]).includes(p)?T.purpleSoft:"#fff",color:(f.products||[]).includes(p)?T.purple:S.inactiveText,textAlign:"left"}}>{p}</button>)}
       </div>
-      <div style={{marginTop:9}}><div style={{background:T.bg,border:HD,borderRadius:8,padding:"10px 12px"}}><label style={{fontSize:11,color:T.sub,fontWeight:500}}>Notes</label><textarea value={f.contract.notes||""} onChange={e=>upC("notes",e.target.value)} style={{display:"block",width:"100%",border:"none",outline:"none",font:"inherit",fontSize:14,color:T.ink,marginTop:3,background:"none",fontFamily:sans,resize:"none",minHeight:60}}/></div></div>
-      <div style={{fontSize:11.5,color:T.faint,marginTop:8,lineHeight:1.5}}>Running costs are logged on the account after creation as they accrue.</div>
-    </>}
-    <button disabled={!f.account} onClick={()=>onSave({...f,contract:hasContract?f.contract:null})} style={{width:"100%",marginTop:22,padding:14,borderRadius:8,border:"none",background:f.account?T.ink:T.hairS,color:"#fff",fontFamily:sans,fontWeight:600,fontSize:15,cursor:f.account?"pointer":"default"}}>{existing?"Save changes":"Create account"}</button>
-    <div style={{height:20}}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:18}}>
+      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Event type</label><select value={f.eventType} onChange={e=>up("eventType",e.target.value)} style={{width:"100%",padding:"8px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",background:"#fff"}}>{EVENT_TYPES.map(o=><option key={o}>{o}</option>)}</select></div>
+      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Sponsor</label><select value={f.sponsorMode} onChange={e=>up("sponsorMode",e.target.value)} style={{width:"100%",padding:"8px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",background:"#fff"}}>{SPONSOR_MODES.map(o=><option key={o}>{o}</option>)}</select></div>
+    </div>
+    {existing&&<div style={{padding:"12px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:7,marginBottom:16,fontSize:12,color:S.inactiveText}}>
+      Add or renew contracts via the <b style={{color:T.purple}}>+ Contract</b> button in the account header.
+    </div>}
+    <button disabled={!f.account} onClick={()=>onSave({...f})} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:14,padding:"11px",opacity:f.account?1:.4}}>{existing?"Save changes":"Create account"}</button>
   </>;
 }
