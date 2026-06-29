@@ -27,6 +27,7 @@ const COST_TYPES=[
   {id:"other",label:"Other",fields:["amount"],calc:f=>(+f.amount||0)},
 ];
 const FIELD_DEFS={rate:{l:"Rate ($/hr)",t:"number"},hours:{l:"Hours",t:"number"},amount:{l:"Amount ($)",t:"number"},pct:{l:"Percentage (%)",t:"number"},base:{l:"Base ($)",t:"number"}};
+const PAYMENT_TERMS=["Net 7","Net 14","Net 30","Net 45","Net 60","Weekly","Bi-weekly","Monthly","Upon completion","50% upfront / 50% on delivery","Custom"];
 const PRODUCTS=["Primary ticketing","Box Office / POS","Sponsor Portal","Moments (collectibles)","Secondary marketplace","Agent-1 fan CRM","Community","White-label"];
 const SPONSOR_MODES=["No sponsor","We brought the sponsor","They brought the sponsor","Partner brought the sponsor"];
 const EVENT_TYPES=["Paid event","Free event","Hybrid"];
@@ -204,7 +205,7 @@ const SEED_ACCTS=[
       {id:"f3",name:"Moments digital collectibles",status:"Scoped",scope:"future",note:"Festival audience is high-engagement. Target for Year 2."},
     ],
     contract:{
-      start:"Nov 2025",end:"May 2026",renewal:"TBD",paymentTerms:"Net 30",
+      start:"Nov 2025",end:"May 2026",renewal:"TBD",paymentTerms:"Weekly",
       platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,
       gmvProjected:250000,gmvActual:222279,
       liabilityCap:250000,slaTarget:99.5,
@@ -930,49 +931,95 @@ function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
   </div>;
 }
 
-function CycleContractCard({cy,isActive,fees,onUpdate,defaultTake}){
+function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete}){
   const [open,setOpen]=useState(isActive||false);
+  const [editMode,setEditMode]=useState(false);
   const gmvActual=cy.gmvActual||0;
   const gmvProj=cy.gmvProjected||0;
   const take=cy.netTakePct||defaultTake||10;
   const cyFees=gmvActual*take/100;
   const pct=gmvProj>0?Math.round(100*gmvActual/gmvProj):0;
   return <div style={{border:`1px solid ${isActive?T.purple:S.border}`,borderRadius:8,marginBottom:10,overflow:"hidden",background:"#fff"}}>
+    {/* Header row — always visible, click to expand */}
     <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",cursor:"pointer",background:isActive?"#FAFAFF":"#fff"}} onClick={()=>setOpen(!open)}>
       <span style={{fontSize:11,color:S.inactiveText,transform:open?"rotate(90deg)":"none",transition:"transform .15s",display:"inline-block"}}>›</span>
-      <div style={{flex:1}}>
+      <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:13,fontWeight:600,color:T.ink}}>{cy.label||"Contract"}</span>
           {isActive&&<Tag label="Active" c={T.purple} s={T.purpleSoft}/>}
           {!isActive&&<Tag label="Completed" c={S.inactiveText} s="#F3F4F6"/>}
+          {cy.type==="renewal"&&<Tag label="Renewal" c={T.green} s={T.greenSoft}/>}
+          {cy.type==="amendment"&&<Tag label="Amendment" c={T.yellow} s={T.yellowSoft}/>}
         </div>
-        <div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>
+        <div style={{fontSize:12,color:S.inactiveText,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
           {cy.start||"—"}{cy.end?` → ${cy.end}`:""} · {fmt(gmvActual)} realized · {fmt(cyFees)} fees
         </div>
       </div>
       {gmvProj>0&&<span style={{fontSize:12,fontWeight:600,color:pct>=80?T.green:pct>=50?T.yellow:T.red,flexShrink:0}}>{pct}% of plan</span>}
     </div>
-    {open&&<div style={{padding:"16px",borderTop:`1px solid ${S.border}`,background:"#F9FAFB"}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:12}}>
-        <div>
-          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
-          <input type="number" value={gmvActual} onChange={e=>onUpdate({gmvActual:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+
+    {/* Expanded panel */}
+    {open&&<div style={{borderTop:`1px solid ${S.border}`}}>
+      {/* Quick GMV edit row */}
+      {editMode
+        ?<div style={{padding:"14px 16px",background:"#F9FAFB",borderBottom:`1px solid ${S.border}`}}>
+          <div style={{fontSize:11,fontWeight:600,color:T.ink,marginBottom:10,textTransform:"uppercase",letterSpacing:.4}}>Quick edit</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
+            {[["GMV realized ($)","gmvActual","number",gmvActual],["GMV projected ($)","gmvProjected","number",gmvProj],["Net take %","netTakePct","number",take]].map(([l,k,t2,v])=>(
+              <div key={k}>
+                <label style={{fontSize:10.5,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.3,display:"block",marginBottom:4}}>{l}</label>
+                <input type={t2} value={v} onChange={e=>onUpdate({[k]:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            {[["Label","label","text",cy.label||""],["Start","start","text",cy.start||""],["End","end","text",cy.end||""],["Payment","paymentTerms","text",cy.paymentTerms||""]].map(([l,k,t2,v])=>(
+              <div key={k}>
+                <label style={{fontSize:10.5,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.3,display:"block",marginBottom:4}}>{l}</label>
+                <input type={t2} value={v} onChange={e=>onUpdate({[k]:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button onClick={()=>setEditMode(false)} style={{...VBtn.secondary,fontSize:12}}>Done</button>
+          </div>
         </div>
-        <div>
-          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
-          <input type="number" value={gmvProj} onChange={e=>onUpdate({gmvProjected:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        :<div style={{padding:"12px 16px",background:"#F9FAFB",borderBottom:`1px solid ${S.border}`,display:"flex",gap:10}}>
+          <div style={{fontSize:13,color:S.inactiveText,flex:1}}>
+            Fees: <b style={{color:T.ink}}>{fmt(cyFees)}</b>
+            {gmvProj>0&&<span> · {pct}% of {fmtK(gmvProj)} plan</span>}
+            {take!==defaultTake&&<span style={{color:T.purple}}> · {take}% take</span>}
+          </div>
+          <button onClick={e=>{e.stopPropagation();setEditMode(true);}} style={{...VBtn.small,fontSize:11}}>Quick edit</button>
+          <button onClick={e=>{e.stopPropagation();onDelete();}} style={{...VBtn.small,fontSize:11,color:T.red,borderColor:T.redSoft}}>Delete</button>
         </div>
-        <div>
-          <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
-          <input type="number" value={take} onChange={e=>onUpdate({netTakePct:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-        </div>
+      }
+
+      {/* Contract terms table */}
+      <div style={{background:"#fff"}}>
+        {[
+          ["Period",`${cy.start||"—"}${cy.end?` → ${cy.end}`:""}`],
+          ["GMV realized",fmtK(gmvActual)],
+          ["GMV projected",gmvProj?fmtK(gmvProj):"—"],
+          ["Net take",take+"%"],
+          ["Projected fees",fmt(gmvProj*take/100)],
+          ["Payment terms",cy.paymentTerms||"—"],
+          ["Liability cap",cy.liabilityCapNA?"Not required":cy.liabilityCap?fmt(cy.liabilityCap):"⚠ Uncapped"],
+          ["SLA target",cy.slaNA?"Not required":cy.slaTarget?cy.slaTarget+"%":"—"],
+          ["Data rights",cy.dataRights||"—"],
+          ["Termination",cy.terminationNotice||"—"],
+          ["Auto-renew",cy.autoRenew?"Yes":"No"],
+          cy.notes&&["Notes",cy.notes],
+        ].filter(Boolean).map(([k,v2],i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",borderTop:`1px solid ${S.border}`}}>
+            <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
+            <span style={{fontSize:13,fontWeight:500,color:String(v2).startsWith("⚠")?T.red:T.ink,maxWidth:"60%",textAlign:"right"}}>{v2}</span>
+          </div>
+        ))}
+        {cy.products?.length>0&&<div style={{padding:"10px 16px",borderTop:`1px solid ${S.border}`,display:"flex",gap:6,flexWrap:"wrap"}}>
+          {cy.products.map(p=><Tag key={p} label={p} c={T.purple} s={T.purpleSoft}/>)}
+        </div>}
       </div>
-      <div style={{fontSize:12,color:S.inactiveText}}>
-        Fees at current GMV: <b style={{color:T.ink}}>{fmt(gmvActual*take/100)}</b>
-        {gmvProj>0&&<span> · {pct}% of plan</span>}
-      </div>
-      {cy.products?.length>0&&<div style={{marginTop:10,fontSize:12,color:S.inactiveText}}>Products: {cy.products.join(", ")}</div>}
-      {cy.note&&<div style={{marginTop:4,fontSize:12,color:S.inactiveText}}>{cy.note}</div>}
     </div>}
   </div>;
 }
@@ -985,6 +1032,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const [eco,setEco]=useState(a.contract||{});
   const [addingCost,setAddingCost]=useState(false);
   const [cycles,setCycles]=useState(a.cycles||[]);
+  // Sync cycles when parent account updates (e.g. after wizard creates new cycle)
+  useEffect(()=>{ setCycles(a.cycles||[]); },[a.cycles]);
   const [chargebacks,setChargebacks]=useState(a.chargebacks||[]);
   const [features,setFeatures]=useState(a.features||[]);
   const [toast,setToast]=useState(null);
@@ -1251,74 +1300,43 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
           {/* CONTRACT */}
           {tab==="contract"&&<>
-            <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
-              <button onClick={onNewContract} style={{...VBtn.primary,fontSize:13}}>+ New contract / Renewal</button>
-              <span style={{fontSize:12,color:S.inactiveText}}>or import terms below</span>
+            {/* Header row */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:3}}>Contracts</div>
+                <div style={{fontSize:13,color:S.inactiveText}}>{cycles.length} cycle{cycles.length!==1?"s":""} · {cycles.filter(c=>c.active).length} active</div>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={onNewContract} style={{...VBtn.primary,fontSize:13}}>+ New contract</button>
+              </div>
             </div>
-            <ContractImport onImport={parsed=>{const n={...eco,...parsed};setEco(n);save({contract:n});setToast("Imported ✓");setTimeout(()=>setToast(null),2000);}}/>
 
-            {/* Per-cycle contract cards */}
-            {cycles.length>0&&<div style={{marginTop:16}}>
-              <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:12}}>Contract cycles</div>
-              {[...cycles].sort((a,b)=>new Date(b.start||0)-new Date(a.start||0)).map((cy,i)=>{
-                const cyGmvActual=cy.gmvActual||0;
-                const cyGmvProj=cy.gmvProjected||0;
-                const cyTake=cy.netTakePct||eco.netTakePct||10;
-                const cyFees=cyGmvActual*cyTake/100;
-                const isActive=cy.active;
-                return <CycleContractCard key={cy.id} cy={cy} isActive={isActive} fees={cyFees}
-                  onUpdate={p=>{const updated=cycles.map(x=>x.id===cy.id?{...x,...p}:x);setCycles(updated);save({cycles:updated});}}
-                  defaultTake={eco.netTakePct||10}/>;
-              })}
+            {/* Contract cycle cards — newest first, same design as before but with delete + terms */}
+            {cycles.length===0&&<div style={{padding:"32px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:8,color:S.inactiveText,marginBottom:20}}>
+              <div style={{fontSize:14,fontWeight:500,color:T.ink,marginBottom:6}}>No contracts yet</div>
+              <div style={{fontSize:13,marginBottom:16}}>Add your first contract to start tracking GMV, fees, and compliance.</div>
+              <button onClick={onNewContract} style={{...VBtn.secondary,fontSize:13}}>+ Add first contract →</button>
             </div>}
 
-            {/* Master contract — only if no cycles or as fallback */}
-            {cycles.length===0&&<>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:16,background:"#F9FAFB"}}>
-                <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:12}}>Update GMV</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
-                  <div>
-                    <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV realized ($)</label>
-                    <input type="number" value={eco.gmvActual||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvActual:v}));save({contract:{...eco,gmvActual:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>GMV projected ($)</label>
-                    <input type="number" value={eco.gmvProjected||0} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,gmvProjected:v}));save({contract:{...eco,gmvProjected:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Net take %</label>
-                    <input type="number" value={eco.netTakePct||10} onChange={e=>{const v=+e.target.value;setEco(p=>({...p,netTakePct:v}));save({contract:{...eco,netTakePct:v}});}} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-                  </div>
-                </div>
-                <div style={{marginTop:8,fontSize:12,color:S.inactiveText}}>
-                  Fees: <b style={{color:T.ink}}>{fmt((eco.gmvActual||0)*(eco.netTakePct||10)/100)}</b>
-                  {eco.gmvProjected>0&&<span> · {Math.round(100*(eco.gmvActual||0)/(eco.gmvProjected||1))}% of plan</span>}
-                </div>
-              </div>
-            </>}
+            {[...cycles].sort((x,y)=>new Date(y.start||0)-new Date(x.start||0)).map((cy)=>{
+              const isActive=cy.active;
+              return <CycleContractCard key={cy.id} cy={cy} isActive={isActive}
+                defaultTake={eco.netTakePct||10}
+                onUpdate={p=>{const updated=cycles.map(x=>x.id===cy.id?{...x,...p}:x);setCycles(updated);save({cycles:updated});}}
+                onDelete={()=>{
+                  if(!window.confirm(`Delete "${cy.label||"this contract"}"? This cannot be undone.`))return;
+                  const updated=cycles.filter(x=>x.id!==cy.id);
+                  setCycles(updated);
+                  save({cycles:updated});
+                }}
+              />;
+            })}
 
-            {/* Master contract terms */}
-            <div style={{marginTop:20}}>
-              <CollapsibleSection title="Master contract terms" defaultOpen={false}>
-                <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginTop:8}}>
-                  {c?[
-                    ["Start → End",`${eco.start||"—"} → ${eco.end||"—"}`],
-                    ["Renewal",eco.renewal||"—"],
-                    ["Payment terms",eco.paymentTerms||"—"],
-                    ["Platform fee",`${eco.platformFeePct||10}%`],
-                    ["Net take",(eco.netTakePct||10)+"%"],
-                    ["Liability cap",eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
-                    ["SLA target",eco.slaTarget?eco.slaTarget+"%":"—"],
-                    ["Data rights",eco.dataRights||"—"],
-                    ["Termination notice",eco.terminationNotice||"—"],
-                    ["Auto-renew",eco.autoRenew?"Yes":"No"],
-                  ].map(([k,v2],i)=>(
-                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"11px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
-                      <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
-                      <span style={{fontSize:13,fontWeight:500,color:String(v2).startsWith("⚠")?T.red:T.ink}}>{v2}</span>
-                    </div>
-                  )):
-                  <div style={{padding:"20px 16px",fontSize:13,color:S.inactiveText}}>No signed contract on file. Use Edit account to add terms.</div>}
+            {/* Import from contract doc */}
+            <div style={{marginTop:16}}>
+              <CollapsibleSection title="Import contract terms" defaultOpen={false}>
+                <div style={{marginTop:8}}>
+                  <ContractImport onImport={parsed=>{const n={...eco,...parsed};setEco(n);save({contract:n});setToast("Imported ✓");setTimeout(()=>setToast(null),2000);}}/>
                 </div>
               </CollapsibleSection>
             </div>
@@ -1942,7 +1960,7 @@ function ContractWizard({a, onSave, onCancel}){
   const fees = (econ.gmvProjected||0)*(econ.netTakePct||10)/100;
   const deviations = [];
   if((econ.netTakePct||10)<10) deviations.push(`Take rate ${econ.netTakePct}% is below your 10% standard`);
-  if(!(terms.liabilityCap)) deviations.push("No liability cap — uncapped exposure");
+  if(!(terms.liabilityCap) && !terms.liabilityCapNA) deviations.push("No liability cap — uncapped exposure");
   if(!terms.end) deviations.push("No end date set");
 
   // What step index is "Economics" given current STEPS array?
@@ -2120,9 +2138,28 @@ function ContractWizard({a, onSave, onCancel}){
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Start</label><input type="month" value={terms.start} onChange={e=>upT("start",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
               <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>End</label><input type="month" value={terms.end} onChange={e=>upT("end",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Payment terms</label><input value={terms.paymentTerms} onChange={e=>upT("paymentTerms",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Liability cap ($)</label><input type="number" value={terms.liabilityCap||""} onChange={e=>upT("liabilityCap",+e.target.value)} placeholder="0 = uncapped" style={{width:"100%",padding:"9px 12px",border:`1px solid ${!terms.liabilityCap?T.red:S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>SLA target %</label><input type="number" value={terms.slaTarget} onChange={e=>upT("slaTarget",+e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
+              <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Payment terms</label>
+                <select value={PAYMENT_TERMS.includes(terms.paymentTerms)?terms.paymentTerms:"Custom"} onChange={e=>{if(e.target.value!=="Custom")upT("paymentTerms",e.target.value);}} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",background:"#fff",marginBottom:PAYMENT_TERMS.includes(terms.paymentTerms)?0:6}}>
+                  {PAYMENT_TERMS.map(o=><option key={o}>{o}</option>)}
+                </select>
+                {(!PAYMENT_TERMS.includes(terms.paymentTerms)||terms.paymentTerms==="Custom")&&<input value={terms.paymentTerms==="Custom"?"":terms.paymentTerms} onChange={e=>upT("paymentTerms",e.target.value)} placeholder="Describe custom terms" style={{width:"100%",padding:"8px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",marginTop:6}}/>}
+              </div>
+              <div>
+                <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Liability cap ($)</label>
+                {!terms.liabilityCapNA&&<input type="number" value={terms.liabilityCap||""} onChange={e=>upT("liabilityCap",+e.target.value)} placeholder="e.g. 200000" style={{width:"100%",padding:"9px 12px",border:`1px solid ${!terms.liabilityCap&&!terms.liabilityCapNA?T.red:S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box",marginBottom:6}}/>}
+                <div onClick={()=>{upT("liabilityCapNA",!terms.liabilityCapNA);if(!terms.liabilityCapNA)upT("liabilityCap",0);}} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${terms.liabilityCapNA?T.purple:S.border}`,background:terms.liabilityCapNA?T.purple:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>{terms.liabilityCapNA&&<span style={{color:"#fff",fontSize:10,lineHeight:1}}>✓</span>}</div>
+                  <span style={{fontSize:12,color:terms.liabilityCapNA?T.purple:S.inactiveText}}>Not required in this contract</span>
+                </div>
+              </div>
+              <div>
+                <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>SLA target %</label>
+                {!terms.slaNA&&<input type="number" value={terms.slaTarget||""} onChange={e=>upT("slaTarget",+e.target.value)} placeholder="e.g. 99.9" style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box",marginBottom:6}}/>}
+                <div onClick={()=>{upT("slaNA",!terms.slaNA);if(!terms.slaNA)upT("slaTarget",0);}} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <div style={{width:16,height:16,borderRadius:4,border:`1.5px solid ${terms.slaNA?T.purple:S.border}`,background:terms.slaNA?T.purple:"#fff",display:"flex",alignItems:"center",justifyContent:"center"}}>{terms.slaNA&&<span style={{color:"#fff",fontSize:10,lineHeight:1}}>✓</span>}</div>
+                  <span style={{fontSize:12,color:terms.slaNA?T.purple:S.inactiveText}}>Not required in this contract</span>
+                </div>
+              </div>
               <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Termination notice</label><input value={terms.terminationNotice} onChange={e=>upT("terminationNotice",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
             </div>
             <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Data rights</label><input value={terms.dataRights} onChange={e=>upT("dataRights",e.target.value)} style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
@@ -2154,7 +2191,7 @@ function ContractWizard({a, onSave, onCancel}){
                 ["Net take",econ.netTakePct+"%"],
                 ["Projected fees",fmt(fees)],
                 ["Payment",terms.paymentTerms],
-                ["Liability cap",terms.liabilityCap?fmt(terms.liabilityCap):"⚠ Uncapped"],
+                ["Liability cap",terms.liabilityCapNA?"Not required":terms.liabilityCap?fmt(terms.liabilityCap):"⚠ Uncapped"],
               ].map(([k,v],i)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",borderTop:i?`1px solid ${S.border}`:"none"}}>
                   <span style={{fontSize:13,color:S.inactiveText}}>{k}</span>
