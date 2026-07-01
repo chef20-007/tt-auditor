@@ -467,15 +467,33 @@ const Tag=({label,c,s})=><span style={{
 // options: [{value, label, color}], value: current, onChange(value)
 function TagPick({value,options,onChange,placeholder="Set"}){
   const [open,setOpen]=useState(false);
-  const ref=useRef(null);
+  const [pos,setPos]=useState(null);
+  const btnRef=useRef(null);
+  const menuRef=useRef(null);
   const cur=options.find(o=>o.value===value);
-  useEffect(()=>{if(!open)return;const fn=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",fn);return()=>document.removeEventListener("mousedown",fn);},[open]);
-  return <span ref={ref} style={{position:"relative",display:"inline-block"}}>
-    <button onClick={e=>{e.stopPropagation();setOpen(o=>!o);}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:cur?cur.color+"18":T.soft,color:cur?cur.color:T.faint,border:`1px solid ${cur?cur.color+"1F":T.hairS}`,letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
+  const measure=()=>{
+    const b=btnRef.current;if(!b)return;
+    const r=b.getBoundingClientRect();
+    const menuH=Math.min(options.length*32+8,260);
+    const below=window.innerHeight-r.bottom;
+    const up=below<menuH+8&&r.top>menuH+8;
+    setPos({left:r.left,top:up?r.top-menuH-4:r.bottom+4,width:Math.max(r.width,160),up});
+  };
+  const toggle=e=>{e.stopPropagation();if(!open)measure();setOpen(o=>!o);};
+  useEffect(()=>{if(!open)return;
+    const close=e=>{if(btnRef.current&&btnRef.current.contains(e.target))return;if(menuRef.current&&menuRef.current.contains(e.target))return;setOpen(false);};
+    const onScroll=()=>setOpen(false);
+    document.addEventListener("mousedown",close);
+    window.addEventListener("scroll",onScroll,true);
+    window.addEventListener("resize",onScroll);
+    return()=>{document.removeEventListener("mousedown",close);window.removeEventListener("scroll",onScroll,true);window.removeEventListener("resize",onScroll);};
+  },[open]);
+  return <span style={{display:"inline-block"}}>
+    <button ref={btnRef} onClick={toggle} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:cur?cur.color+"18":T.soft,color:cur?cur.color:T.faint,border:`1px solid ${cur?cur.color+"1F":T.hairS}`,letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
       {cur?<><span style={{width:6,height:6,borderRadius:"50%",background:cur.color,flexShrink:0}}/>{cur.label}</>:placeholder}
       <span style={{fontSize:8,opacity:.5,marginLeft:1}}>▾</span>
     </button>
-    {open&&<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:50,minWidth:150,background:"#fff",border:`1px solid ${T.hairS}`,borderRadius:9,boxShadow:"0 8px 28px rgba(0,0,0,0.13), 0 1px 3px rgba(0,0,0,0.06)",padding:4,animation:"ttPop .14s cubic-bezier(.4,0,.2,1)"}}>
+    {open&&pos&&<div ref={menuRef} style={{position:"fixed",left:pos.left,top:pos.top,zIndex:9000,width:pos.width,maxHeight:260,overflowY:"auto",background:"#fff",border:`1px solid ${T.hairS}`,borderRadius:9,boxShadow:"0 8px 28px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08)",padding:4,animation:"ttPop .14s cubic-bezier(.4,0,.2,1)"}}>
       {options.map(o=>(
         <button key={o.value} onClick={e=>{e.stopPropagation();onChange(o.value);setOpen(false);}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"6px 9px",borderRadius:6,border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:12.5,color:T.ink,letterSpacing:"-0.01em",transition:"background .1s",textAlign:"left"}}>
           <span style={{width:7,height:7,borderRadius:"50%",background:o.color,flexShrink:0}}/>
@@ -507,26 +525,19 @@ function DateChip({value,onChange}){
 }
 
 
-// Vercel-style collapsible section with smooth CSS transition
+// Airy Linear-style collapsible section: big gap between groups, clear header, tight rows within
 function CollapsibleSection({title,badge,badgeColor,badgeBg,defaultOpen=true,onAdd,addLabel="+ Add",children}){
   const [open,setOpen]=useState(defaultOpen);
-  return <div style={{marginBottom:28}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:open?14:0,cursor:"pointer",userSelect:"none"}} onClick={()=>setOpen(!open)}>
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        {/* Vercel chevron — rotates on open */}
-        <span style={{fontSize:12,color:S.inactiveText,display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .18s ease",lineHeight:1}}>›</span>
-        <span style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>{title}</span>
-        {badge!=null&&badge!==""&&<span style={{fontSize:11,fontWeight:600,padding:"1px 6px",borderRadius:4,background:badgeBg||"#F3F4F6",color:badgeColor||S.inactiveText}}>{badge}</span>}
+  return <div style={{marginBottom:40}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:open?12:0,cursor:"pointer",userSelect:"none"}} onClick={()=>setOpen(!open)}>
+      <div style={{display:"flex",alignItems:"center",gap:9}}>
+        <span style={{fontSize:12,color:T.faint,display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .18s ease",lineHeight:1}}>›</span>
+        <span style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink}}>{title}</span>
+        {badge!=null&&badge!==""&&<span style={{fontSize:11,fontWeight:600,padding:"1px 7px",borderRadius:20,background:badgeBg||T.soft,color:badgeColor||T.faint,lineHeight:"16px"}}>{badge}</span>}
       </div>
-      {open&&onAdd&&<button onClick={e=>{e.stopPropagation();onAdd();}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,padding:0,fontFamily:sans}}>{addLabel}</button>}
+      {open&&onAdd&&<button onClick={e=>{e.stopPropagation();onAdd();}} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{fontSize:12,color:T.faint,background:"none",border:"none",cursor:"pointer",fontWeight:500,padding:0,fontFamily:sans,transition:"color .12s"}}>{addLabel}</button>}
     </div>
-    {/* Smooth expand/collapse */}
-    <div style={{
-      overflow:"hidden",
-      maxHeight:open?"2000px":"0px",
-      opacity:open?1:0,
-      transition:"max-height .22s ease, opacity .18s ease",
-    }}>
+    <div style={{overflow:"hidden",maxHeight:open?"3000px":"0px",opacity:open?1:0,transition:"max-height .24s cubic-bezier(.4,0,.2,1), opacity .18s ease"}}>
       {children}
     </div>
   </div>;
@@ -1276,7 +1287,7 @@ function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
     {sorted.length===0&&<div style={{fontSize:13,color:S.inactiveText,padding:"8px 0"}}>No milestones yet.</div>}
     {adding
       ?<MilestoneAdd onAdd={onAdd} onCancel={()=>setAdding(false)}/>
-      :<button onClick={()=>setAdding(true)} style={{...VBtn.secondary,marginTop:10,fontSize:12}}>+ Add milestone</button>}
+      :<button onClick={()=>setAdding(true)} onMouseEnter={e=>e.currentTarget.style.color=T.sub} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{marginTop:6,fontSize:12.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"4px 0",transition:"color .12s"}}>+ Add milestone</button>}
   </div>;
 }
 
@@ -1831,7 +1842,7 @@ function ContractCycles({cycles=[],currentProducts=[],onAdd,onUpdate,onDelete}){
     {sorted.map((cy,i)=><CycleCard key={cy.id} cy={cy} index={i} onUpdate={p=>onUpdate(cy.id,p)} onDelete={()=>onDelete(cy.id)}/>)}
     {adding
       ?<NewCycleForm products={currentProducts} onSave={cy=>{onAdd(cy);setAdding(false);}} onCancel={()=>setAdding(false)}/>
-      :<button onClick={()=>setAdding(true)} style={{...VBtn.secondary,marginTop:8,fontSize:12}}>+ Add cycle / renewal</button>}
+      :<button onClick={()=>setAdding(true)} onMouseEnter={e=>e.currentTarget.style.color=T.sub} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{marginTop:6,fontSize:12.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"4px 0",transition:"color .12s"}}>+ Add cycle / renewal</button>}
   </div>;
 }
 function CycleCard({cy,index,onUpdate,onDelete}){
