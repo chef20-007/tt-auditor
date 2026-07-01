@@ -515,6 +515,7 @@ const VBtn={
 };
 
 
+
 export default function AppDesktop(){
   const [orgs,setOrgs]=useState([]);
   const [accts,setAccts]=useState([]);
@@ -531,7 +532,7 @@ export default function AppDesktop(){
     document.body.style.setProperty("overscroll-behavior","none");
     document.body.style.setProperty("background","#FCFCFB");
     const st=document.createElement("style");st.id="tt-anim";
-    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}";
+    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes ttExpand{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes ttPop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes ttPanelIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}";
     document.head.appendChild(st);
   },[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
@@ -541,6 +542,8 @@ export default function AppDesktop(){
   const [loaded,setLoaded]=useState(false);
   const [wizardOpen,setWizardOpen]=useState(false);
   const [archiveTarget,setArchiveTarget]=useState(null);
+  const [peekAcct,setPeekAcct]=useState(null); // account shown in the shared Accounts side panel (null = closed)
+  const [peekTab,setPeekTab]=useState("timeline"); // side panel tab: timeline | activity
 
   useEffect(()=>{
     // Always boot from SEED_ACCTS directly — localStorage only used for user edits
@@ -644,7 +647,6 @@ export default function AppDesktop(){
         </div>
       </div>}
 
-      {/* MAIN CONTENT — lifted panel on the warm-gray back-plane */}
       <div style={{flex:1,overflow:"auto",overscrollBehavior:"none",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0",animation:isMobile?"none":"ttFadeUp .34s cubic-bezier(.22,.61,.36,1)"}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
@@ -698,7 +700,7 @@ export default function AppDesktop(){
                 <span style={{width:24,height:24,borderRadius:"50%",background:T.black,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{actions.length}</span>
               </div>
               {actions.slice(0,4).map((r,i)=>(
-                <button key={i} onClick={()=>{setSelected(r.aid);navigate("accounts");setDetailTab("overview");}} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
+                <button key={i} onClick={()=>{setSelected(r.aid);navigate("accounts");setDetailTab("overview");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="#fff"} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left",transition:"background .12s"}}>
                   <Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2}}>{r.risk}</div>
@@ -715,7 +717,7 @@ export default function AppDesktop(){
                 <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Next 14 days</div>
               </div>
               {allMilestones.slice(0,5).map((m,i)=>{const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);return(
-                <button key={m.aid+"_"+m.id} onClick={()=>{setSelected(m.aid);navigate("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
+                <button key={m.aid+"_"+m.id} onClick={()=>{setSelected(m.aid);navigate("accounts");setDetailTab("timeline");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="#fff"} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left",transition:"background .12s"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
                     <div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{m.acct}</div>
@@ -729,13 +731,15 @@ export default function AppDesktop(){
         </div>}
 
         {/* ACCOUNTS */}
-        {!showDetail&&nav==="accounts"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
+        {!showDetail&&nav==="accounts"&&<div style={{position:"relative",height:"100%"}}>
+          {/* LEFT: accounts list (full width; panel floats over it) */}
+          <div style={{overflow:"auto",height:"100%",padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
             <div>
               <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 3px",color:T.ink}}>Accounts</h1>
               <p style={{fontSize:13,color:S.inactiveText,margin:0}}>{acctsByTier.active.length} active · {acctsByTier.watch.length} watch · {acctsByTier.cold.length} cold · {archivedAccts.length} archived</p>
             </div>
-            <button onClick={()=>setEditMode(true)} style={{...VBtn.primary}}>+ New account</button>
+            <button onClick={()=>setEditMode(true)} title="Add account" style={{display:"flex",alignItems:"center",justifyContent:"center",width:32,height:32,borderRadius:8,border:`1px solid ${S.border}`,background:"#fff",cursor:"pointer",fontFamily:sans,fontSize:18,fontWeight:400,color:T.sub,transition:"background .12s,color .12s,border-color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.soft;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.color=T.sub;}}>+</button>
           </div>
           {(()=>{
             const book=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
@@ -761,6 +765,10 @@ export default function AppDesktop(){
               ))}
             </div>;
           })()}
+          {/* Toolbar: master timeline/activity panel toggle */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginBottom:12}}>
+            <button onClick={()=>{if(peekAcct&&peekAcct.__master){setPeekAcct(null);}else{setPeekTab("timeline");setPeekAcct({__master:true});}}} title={peekAcct&&peekAcct.__master?"Close panel":"Open timeline & activity"} style={{display:"flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:"50%",border:`1px solid ${S.border}`,background:peekAcct&&peekAcct.__master?T.ink:"#fff",color:peekAcct&&peekAcct.__master?"#fff":T.sub,cursor:"pointer",fontFamily:sans,fontSize:13,transition:"background .12s,color .12s,border-color .12s"}} onMouseEnter={e=>{if(!(peekAcct&&peekAcct.__master)){e.currentTarget.style.background=T.soft;e.currentTarget.style.color=T.ink;}}} onMouseLeave={e=>{if(!(peekAcct&&peekAcct.__master)){e.currentTarget.style.background="#fff";e.currentTarget.style.color=T.sub;}}}>{peekAcct&&peekAcct.__master?"▣":"◨"}</button>
+          </div>
           {(()=>{
             const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
             if(allRows.length===0)return<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText,border:`1px solid ${S.border}`,borderRadius:8}}>No accounts yet.</div>;
@@ -782,8 +790,8 @@ export default function AppDesktop(){
                     {showTierHeader&&i>0&&<div style={{padding:"14px 20px 6px",background:"#fff",borderTop:`1px solid ${T.hair}`}}>
                       <span style={{fontSize:11.5,fontWeight:600,letterSpacing:"-0.01em",color:tier.c}}>{tier.label}</span>
                     </div>}
-                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
+                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left",transition:"background .12s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background=T.soft}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         <div style={{width:30,height:30,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short||a.account.slice(0,2).toUpperCase()}</div>
@@ -793,8 +801,9 @@ export default function AppDesktop(){
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(fees):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13,color:net<0?T.red:T.ink}}>{c?(net<0?"-":"")+fmtK(Math.abs(net)):"—"}</div>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:10}}>
-                        <button onClick={e=>{e.stopPropagation();setArchiveTarget(a);}} style={{fontSize:11,color:S.labelText,background:"none",border:"none",cursor:"pointer",padding:0,fontFamily:sans}}>Archive</button>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6}}>
+                        <span onClick={e=>{e.stopPropagation();setPeekTab("timeline");setPeekAcct(a);}} title="Quick view" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,color:peekAcct&&peekAcct.id===a.id?T.ink:T.faint,background:peekAcct&&peekAcct.id===a.id?T.hairS:"transparent",cursor:"pointer",fontSize:15,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{const on=peekAcct&&peekAcct.id===a.id;e.currentTarget.style.background=on?T.hairS:"transparent";e.currentTarget.style.color=on?T.ink:T.faint;}}>⋯</span>
+                        <span onClick={e=>{e.stopPropagation();setArchiveTarget(a);}} style={{fontSize:11,color:S.labelText,cursor:"pointer",padding:0,fontFamily:sans}}>Archive</span>
                         <span style={{fontSize:12,color:T.purple,fontWeight:500}}>View →</span>
                       </div>
                     </button>
@@ -826,6 +835,61 @@ export default function AppDesktop(){
                 </div>
               </div>}
             </>;
+          })()}
+          </div>{/* end left list */}
+          {/* RIGHT: shared side panel (opens on row peek) */}
+          {peekAcct&&(()=>{
+            const master=!!peekAcct.__master;
+            const dayLabel=d=>d<=0?"Today":d===1?"Tomorrow":`${d}d`;
+            // Build timeline + activity items — either for one account or aggregated across all live accounts
+            const live=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
+            const srcAccts=master?live:[peekAcct];
+            const milestones=srcAccts.flatMap(a=>(a.milestones||[]).map(m=>({...m,_acct:a}))).sort((x,y)=>new Date(x.date)-new Date(y.date));
+            const activity=srcAccts.flatMap(a=>(a.signals_pending||[]).concat(a.risks||[]).map(s=>({...s,_acct:a}))).slice(0,master?40:6);
+            const c=master?null:peekAcct.contract;
+            return<div style={{position:"absolute",top:0,right:0,bottom:0,width:352,zIndex:40,background:"#fff",borderRadius:13,border:`1px solid ${T.hairS}`,boxShadow:"0 12px 40px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",margin:"8px 8px 8px 0",display:"flex",flexDirection:"column",animation:"ttPanelIn .22s cubic-bezier(.22,.61,.36,1)",overflow:"hidden"}}>
+              {/* panel header */}
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 16px 13px",borderBottom:`1px solid ${T.hair}`}}>
+                {master
+                  ?<div style={{width:32,height:32,borderRadius:7,background:T.ink,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:"#fff",flexShrink:0}}>◨</div>
+                  :<div style={{width:32,height:32,borderRadius:7,background:peekAcct.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{peekAcct.short||peekAcct.account.slice(0,2).toUpperCase()}</div>}
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{fontSize:14,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{master?"All accounts":peekAcct.account}</div>
+                  <div style={{fontSize:11.5,color:T.faint,marginTop:1}}>{master?`${live.length} live accounts`:`${peekAcct.owner} · ${c?fmtK(c.gmvActual||0)+" GMV":peekAcct.value||"—"}`}</div>
+                </div>
+                <button onClick={()=>setPeekAcct(null)} title="Close" style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,border:"none",background:"transparent",color:T.faint,cursor:"pointer",fontSize:16,flexShrink:0,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=T.faint;}}>✕</button>
+              </div>
+              {/* toggles */}
+              <div style={{display:"flex",gap:3,padding:"12px 14px 4px"}}>
+                {[["timeline","Timeline"],["activity","Recent activity"]].map(([id,lbl])=>(
+                  <button key={id} onClick={()=>setPeekTab(id)} style={{flex:1,padding:"6px 10px",borderRadius:7,border:"none",background:peekTab===id?T.ink:"transparent",color:peekTab===id?"#fff":T.sub,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",letterSpacing:"-0.01em",transition:"background .12s,color .12s"}} onMouseEnter={e=>{if(peekTab!==id)e.currentTarget.style.background=T.soft;}} onMouseLeave={e=>{if(peekTab!==id)e.currentTarget.style.background="transparent";}}>{lbl}</button>
+                ))}
+              </div>
+              {/* body */}
+              <div style={{flex:1,overflowY:"auto",padding:"8px 10px"}}>
+                {peekTab==="timeline"&&(milestones.length>0?milestones.map((m,i)=>{const d=daysDiff(m.date);const soon=d<=3;return(
+                  <div key={i} onClick={master?()=>{setPeekAcct(m._acct);}:undefined} style={{display:"flex",alignItems:"center",gap:9,padding:"7px 10px",borderRadius:7,transition:"background .1s",cursor:master?"pointer":"default"}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{width:6,height:6,borderRadius:"50%",background:m.done?T.green:soon?T.red:T.faint,flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12.5,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",letterSpacing:"-0.01em"}}>{m.title}</div>
+                      {master&&<div style={{fontSize:11,color:T.faint,marginTop:0.5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m._acct.account}</div>}
+                    </div>
+                    <span style={{fontSize:11.5,color:m.done?T.faint:soon?T.red:T.faint,flexShrink:0,fontWeight:soon&&!m.done?600:400}}>{m.done?"Done":dayLabel(d)}</span>
+                  </div>
+                );}):<div style={{fontSize:12.5,color:T.faint,padding:"20px 10px",textAlign:"center"}}>No upcoming tasks.</div>)}
+                {peekTab==="activity"&&(activity.length>0?activity.map((s,i)=>(
+                  <div key={i} onClick={master?()=>{setPeekAcct(s._acct);}:undefined} style={{padding:"8px 10px",borderRadius:7,transition:"background .1s",cursor:master?"pointer":"default"}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8}}>
+                      <div style={{fontSize:12.5,fontWeight:500,color:T.ink,letterSpacing:"-0.01em"}}>{s.kind||s.risk||"Signal"}</div>
+                      {master&&<div style={{fontSize:11,color:T.faint,flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>{s._acct.account}</div>}
+                    </div>
+                    <div style={{fontSize:12,color:T.faint,marginTop:2,lineHeight:1.4}}>{s.text||s.action||""}</div>
+                  </div>
+                )):<div style={{fontSize:12.5,color:T.faint,padding:"20px 10px",textAlign:"center"}}>No recent activity.</div>)}
+              </div>
+              {/* footer */}
+              {!master&&<button onClick={()=>{selectAcct(peekAcct.id,"overview");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"12px",borderTop:`1px solid ${T.hair}`,background:"transparent",border:"none",borderTopStyle:"solid",cursor:"pointer",fontFamily:sans,fontSize:12,fontWeight:500,color:T.sub,transition:"background .12s",letterSpacing:"-0.01em"}}>Open full account →</button>}
+            </div>;
           })()}
         </div>}
 
@@ -1613,14 +1677,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
       </div>
 
       {/* RIGHT SIDEBAR — hidden on mobile, shown inline below tabs */}
-      {!mobile&&<div style={{width:288,flexShrink:0,borderLeft:`1px solid ${T.hair}`,overflow:"auto",background:T.rail,padding:"18px 16px"}}>
+      {!mobile&&<div style={{width:300,flexShrink:0,overflow:"auto",background:"transparent",padding:"86px 12px 8px 4px"}}>
         {/* Details mini-card */}
-        <div style={{background:"#fff",border:`1px solid ${T.hair}`,borderRadius:10,marginBottom:12,overflow:"hidden",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
-          <button onClick={()=>toggleRail("details")} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans}}>
+        <div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:11,marginBottom:10,overflow:"hidden"}}>
+          <button onClick={()=>toggleRail("details")} onMouseEnter={e=>e.currentTarget.style.background=T.hairS} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
             <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Details</span>
-            <span style={{fontSize:11,color:T.faint,transform:railOpen.details?"rotate(0deg)":"rotate(-90deg)",transition:"transform .15s"}}>▾</span>
+            <span style={{fontSize:11,color:T.faint,transform:railOpen.details?"rotate(0deg)":"rotate(-90deg)",transition:"transform .18s cubic-bezier(.4,0,.2,1)"}}>▾</span>
           </button>
-          {railOpen.details&&<div style={{padding:"2px 14px 12px"}}>
+          {railOpen.details&&<div style={{padding:"2px 14px 12px",animation:"ttExpand .2s cubic-bezier(.22,.61,.36,1)"}}>
             {[
               ["Deal value", a.value||"—"],
               ["Owner", a.owner||"—"],
@@ -1643,12 +1707,12 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           </div>}
         </div>
         {/* Performance mini-card */}
-        {a.kpis&&<div style={{background:"#fff",border:`1px solid ${T.hair}`,borderRadius:10,marginBottom:12,overflow:"hidden",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
-          <button onClick={()=>toggleRail("performance")} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans}}>
+        {a.kpis&&<div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:11,marginBottom:10,overflow:"hidden"}}>
+          <button onClick={()=>toggleRail("performance")} onMouseEnter={e=>e.currentTarget.style.background=T.hairS} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
             <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Performance</span>
-            <span style={{fontSize:11,color:T.faint,transform:railOpen.performance?"rotate(0deg)":"rotate(-90deg)",transition:"transform .15s"}}>▾</span>
+            <span style={{fontSize:11,color:T.faint,transform:railOpen.performance?"rotate(0deg)":"rotate(-90deg)",transition:"transform .18s cubic-bezier(.4,0,.2,1)"}}>▾</span>
           </button>
-          {railOpen.performance&&<div style={{padding:"2px 14px 12px"}}>
+          {railOpen.performance&&<div style={{padding:"2px 14px 12px",animation:"ttExpand .2s cubic-bezier(.22,.61,.36,1)"}}>
             {[
               ["Days since contact", a.kpis.daysSinceContact??"—", (a.kpis.daysSinceContact||0)>14],
               ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%":"—", a.kpis.slaActual&&a.kpis.slaActual<99.9],
