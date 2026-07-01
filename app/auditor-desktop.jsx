@@ -507,7 +507,7 @@ const NAV_ITEMS=[
   {id:"costs",    label:"Cost ledger", section:"Shortcuts"},
 ];
 const VBtn={
-  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#D08A6B,#C67B5C)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(120,70,45,0.24)"},
+  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"linear-gradient(165deg,#33343A,#1C1D20)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.09), 0 1px 2px rgba(0,0,0,0.18)"},
   secondary:{padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
   ghost:    {padding:"6px 13px",borderRadius:6,border:"none",background:"transparent",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:400,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
   danger:   {padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.red,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
@@ -1308,7 +1308,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 {c&&<> · <b style={{color:T.ink,fontWeight:500}}>{c.start} – {c.end}</b></>}
               </div>
               <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
-                {(a.products||[]).map(p=><span key={p} style={{fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:5,background:T.purpleSoft,color:T.purple}}>{p}</span>)}
+                {(a.products||[]).map(p=><span key={p} style={{fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:T.purpleSoft,color:T.purple,border:`1px solid ${T.purple}22`}}>{p}</span>)}
               </div>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
@@ -2464,8 +2464,8 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
       {/* footer split button */}
       <div style={{padding:"12px 18px",borderTop:`1px solid ${S.border}`,display:"flex",gap:10,position:"relative"}}>
         <div style={{display:"inline-flex",flex:acct?"1 1 0":1}}>
-          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:"linear-gradient(180deg,#D08A6B,#C67B5C)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18)"}}>Log activity</button>
-          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.25)",background:"linear-gradient(180deg,#D08A6B,#C67B5C)",color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
+          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:"linear-gradient(165deg,#33343A,#1C1D20)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18)"}}>Log activity</button>
+          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.25)",background:"linear-gradient(165deg,#33343A,#1C1D20)",color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
         </div>
         {acct&&<button onClick={()=>onOpenAccount(acct.id)} style={{...VBtn.secondary,flex:"1 1 0",justifyContent:"center",padding:"10px 12px",fontSize:13}}>Open</button>}
         {menuOpen&&<>
@@ -2551,20 +2551,6 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
   })();
 
   return <div>
-    {/* Flow diagram */}
-    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",marginBottom:24}}>
-      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
-        <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Flow</div>
-        <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Targets by tier and stage</div>
-        <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Ribbon width = number of targets. Lost sinks to the bottom.</div>
-      </div>
-      <div style={{padding:isMobile?"20px 12px":"24px 28px"}}>
-        {flow.links.length>0
-          ?<Sankey nodes={flow.nodes} links={flow.links} height={300} isMobile={isMobile}/>
-          :<div style={{padding:"40px",textAlign:"center",fontSize:13,color:S.inactiveText}}>No flow data yet.</div>}
-      </div>
-    </div>
-
     {/* Kanban pipeline board */}
     <div style={{marginBottom:24}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12,flexWrap:"wrap",gap:8}}>
@@ -2619,6 +2605,20 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
             </div>
           );
         })}
+      </div>
+    </div>
+
+    {/* Flow diagram */}
+    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",marginBottom:24}}>
+      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
+        <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Flow</div>
+        <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Targets by tier and stage</div>
+        <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Ribbon width = number of targets. Lost sinks to the bottom.</div>
+      </div>
+      <div style={{padding:isMobile?"20px 12px":"24px 28px"}}>
+        {flow.links.length>0
+          ?<Sankey nodes={flow.nodes} links={flow.links} height={300} isMobile={isMobile}/>
+          :<div style={{padding:"40px",textAlign:"center",fontSize:13,color:S.inactiveText}}>No flow data yet.</div>}
       </div>
     </div>
 
@@ -2909,18 +2909,18 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
       <p style={{fontSize:13.5,color:T.sub,margin:0,letterSpacing:"-0.01em"}}>Contracted revenue, realized fees, gap analysis, and scenario modeling.</p>
     </div>
 
-    {/* KPI strip */}
-    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",borderRadius:11,border:`1px solid ${T.hair}`,overflow:"hidden",background:T.hair,gap:1,marginBottom:26,boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
+    {/* KPI strip — embedded on page, no card */}
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:"0 40px",marginBottom:26,paddingBottom:26,borderBottom:`1px solid ${T.hair}`}}>
       {[
         {label:"Contracted revenue",value:fmtK(feesContracted),change:null,sub:`from ${fmtK(gmvProj)} GMV`},
         {label:"Fees realized",value:fmtK(feesEarned),change:feesContracted>0?+(100*feesEarned/feesContracted-100).toFixed(1):null,sub:`${pipelinePct}% of contracted`},
         {label:"Net revenue",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),change:null,sub:`after ${fmt(totalCosts)} costs`},
         {label:"Avg take rate",value:avgTake.toFixed(1)+"%",change:null,sub:`across ${activeAccts.filter(a=>a.contract).length} contracts`},
       ].map((t,i)=>(
-        <div key={i} style={{padding:"18px 22px",background:"#fff"}}>
-          <div style={{fontSize:11.5,fontWeight:500,color:T.sub,marginBottom:9,letterSpacing:"-0.01em"}}>{t.label}</div>
+        <div key={i}>
+          <div style={{fontSize:12.5,fontWeight:500,color:T.faint,marginBottom:8,letterSpacing:"-0.01em"}}>{t.label}</div>
           <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}}>
-            <span style={{fontSize:26,fontWeight:600,letterSpacing:"-0.03em",color:T.ink}}>{t.value}</span>
+            <span style={{fontSize:27,fontWeight:600,letterSpacing:"-0.03em",color:T.ink}}>{t.value}</span>
             {t.change!==null&&<ChangeTag value={t.change}/>}
           </div>
           <div style={{fontSize:12,color:T.faint}}>{t.sub}</div>
