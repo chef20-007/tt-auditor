@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 const T = {
   bg:"#FFFFFF", soft:"#F4F4F3", ink:"#17181B", sub:"#6A6E77", faint:"#8C9099",
   hair:"rgba(0,0,0,.06)", hairS:"rgba(0,0,0,.09)",
-  black:"#1F2023", purple:"#5E6AD2", purpleSoft:"#EEEFFB", purpleBar:"#C9CDF2",
+  black:"#1F2023", purple:"#C67B5C", purpleSoft:"#F7ECE6", purpleBar:"#E4C4B4",
   green:"#1F9A63", greenSoft:"#E6F5EC", red:"#D64B44", redSoft:"#FBE9E7",
   yellow:"#B08006", yellowSoft:"#F8EFD6", blue:"#5A8FD6", blueLt:"#B3CDEC",
   // Tonal light depth (Linear light): back-plane deeper, content/rail near-white
@@ -507,7 +507,7 @@ const NAV_ITEMS=[
   {id:"costs",    label:"Cost ledger", section:"Shortcuts"},
 ];
 const VBtn={
-  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#6C77E0,#5E6AD2)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(30,32,60,0.24)"},
+  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#D08A6B,#C67B5C)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(120,70,45,0.24)"},
   secondary:{padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
   ghost:    {padding:"6px 13px",borderRadius:6,border:"none",background:"transparent",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:400,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
   danger:   {padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.red,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
@@ -1600,22 +1600,22 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           c&&["Renewal", eco.renewal||"TBD"],
           c&&["Liability cap", eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
         ].filter(Boolean).map(([k,v2],i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"7px 0"}}>
-            <span style={{fontSize:13,color:T.sub,letterSpacing:"-0.01em",flexShrink:0}}>{k}</span>
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"4.5px 0"}}>
+            <span style={{fontSize:13,color:T.faint,letterSpacing:"-0.01em",flexShrink:0}}>{k}</span>
             <span style={{fontSize:13,color:String(v2).startsWith("⚠")?T.red:T.ink,fontWeight:500,textAlign:"right",letterSpacing:"-0.01em"}}>{v2}</span>
           </div>
         ))}
         {a.kpis&&<>
-          <div style={{borderTop:`1px solid ${T.hair}`,margin:"16px 0"}}/>
-          <div style={{fontSize:11,fontWeight:500,color:T.faint,margin:"0 0 10px",letterSpacing:"0.02em"}}>Performance</div>
+          <div style={{borderTop:`1px solid ${T.hair}`,margin:"14px 0"}}/>
+          <div style={{fontSize:11,fontWeight:500,color:T.faint,margin:"0 0 8px",letterSpacing:"0.02em"}}>Performance</div>
           {[
             ["Days since contact", a.kpis.daysSinceContact??"—", (a.kpis.daysSinceContact||0)>14],
             ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%":"—", a.kpis.slaActual&&a.kpis.slaActual<99.9],
             ["Chargebacks open", a.kpis.chargebacks??"—", (a.kpis.chargebacks||0)>0],
             ["Sentiment", a.kpis.sentiment||"—", ["Cold","Watch"].includes(a.kpis.sentiment)],
           ].map(([k,v2,flag],i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"6px 0"}}>
-              <span style={{fontSize:13,color:T.sub,letterSpacing:"-0.01em"}}>{k}</span>
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"4.5px 0"}}>
+              <span style={{fontSize:13,color:T.faint,letterSpacing:"-0.01em"}}>{k}</span>
               <span style={{fontSize:13,fontWeight:500,color:flag?T.red:T.ink}}>{v2}{flag&&<span style={{fontSize:10,marginLeft:4}}>▲</span>}</span>
             </div>
           ))}
@@ -1904,7 +1904,7 @@ function ContractHealthRing({eco={},costs=[],obligations=[],chargebacks=[],kpis=
   const overall=Math.round((gmvScore+roiScore+oblScore+cbScore+sentScore)/5);
   const overallC=overall>=70?T.green:overall>=40?T.yellow:T.red;
   const dims=[
-    {label:"GMV progress",score:gmvScore,c:"#5E6AD2",sub:`${fmt(eco.gmvActual||0)} of ${fmt(eco.gmvProjected||0)}`},
+    {label:"GMV progress",score:gmvScore,c:"#C67B5C",sub:`${fmt(eco.gmvActual||0)} of ${fmt(eco.gmvProjected||0)}`},
     {label:"ROI efficiency",score:roiScore,c:"#4C8DD6",sub:`${fmt(fees)} rev · ${fmt(tc)} cost`},
     {label:"Obligations",score:oblScore,c:T.green,sub:`${obligations.filter(o=>o.status==="met").length} of ${obligations.length} met`},
     {label:"Chargebacks",score:cbScore,c:cbScore>=70?T.green:T.red,sub:openCbs===0?"None open":`${openCbs} open`},
@@ -1965,7 +1965,7 @@ const CONNECTORS = [
     description:"Syncs deal stage, contact notes, and pipeline value from your Capsule account.",
     what:"Deal stage, contact activity, opportunity value",
     status:"disconnected",
-    color:"#5E6AD2",
+    color:"#C67B5C",
   },
   {
     id:"discord", label:"Discord", icon:"◈", category:"Internal",
@@ -1977,8 +1977,8 @@ const CONNECTORS = [
 ];
 
 // ── FINANCE PAGE ──
-const CHART_BLUE="#5E6AD2";
-const CHART_BLUE_SOFT="rgba(94,106,210,0.09)";
+const CHART_BLUE="#C67B5C";
+const CHART_BLUE_SOFT="rgba(198,123,92,0.10)";
 
 // Simple SVG area chart — Vercel analytics style
 function AreaChart({data=[],height=120,color=CHART_BLUE}){
@@ -2317,11 +2317,11 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
   function addActivity(ac){onPatch(t.id,{activity:[...(t.activity||[]),ac]});setShowLog(false);}
 
   const W=isMobile?"100%":440;
-  const kv={display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderTop:`1px solid ${S.border}`,fontSize:14};
-  const kvLabel={color:S.inactiveText};
+  const kv={display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",fontSize:14};
+  const kvLabel={color:T.faint,letterSpacing:"-0.01em"};
   const inlineSel={fontSize:13,fontWeight:500,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"3px 7px",fontFamily:sans,background:"#fff",cursor:"pointer"};
   const editableVal={fontWeight:500,color:T.ink,cursor:"pointer",padding:"2px 7px",borderRadius:5,transition:"background .1s",WebkitTapHighlightColor:"transparent"};
-  const secHdr={display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:8,borderBottom:`1px solid ${S.border}`,marginBottom:14};
+  const secHdr={display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:8,borderBottom:`1px solid ${T.hair}`,marginBottom:14};
   const secTitle={fontSize:16,fontWeight:700,color:T.ink,letterSpacing:-.2};
   const actionLink={fontSize:13,fontWeight:500,color:T.ink,background:"none",border:"none",cursor:"pointer",fontFamily:sans};
 
@@ -2355,7 +2355,7 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
             <div style={{fontSize:13,color:T.faint,marginBottom:4,letterSpacing:"-0.01em"}}>Status</div>
             {editingField==="stage"
               ?<select autoFocus value={t.stage} onChange={e=>{onPatch(t.id,{stage:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{Object.keys(PIPE_STAGES).map(k=><option key={k} value={k}>{PIPE_STAGES[k].label}</option>)}</select>
-              :<div onClick={()=>setEditingField("stage")} onMouseEnter={e=>e.currentTarget.style.color=cfg.c} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontSize:14.5,fontWeight:500,color:T.ink,cursor:"pointer",letterSpacing:"-0.01em",transition:"color .12s",whiteSpace:"nowrap"}}>{cfg.label}</div>}
+              :<div onClick={()=>setEditingField("stage")} onMouseEnter={e=>e.currentTarget.style.color=cfg.c} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontSize:14.5,fontWeight:500,color:T.ink,cursor:"pointer",letterSpacing:"-0.01em",transition:"color .12s",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:6}}><span style={{width:8,height:8,borderRadius:"50%",background:cfg.c,flexShrink:0}}/>{cfg.label}</div>}
           </div>
           <div>
             <div style={{fontSize:13,color:T.faint,marginBottom:4,letterSpacing:"-0.01em"}}>Tier</div>
@@ -2392,7 +2392,7 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
         {/* stage progress + close date — quiet rows on the page, hairline dividers */}
         <div style={{marginBottom:22}}>
           {/* stage + progress */}
-          <div style={{padding:"12px 0",borderTop:`1px solid ${T.hair}`}}>
+          <div style={{padding:"8px 0"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,fontSize:14}}>
               <span style={kvLabel}>Stage progress</span>
               <span style={{fontWeight:500,color:T.ink}}>{cfg.label} <span style={{color:T.faint,fontWeight:400}}>{t.stage==="lost"?"":`(${Math.round(progressPct)}%)`}</span></span>
@@ -2464,8 +2464,8 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
       {/* footer split button */}
       <div style={{padding:"12px 18px",borderTop:`1px solid ${S.border}`,display:"flex",gap:10,position:"relative"}}>
         <div style={{display:"inline-flex",flex:acct?"1 1 0":1}}>
-          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:"linear-gradient(180deg,#6C77E0,#5E6AD2)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18)"}}>Log activity</button>
-          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.25)",background:"linear-gradient(180deg,#6C77E0,#5E6AD2)",color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
+          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:"linear-gradient(180deg,#D08A6B,#C67B5C)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18)"}}>Log activity</button>
+          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.25)",background:"linear-gradient(180deg,#D08A6B,#C67B5C)",color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
         </div>
         {acct&&<button onClick={()=>onOpenAccount(acct.id)} style={{...VBtn.secondary,flex:"1 1 0",justifyContent:"center",padding:"10px 12px",fontSize:13}}>Open</button>}
         {menuOpen&&<>
@@ -3726,7 +3726,7 @@ function ContractWizard({a, onSave, onCancel}){
 }
 
 function AccountForm({orgId,existing,onCancel,onSave}){
-  const blank={id:uid(),orgId,account:"",short:"",logo:"#5E6AD2",tier:"active",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:0,milestones:[],cycles:[],chargebacks:[],features:[],comms:"",summary:"",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:null};
+  const blank={id:uid(),orgId,account:"",short:"",logo:"#C67B5C",tier:"active",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:0,milestones:[],cycles:[],chargebacks:[],features:[],comms:"",summary:"",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:null};
   const [f,setF]=useState(existing||blank);
   const up=(k,v)=>setF(p=>({...p,[k]:v}));
   const toggleProduct=p=>{const cur=f.products||[];up("products",cur.includes(p)?cur.filter(x=>x!==p):[...cur,p]);};
