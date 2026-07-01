@@ -881,6 +881,7 @@ export default function AppDesktop(){
 
         {/* FINANCE */}
         {!showDetail&&nav==="finance"&&<FinancePage
+          onOpenAccount={(aid)=>{selectAcct(aid,"overview");navigate("accounts");}}
           activeAccts={activeAccts}
           orgAccts={orgAccts}
           gmvActual={gmvActual}
@@ -2205,7 +2206,269 @@ function Sankey({nodes,links,height=340,isMobile}){
   </svg>;
 }
 
-function PipelineView({isMobile,orgAccts=[]}){
+// ── Deal drawer (right-side panel for a pipeline card) ──
+// ── Task/Activity modals ──
+const TASK_CATS={Call:"#DC2626",Email:"#EA6A2E",FollowUp:"#BC8410",Meeting:"#16A34A",Milestone:"#0EA5A0",None:"#94A3B8"};
+function AddTaskModal({name,onSave,onCancel}){
+  const [desc,setDesc]=useState("");
+  const [due,setDue]=useState(new Date().toISOString().slice(0,10));
+  const [cat,setCat]=useState("None");
+  const inp={width:"100%",fontSize:13,padding:"9px 11px",borderRadius:7,border:`1px solid ${S.border}`,fontFamily:sans,color:T.ink,boxSizing:"border-box",background:"#fff"};
+  const lbl={fontSize:12,fontWeight:600,color:T.ink,marginBottom:6,display:"block"};
+  return <div onClick={onCancel} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.4)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,padding:"24px 26px",width:440,maxWidth:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{fontSize:18,fontWeight:700,color:T.ink,letterSpacing:-.3,marginBottom:20}}>Add task on {name}</div>
+      <div style={{marginBottom:16}}>
+        <label style={lbl}>Description</label>
+        <input autoFocus value={desc} onChange={e=>setDesc(e.target.value)} placeholder="e.g. Send deck" style={inp}/>
+      </div>
+      <div style={{marginBottom:16}}>
+        <label style={lbl}>Due</label>
+        <input type="date" value={due} onChange={e=>setDue(e.target.value)} style={inp}/>
+      </div>
+      <div style={{marginBottom:22}}>
+        <label style={lbl}>Category</label>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {Object.keys(TASK_CATS).map(c=>(
+            <button key={c} onClick={()=>setCat(c)} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 11px",borderRadius:7,border:`1px solid ${cat===c?T.ink:S.border}`,background:cat===c?T.ink:"#fff",color:cat===c?"#fff":T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer"}}>
+              <span style={{width:7,height:7,borderRadius:"50%",background:TASK_CATS[c]}}/>{c==="FollowUp"?"Follow-up":c}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>desc&&onSave({id:"tk_"+uid(),text:desc,due,cat,done:false})} disabled={!desc} style={{...VBtn.primary,opacity:desc?1:.5}}>Add task</button>
+        <button onClick={onCancel} style={{...VBtn.ghost}}>Cancel</button>
+      </div>
+    </div>
+  </div>;
+}
+function LogActivityModal({name,onSave,onCancel}){
+  const [type,setType]=useState("Note");
+  const [date,setDate]=useState(new Date().toISOString().slice(0,10));
+  const [note,setNote]=useState("");
+  const inp={width:"100%",fontSize:13,padding:"9px 11px",borderRadius:7,border:`1px solid ${S.border}`,fontFamily:sans,color:T.ink,boxSizing:"border-box",background:"#fff"};
+  const lbl={fontSize:12,fontWeight:600,color:T.ink,marginBottom:6,display:"block"};
+  return <div onClick={onCancel} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.4)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,padding:"24px 26px",width:480,maxWidth:"100%",boxShadow:"0 20px 60px rgba(0,0,0,0.25)"}}>
+      <div style={{fontSize:18,fontWeight:700,color:T.ink,letterSpacing:-.3,marginBottom:20}}>Log activity on {name}</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+        <div><label style={lbl}>Activity type</label>
+          <select value={type} onChange={e=>setType(e.target.value)} style={{...inp,cursor:"pointer"}}>{["Note","Call","Email","Meeting","LinkedIn"].map(x=><option key={x}>{x}</option>)}</select>
+        </div>
+        <div><label style={lbl}>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inp}/></div>
+      </div>
+      <div style={{marginBottom:22}}>
+        <label style={lbl}>Note</label>
+        <textarea autoFocus value={note} onChange={e=>setNote(e.target.value)} placeholder="What happened?" style={{...inp,minHeight:120,resize:"vertical",lineHeight:1.5}}/>
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <button onClick={()=>note&&onSave({id:"ac_"+uid(),type,date,note})} disabled={!note} style={{...VBtn.primary,opacity:note?1:.5}}>Save</button>
+        <button onClick={onCancel} style={{...VBtn.ghost}}>Cancel</button>
+      </div>
+    </div>
+  </div>;
+}
+
+// ── Deal drawer (right-side panel, mirrors CRM reference) ──
+function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpenAccount}){
+  const cfg=PIPE_STAGES[t.stage];
+  const tier=PIPE_TIERS[t.tier];
+  const acct=orgAccts.find(a=>a.id===t.linkedAcct);
+  const stageKeys=Object.keys(PIPE_STAGES).filter(k=>k!=="lost");
+  const stageIdx=stageKeys.indexOf(t.stage);
+  const progressPct=t.stage==="lost"?0:((stageIdx+1)/stageKeys.length)*100;
+
+  const [editingVal,setEditingVal]=useState(false);
+  const [valDraft,setValDraft]=useState(String(value));
+  const [valHover,setValHover]=useState(false);
+  function commitVal(){const n=parseFloat(valDraft.replace(/[^0-9.]/g,""));onPatch(t.id,{value:isNaN(n)?null:n});setEditingVal(false);}
+
+  const [noteDraft,setNoteDraft]=useState(t.note||"");
+  const [editingNote,setEditingNote]=useState(false);
+  const [closeDraft,setCloseDraft]=useState(t.closeDate||"");
+  const [editingClose,setEditingClose]=useState(false);
+  const [editingField,setEditingField]=useState(null); // owner | tier | vertical
+
+  const tasks=t.tasks||[];
+  const activity=(t.activity||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const [showTask,setShowTask]=useState(false);
+  const [showLog,setShowLog]=useState(false);
+  const [menuOpen,setMenuOpen]=useState(false);
+
+  function addTask(tk){onPatch(t.id,{tasks:[...tasks,tk]});setShowTask(false);}
+  function toggleTask(id){onPatch(t.id,{tasks:tasks.map(x=>x.id===id?{...x,done:!x.done}:x)});}
+  function delTask(id){onPatch(t.id,{tasks:tasks.filter(x=>x.id!==id)});}
+  function addActivity(ac){onPatch(t.id,{activity:[...(t.activity||[]),ac]});setShowLog(false);}
+
+  const W=isMobile?"100%":440;
+  const kv={display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderTop:`1px solid ${S.border}`,fontSize:14};
+  const kvLabel={color:S.inactiveText};
+  const inlineSel={fontSize:13,fontWeight:500,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"3px 7px",fontFamily:sans,background:"#fff",cursor:"pointer"};
+  const editableVal={fontWeight:500,color:T.ink,cursor:"pointer",padding:"2px 7px",borderRadius:5,transition:"background .1s",WebkitTapHighlightColor:"transparent"};
+  const secHdr={display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:8,borderBottom:`1px solid ${S.border}`,marginBottom:14};
+  const secTitle={fontSize:16,fontWeight:700,color:T.ink,letterSpacing:-.2};
+  const actionLink={fontSize:13,fontWeight:500,color:T.ink,background:"none",border:"none",cursor:"pointer",fontFamily:sans};
+
+  return <>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.28)",zIndex:200}}/>
+    <div style={{position:"fixed",top:0,right:0,bottom:0,width:W,maxWidth:"100vw",background:"#fff",zIndex:201,boxShadow:"-8px 0 30px rgba(0,0,0,0.12)",display:"flex",flexDirection:"column"}}>
+      {/* top bar */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"12px 16px",borderBottom:`1px solid ${S.border}`}}>
+        <div style={{display:"flex",gap:4,alignItems:"center"}}>
+          {acct&&<button onClick={()=>onOpenAccount(acct.id)} title="Open account" style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",color:S.labelText,fontSize:15,borderRadius:6}}>⇱</button>}
+          <button onClick={onClose} style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",color:S.labelText,fontSize:19,borderRadius:6}}>×</button>
+        </div>
+      </div>
+
+      {/* body */}
+      <div style={{flex:1,overflowY:"auto",padding:"20px 22px 20px"}}>
+        {/* identity */}
+        <div style={{display:"flex",alignItems:"center",gap:13,marginBottom:16}}>
+          <div style={{width:46,height:46,borderRadius:"50%",background:acct?.logo||tier.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff",flexShrink:0}}>{(t.name||"?").slice(0,2).toUpperCase()}</div>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:20,fontWeight:700,color:T.ink,letterSpacing:-.4,lineHeight:1.15}}>{t.name}</div>
+            {acct
+              ?<div style={{fontSize:13,color:S.inactiveText}}>for <span onClick={()=>onOpenAccount(acct.id)} style={{color:T.purple,cursor:"pointer"}}>{acct.account}</span></div>
+              :<div style={{fontSize:13,color:S.inactiveText}}>{t.vertical}</div>}
+          </div>
+        </div>
+
+        {/* tags */}
+        <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+          <span style={{fontSize:12,fontWeight:600,padding:"3px 10px",borderRadius:6,background:cfg.s,color:cfg.c}}>{cfg.label}</span>
+          <span style={{fontSize:12,fontWeight:600,padding:"3px 10px",borderRadius:6,background:"#F0F1F3",color:tier.c}}>{tier.label}</span>
+        </div>
+
+        {/* notes as prose, click to edit */}
+        {editingNote
+          ?<div style={{marginBottom:20}}>
+            <textarea autoFocus value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} onBlur={()=>{onPatch(t.id,{note:noteDraft});setEditingNote(false);}}
+              style={{width:"100%",minHeight:72,fontSize:14,lineHeight:1.55,padding:"10px 12px",borderRadius:8,border:`1px solid ${T.ink}`,fontFamily:sans,color:T.ink,resize:"vertical",boxSizing:"border-box"}}/>
+          </div>
+          :<div onClick={()=>{setNoteDraft(t.note||"");setEditingNote(true);}} style={{fontSize:14,lineHeight:1.55,color:t.note?T.ink:S.faint,marginBottom:20,cursor:"text",padding:"2px 0"}}>
+            {t.note||"Add deal notes…"}
+          </div>}
+
+        {/* key-value facts */}
+        <div style={{marginBottom:22}}>
+          {/* expected value inline edit */}
+          <div style={{...kv,borderTop:"none"}}>
+            <span style={kvLabel}>Expected value</span>
+            {editingVal
+              ?<input autoFocus value={valDraft} onChange={e=>setValDraft(e.target.value)}
+                 onKeyDown={e=>{if(e.key==="Enter")commitVal();if(e.key==="Escape"){setValDraft(String(value));setEditingVal(false);}}} onBlur={commitVal}
+                 style={{fontSize:14,fontWeight:600,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"2px 7px",width:110,textAlign:"right",fontFamily:sans}}/>
+              :<span onClick={()=>{setValDraft(String(value));setEditingVal(true);}} onMouseEnter={()=>setValHover(true)} onMouseLeave={()=>setValHover(false)}
+                 style={{fontSize:14,fontWeight:600,color:valHover?"#000":T.ink,cursor:"text",padding:"1px 6px",borderRadius:5,background:valHover?"#F3F4F6":"transparent",transition:"background .1s"}}>{fmtK(value)}</span>}
+          </div>
+          {/* stage + progress */}
+          <div style={{padding:"12px 0",borderTop:`1px solid ${S.border}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,fontSize:14}}>
+              <span style={kvLabel}>Stage</span>
+              <span style={{fontWeight:500,color:T.ink}}>{cfg.label} <span style={{color:S.faint,fontWeight:400}}>{t.stage==="lost"?"":`(${Math.round(progressPct)}%)`}</span></span>
+            </div>
+            <div style={{height:5,borderRadius:3,background:"#F1F2F4",overflow:"hidden"}}>
+              <div style={{width:progressPct+"%",height:"100%",borderRadius:3,background:t.stage==="lost"?T.red:cfg.c,transition:"width .2s"}}/>
+            </div>
+          </div>
+          {/* close date inline */}
+          <div style={kv}>
+            <span style={kvLabel}>Expected close</span>
+            {editingClose
+              ?<input type="date" autoFocus value={closeDraft} onChange={e=>setCloseDraft(e.target.value)} onBlur={()=>{onPatch(t.id,{closeDate:closeDraft});setEditingClose(false);}}
+                 style={{fontSize:13,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"2px 7px",fontFamily:sans}}/>
+              :<span onClick={()=>{setCloseDraft(t.closeDate||"");setEditingClose(true);}} style={{fontWeight:500,color:t.closeDate?T.ink:S.faint,cursor:"text",padding:"1px 6px",borderRadius:5}}>{t.closeDate||"None"}</span>}
+          </div>
+          <div style={kv}><span style={kvLabel}>Owner</span>
+            {editingField==="owner"
+              ?<select autoFocus value={t.owner} onChange={e=>{onPatch(t.id,{owner:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{["Carter","Elijah","Hunter"].map(o=><option key={o}>{o}</option>)}</select>
+              :<span onClick={()=>setEditingField("owner")} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={editableVal}>{t.owner}</span>}
+          </div>
+          <div style={kv}><span style={kvLabel}>Tier</span>
+            {editingField==="tier"
+              ?<select autoFocus value={t.tier} onChange={e=>{onPatch(t.id,{tier:+e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{[1,2,3].map(n=><option key={n} value={n}>{PIPE_TIERS[n].label}</option>)}</select>
+              :<span onClick={()=>setEditingField("tier")} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{...editableVal,fontWeight:600,color:tier.c}}>{tier.label}</span>}
+          </div>
+          <div style={kv}><span style={kvLabel}>Vertical</span>
+            {editingField==="vertical"
+              ?<select autoFocus value={t.vertical} onChange={e=>{onPatch(t.id,{vertical:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{GTM_VERTICALS.map(v=><option key={v}>{v}</option>)}</select>
+              :<span onClick={()=>setEditingField("vertical")} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={editableVal}>{t.vertical}</span>}
+          </div>
+        </div>
+
+        {/* Next Task */}
+        <div style={{marginBottom:22}}>
+          <div style={secHdr}>
+            <span style={secTitle}>Next task</span>
+            <button onClick={()=>setShowTask(true)} style={{...actionLink,color:T.purple}}>Add task</button>
+          </div>
+          {tasks.length===0
+            ?<div style={{fontSize:13,color:S.faint}}>No tasks yet.</div>
+            :tasks.map(tk=>(
+              <div key={tk.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 0"}}>
+                <button onClick={()=>toggleTask(tk.id)} style={{width:18,height:18,borderRadius:"50%",border:`1.5px solid ${tk.done?T.green:S.border}`,background:tk.done?T.green:"#fff",cursor:"pointer",flexShrink:0,marginTop:1,color:"#fff",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center"}}>{tk.done?"✓":""}</button>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
+                    {tk.due&&daysDiff(tk.due)<0&&!tk.done&&<span style={{fontSize:10.5,fontWeight:600,padding:"1px 7px",borderRadius:4,background:T.red,color:"#fff"}}>Overdue</span>}
+                    {tk.cat&&tk.cat!=="None"&&<span style={{fontSize:10.5,fontWeight:600,padding:"1px 7px",borderRadius:4,background:(TASK_CATS[tk.cat]||"#94A3B8")+"22",color:TASK_CATS[tk.cat]||T.sub}}>{tk.cat==="FollowUp"?"Follow-up":tk.cat}</span>}
+                    <span style={{fontSize:13,color:tk.done?S.faint:T.ink,textDecoration:tk.done?"line-through":"none",fontWeight:500}}>{tk.text}</span>
+                  </div>
+                  {tk.due&&<div style={{fontSize:12,color:S.inactiveText,marginTop:2}}>{new Date(tk.due+"T00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</div>}
+                </div>
+                <button onClick={()=>delTask(tk.id)} style={{border:"none",background:"none",cursor:"pointer",fontSize:15,color:S.faint,lineHeight:1}}>×</button>
+              </div>
+            ))}
+        </div>
+
+        {/* Latest Activity */}
+        <div>
+          <div style={secHdr}>
+            <span style={secTitle}>Latest activity</span>
+            <button onClick={()=>setShowLog(true)} style={{...actionLink,color:T.purple}}>Log activity</button>
+          </div>
+          {activity.length===0
+            ?<div style={{fontSize:13,color:S.faint}}>No history recorded for this deal.</div>
+            :activity.map(ac=>(
+              <div key={ac.id} style={{padding:"10px 0",borderBottom:`1px solid ${S.border}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:3}}>
+                  <span style={{fontSize:12,fontWeight:600,color:T.ink}}>{ac.type}</span>
+                  <span style={{fontSize:11.5,color:S.inactiveText}}>{new Date(ac.date+"T00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>
+                </div>
+                <div style={{fontSize:13,color:S.inactiveText,lineHeight:1.5}}>{ac.note}</div>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      {/* footer split button */}
+      <div style={{padding:"12px 18px",borderTop:`1px solid ${S.border}`,display:"flex",gap:10,position:"relative"}}>
+        <div style={{display:"inline-flex",flex:acct?"1 1 0":1}}>
+          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:T.black,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>Log activity</button>
+          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.22)",background:T.black,color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
+        </div>
+        {acct&&<button onClick={()=>onOpenAccount(acct.id)} style={{...VBtn.secondary,flex:"1 1 0",justifyContent:"center",padding:"10px 12px",fontSize:13}}>Open</button>}
+        {menuOpen&&<>
+          <div onClick={()=>setMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:202}}/>
+          <div style={{position:"absolute",bottom:56,left:18,zIndex:203,background:"#fff",border:`1px solid ${S.border}`,borderRadius:8,boxShadow:"0 6px 20px rgba(0,0,0,0.14)",overflow:"hidden",minWidth:200}}>
+            <button onClick={()=>{setShowTask(true);setMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",padding:"10px 14px",border:"none",background:"#fff",cursor:"pointer",fontFamily:sans,fontSize:13,color:T.ink}}>Add task</button>
+            <div style={{borderTop:`1px solid ${S.border}`,padding:"6px 14px 4px",fontSize:10.5,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>Move to stage</div>
+            {Object.entries(PIPE_STAGES).map(([k,v])=>(
+              <button key={k} onClick={()=>{onSetStage(t.id,k);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"8px 14px",border:"none",background:t.stage===k?"#F6F7F9":"#fff",cursor:"pointer",fontFamily:sans,fontSize:13,color:T.ink}}>
+                <span style={{width:7,height:7,borderRadius:2,background:v.c}}/>{v.label}
+              </button>
+            ))}
+          </div>
+        </>}
+      </div>
+    </div>
+
+    {showTask&&<AddTaskModal name={t.name} onSave={addTask} onCancel={()=>setShowTask(false)}/>}
+    {showLog&&<LogActivityModal name={t.name} onSave={addActivity} onCancel={()=>setShowLog(false)}/>}
+  </>;
+}
+
+function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
   const [targets,setTargets]=useState(()=>{try{const v=localStorage.getItem("tt_targets");return v?JSON.parse(v):TT_TARGETS_SEED;}catch{return TT_TARGETS_SEED;}});
   const [editing,setEditing]=useState(null);
   const [adding,setAdding]=useState(false);
@@ -2221,6 +2484,18 @@ function PipelineView({isMobile,orgAccts=[]}){
   }
   function del(id){persist(targets.filter(t=>t.id!==id));if(editing===id){setEditing(null);setForm(blank);}}
   function setStage(id,stage){persist(targets.map(t=>t.id===id?{...t,stage}:t));}
+  function patchTarget(id,patch){persist(targets.map(t=>t.id===id?{...t,...patch}:t));}
+
+  // Deal value: explicit t.value if set, else linked-account lifetime GMV, else 0.
+  function dealValue(t){
+    if(t.value!=null&&t.value!=="")return +t.value;
+    const acct=orgAccts.find(a=>a.id===t.linkedAcct);
+    return acct?hostLifetimeGmv(acct):0;
+  }
+
+  // Drawer + card selection
+  const [openId,setOpenId]=useState(null);
+  const openTarget=openId?targets.find(t=>t.id===openId):null;
 
   const view=filterTier?targets.filter(t=>t.tier===filterTier):targets;
   const signed=targets.filter(t=>t.stage==="signed");
@@ -2239,13 +2514,12 @@ function PipelineView({isMobile,orgAccts=[]}){
   const Field=({label,children})=><div><div style={{fontSize:11,fontWeight:600,color:S.labelText,marginBottom:4}}>{label}</div>{children}</div>;
   const inp={padding:"7px 10px",borderRadius:6,border:`1px solid ${S.border}`,fontFamily:sans,fontSize:13,color:T.ink,width:"100%",background:"#fff",boxSizing:"border-box"};
 
-  // ── Flow diagram data ──
-  const [flowMode,setFlowMode]=useState("pipeline"); // pipeline | gmv
+  // ── Flow diagram data (pipeline only) ──
   const TIER_COLOR={1:T.purple,2:T.blue,3:T.faint};
   const STAGE_ORDER={targeted:0,contacted:1,in_talks:2,signed:3,lost:4};
 
   // Pipeline flow: Tier (col 0) → Stage (col 1). Lost sinks at the bottom.
-  const pipelineFlow=(()=>{
+  const flow=(()=>{
     const nodes=[
       ...[1,2,3].map(t=>({id:`tier${t}`,label:PIPE_TIERS[t].label,col:0,color:TIER_COLOR[t],order:t})),
       ...Object.keys(PIPE_STAGES).map(st=>({id:`st_${st}`,label:PIPE_STAGES[st].label,col:1,color:PIPE_STAGES[st].c,order:STAGE_ORDER[st]})),
@@ -2256,53 +2530,17 @@ function PipelineView({isMobile,orgAccts=[]}){
     return {nodes,links};
   })();
 
-  // GMV flow: Vertical (col 0) → Host (col 1) → Product (col 2). Hosts ≥ $500 only.
-  const gmvFlow=(()=>{
-    const FLOOR=500;
-    const VCOL=["#1E8F5C","#3FA86F","#62C088","#8AD3A6","#B2E3C5","#CBD5E1"];
-    const hosts=orgAccts.map(a=>({name:a.account,gmv:hostLifetimeGmv(a),vertical:a.vertical||"Uncategorized",
-      products:(a.products&&a.products.length?a.products:["Primary ticketing"])}))
-      .filter(h=>h.gmv>=FLOOR).sort((a,b)=>b.gmv-a.gmv);
-    const verts=[...new Set(hosts.map(h=>h.vertical))];
-    const vColor={}; verts.forEach((v,i)=>vColor[v]=VCOL[i%VCOL.length]);
-    const K=1000;
-    // dollar totals per node for display labels
-    const vertTotal={}, prodTotal={};
-    hosts.forEach(h=>{vertTotal[h.vertical]=(vertTotal[h.vertical]||0)+h.gmv;const per=h.gmv/h.products.length;h.products.forEach(p=>prodTotal[p]=(prodTotal[p]||0)+per);});
-    const nodes=[
-      ...verts.map((v,i)=>({id:`v_${v}`,label:v,col:0,color:vColor[v],order:i,disp:fmtK(vertTotal[v])})),
-      ...hosts.map((h,i)=>({id:`h_${h.name}`,label:isMobile?h.name.slice(0,10):h.name,col:1,color:vColor[h.vertical],order:i,disp:fmtK(h.gmv)})),
-      ...[...new Set(hosts.flatMap(h=>h.products))].map((p,i)=>({id:`p_${p}`,label:p,col:2,color:T.faint,order:i,disp:fmtK(prodTotal[p])})),
-    ];
-    const links=[];
-    hosts.forEach(h=>{
-      links.push({source:`v_${h.vertical}`,target:`h_${h.name}`,value:h.gmv/K,color:vColor[h.vertical],label:`${h.name} · ${fmtK(h.gmv)}`});
-      const per=h.gmv/h.products.length;
-      h.products.forEach(p=>links.push({source:`h_${h.name}`,target:`p_${p}`,value:per/K,color:vColor[h.vertical],label:`${h.name} → ${p}`}));
-    });
-    return {nodes,links};
-  })();
-
-  const flow=flowMode==="pipeline"?pipelineFlow:gmvFlow;
-
   return <div>
     {/* Flow diagram */}
     <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
-      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Flow</div>
-          <div style={{fontSize:15,fontWeight:600,color:T.ink}}>{flowMode==="pipeline"?"Targets by tier and stage":"GMV by vertical, host, and product"}</div>
-          <div style={{fontSize:12,color:S.labelText,marginTop:2}}>{flowMode==="pipeline"?"Ribbon width = number of targets. Lost sinks to the bottom.":"Ribbon width = lifetime GMV. Hosts ≥ $500 only."}</div>
-        </div>
-        <div style={{display:"inline-flex",border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
-          {[["pipeline","Pipeline"],["gmv","GMV"]].map(([id,lbl])=>(
-            <button key={id} onClick={()=>setFlowMode(id)} style={{padding:"6px 14px",border:"none",background:flowMode===id?T.ink:"#fff",color:flowMode===id?"#fff":S.inactiveText,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer"}}>{lbl}</button>
-          ))}
-        </div>
+      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
+        <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Flow</div>
+        <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Targets by tier and stage</div>
+        <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Ribbon width = number of targets. Lost sinks to the bottom.</div>
       </div>
       <div style={{padding:isMobile?"20px 12px":"24px 28px"}}>
         {flow.links.length>0
-          ?<Sankey nodes={flow.nodes} links={flow.links} height={flowMode==="gmv"?Math.max(300,flow.nodes.filter(n=>n.col===1).length*34):300} isMobile={isMobile}/>
+          ?<Sankey nodes={flow.nodes} links={flow.links} height={300} isMobile={isMobile}/>
           :<div style={{padding:"40px",textAlign:"center",fontSize:13,color:S.inactiveText}}>No flow data yet.</div>}
       </div>
     </div>
@@ -2319,38 +2557,43 @@ function PipelineView({isMobile,orgAccts=[]}){
       <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:6}}>
         {Object.entries(PIPE_STAGES).map(([stage,cfg])=>{
           const col=targets.filter(t=>t.stage===stage);
-          const colGmv=col.reduce((n,t)=>{const acct=orgAccts.find(a=>a.id===t.linkedAcct);return n+(acct?hostLifetimeGmv(acct):0);},0);
+          const colVal=col.reduce((n,t)=>n+dealValue(t),0);
           return(
             <div key={stage}
               onDragOver={e=>{if(!isMobile){e.preventDefault();e.currentTarget.style.background=cfg.s;}}}
               onDragLeave={e=>{if(!isMobile)e.currentTarget.style.background="#FAFAFA";}}
               onDrop={e=>{if(isMobile)return;e.preventDefault();e.currentTarget.style.background="#FAFAFA";const id=e.dataTransfer.getData("text/plain");if(id)setStage(id,stage);}}
-              style={{flex:isMobile?"0 0 240px":"1 1 0",minWidth:isMobile?240:150,background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:10,padding:10,transition:"background .12s"}}>
+              style={{flex:isMobile?"0 0 244px":"1 1 0",minWidth:isMobile?244:158,background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:10,padding:10,transition:"background .12s"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"2px 4px"}}>
                 <span style={{display:"flex",alignItems:"center",gap:7}}>
                   <span style={{width:8,height:8,borderRadius:2,background:cfg.c}}/>
                   <span style={{fontSize:12,fontWeight:600,color:T.ink}}>{cfg.label}</span>
                   <span style={{fontSize:11,color:S.labelText}}>{col.length}</span>
                 </span>
-                {colGmv>0&&<span style={{fontSize:10.5,color:S.labelText}}>{fmtK(colGmv)}</span>}
+                {colVal>0&&<span style={{fontSize:10.5,fontWeight:500,color:S.labelText}}>{fmtK(colVal)}</span>}
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:60}}>
-                {col.map(t=>(
+                {col.map(t=>{const v=dealValue(t);return(
                   <div key={t.id}
                     draggable={!isMobile}
                     onDragStart={e=>{e.dataTransfer.setData("text/plain",t.id);e.dataTransfer.effectAllowed="move";}}
-                    style={{background:"#fff",border:`1px solid ${S.border}`,borderLeft:`3px solid ${PIPE_TIERS[t.tier].c}`,borderRadius:8,padding:"9px 11px",cursor:isMobile?"default":"grab",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
-                    <div style={{fontSize:12.5,fontWeight:600,color:T.ink,marginBottom:3,lineHeight:1.25}}>{t.name}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                      <span style={{fontSize:10,fontWeight:600,color:PIPE_TIERS[t.tier].c}}>{PIPE_TIERS[t.tier].label}</span>
-                      <span style={{fontSize:10.5,color:S.inactiveText}}>{t.vertical}</span>
-                      {t.linkedAcct&&<span style={{fontSize:10,color:T.green}}>● account</span>}
+                    onClick={()=>setOpenId(t.id)}
+                    style={{background:openId===t.id?"#F6F7F9":"#fff",border:`1px solid ${openId===t.id?T.hairS:S.border}`,borderRadius:8,padding:"12px 14px",cursor:"pointer",transition:"background .12s,border-color .12s"}}
+                    onMouseEnter={e=>{if(openId!==t.id)e.currentTarget.style.background="#FAFBFC";}}
+                    onMouseLeave={e=>{if(openId!==t.id)e.currentTarget.style.background="#fff";}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                      <span style={{fontSize:13,fontWeight:600,color:T.ink,lineHeight:1.3}}>{t.name}</span>
+                      {v>0&&<span style={{fontSize:12,fontWeight:600,color:T.ink,whiteSpace:"nowrap"}}>{fmtK(v)}</span>}
                     </div>
-                    {isMobile&&<select value={t.stage} onChange={e=>setStage(t.id,e.target.value)} style={{marginTop:7,width:"100%",fontSize:11,padding:"4px 6px",borderRadius:5,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans}}>
-                      {Object.entries(PIPE_STAGES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:10,fontWeight:600,color:PIPE_TIERS[t.tier].c}}>{PIPE_TIERS[t.tier].label}</span>
+                      <span style={{fontSize:11,color:S.inactiveText}}>{t.vertical}</span>
+                    </div>
+                    {isMobile&&<select value={t.stage} onClick={e=>e.stopPropagation()} onChange={e=>setStage(t.id,e.target.value)} style={{marginTop:8,width:"100%",fontSize:11,padding:"4px 6px",borderRadius:5,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans}}>
+                      {Object.entries(PIPE_STAGES).map(([k,v2])=><option key={k} value={k}>{v2.label}</option>)}
                     </select>}
                   </div>
-                ))}
+                );})}
                 {col.length===0&&<div style={{fontSize:11,color:S.faint,textAlign:"center",padding:"14px 0",border:`1px dashed ${S.border}`,borderRadius:6}}>{isMobile?"Empty":"Drop here"}</div>}
               </div>
             </div>
@@ -2358,6 +2601,11 @@ function PipelineView({isMobile,orgAccts=[]}){
         })}
       </div>
     </div>
+
+    {/* Deal drawer */}
+    {openTarget&&<DealDrawer t={openTarget} value={dealValue(openTarget)} orgAccts={orgAccts} isMobile={isMobile}
+      onClose={()=>setOpenId(null)} onPatch={patchTarget} onSetStage={setStage}
+      onOpenAccount={(aid)=>{setOpenId(null);onOpenAccount&&onOpenAccount(aid);}} />}
 
     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
       {[
@@ -2468,7 +2716,7 @@ function PipelineView({isMobile,orgAccts=[]}){
   </div>;
 }
 
-function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesContracted,feesMissed,totalCosts,netRev,netRevContracted,historicalGmv,historicalFees,allHistorical,pipelinePct}){
+function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesContracted,feesMissed,totalCosts,netRev,netRevContracted,historicalGmv,historicalFees,allHistorical,pipelinePct}){
   const [isMobile,setIsMobile]=useState(()=>typeof window!=='undefined'&&window.innerWidth<768);
   useEffect(()=>{const fn=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [view,setView]=useState("overview");
@@ -2671,7 +2919,7 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
 
     {/* OVERVIEW */}
     {view==="intelligence"&&<IntelligenceView orgAccts={orgAccts} isMobile={isMobile}/>}
-    {view==="pipeline"&&<PipelineView isMobile={isMobile} orgAccts={orgAccts}/>}
+    {view==="pipeline"&&<PipelineView isMobile={isMobile} orgAccts={orgAccts} onOpenAccount={onOpenAccount}/>}
 
     {view==="overview"&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:20}}>
 
