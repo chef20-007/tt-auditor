@@ -29,7 +29,16 @@ const HD=`1px solid ${T.hair}`;
 const HEALTH={green:{label:"On track",c:T.green,soft:T.greenSoft},yellow:{label:"Watch",c:T.yellow,soft:T.yellowSoft},red:{label:"Action needed",c:T.red,soft:T.redSoft},archived:{label:"Archived",c:T.sub,soft:"#F3F4F6"}};
 const SEV={low:{l:"Low",c:T.green,s:T.greenSoft},medium:{l:"Watch",c:T.yellow,s:T.yellowSoft},high:{l:"Critical",c:T.red,s:T.redSoft}};
 const VERDICT={us:{label:"We're exposed",c:T.red,s:T.redSoft},them:{label:"They're at fault",c:T.green,s:T.greenSoft},shared:{label:"Shared fault",c:T.yellow,s:T.yellowSoft},neither:{label:"No fault",c:T.sub,s:"#F0F1F3"},unclear:{label:"Unclear",c:T.sub,s:"#F0F1F3"}};
-const OBL_STATUS={met:{c:T.green,t:"Met"},missed:{c:T.red,t:"Missed"},at_risk:{c:T.yellow,t:"At risk"},unclear:{c:T.sub,t:"Unclear"}};
+// New obligation status enum (Phase 2). Old objects used met/missed/at_risk/unclear;
+// OBL_STATUS_MIGRATE maps those onto this richer lifecycle so existing data survives.
+const OBL_STATUS={
+  pending:{c:T.sub,t:"Pending"},
+  in_progress:{c:T.blue,t:"In progress"},
+  met:{c:T.green,t:"Met"},
+  missed:{c:T.red,t:"Missed"},
+  waived:{c:T.faint,t:"Waived"},
+};
+const OBL_STATUS_MIGRATE={met:"met",missed:"missed",at_risk:"in_progress",unclear:"pending"};
 
 const COST_TYPES=[
   {id:"hourly",label:"Hourly",fields:["rate","hours"],calc:f=>(+f.rate||0)*(+f.hours||0)},
@@ -81,14 +90,38 @@ const daysDiff=(d)=>Math.round((new Date(d)-new Date())/(1000*60*60*24));
 //      manual review rather than guessing which cycle should represent the contract.
 // Idempotent, safe to call every render.
 const KNOWN_MIGRATION_EXCEPTIONS=["mojo"]; // accounts with multi-cycle rollups that need a human to pick the active cycle
+// Fields that generation (Section 5) and the rail/Economics view depend on. If the
+// active cycle is missing one of these but the legacy a.contract mirror has it, the
+// value is backfilled onto the cycle. This only fills genuine absence (undefined, null,
+// or empty string); it never overwrites a value the cycle already has, including
+// legitimate zeros someone entered on purpose.
+const CONTRACT_TERM_FIELDS=["liabilityCap","slaTarget","dataRights","autoRenew","terminationNotice","renewal","platformFeePct","kickbackPct","kickbackTo"];
+function backfillCycleTerms(cycle,contract){
+  if(!contract) return cycle;
+  const patch={};
+  for(const f of CONTRACT_TERM_FIELDS){
+    const onCycle=cycle[f];
+    const onContract=contract[f];
+    const cycleMissing=onCycle===undefined||onCycle===null||onCycle==="";
+    const contractHas=onContract!==undefined&&onContract!==null&&onContract!=="";
+    if(cycleMissing&&contractHas) patch[f]=onContract;
+  }
+  return Object.keys(patch).length?{...cycle,...patch}:cycle;
+}
 function ensureActiveCycle(a){
   const cycles=a.cycles||[];
-  if(cycles.some(c=>c.active)) return a; // already has a source of truth, nothing to do
+  if(cycles.some(c=>c.active)){
+    // Active cycle already exists, but may be missing terms that only ever made it
+    // onto the legacy a.contract mirror (a Step 1 gap: that migration only backfilled
+    // a missing active flag, not missing fields on a cycle that already had one).
+    const backfilled=cycles.map(c=>c.active?backfillCycleTerms(c,a.contract):c);
+    return backfilled.some((c,i)=>c!==cycles[i]) ? {...a,cycles:backfilled} : a;
+  }
   const c=a.contract;
   if(!c) return a; // true pre-contract account (e.g. Grass League), leave alone
   if(KNOWN_MIGRATION_EXCEPTIONS.includes(a.id)) return a; // needs manual cycle selection, don't guess
   if(cycles.length===1 && (cycles[0].gmvActual||0)===(c.gmvActual||0)){
-    return {...a,cycles:[{...cycles[0],active:true}]};
+    return {...a,cycles:[backfillCycleTerms({...cycles[0],active:true},c)]};
   }
   if(cycles.length===0){
     const synthesized={
@@ -121,6 +154,100 @@ function deriveContractMirror(cycles){
   if(!active) return undefined;
   const {id,label,products,events,note,active:_a,...terms}=active;
   return {...terms,notes:note};
+}
+
+// Generates obligations, milestones, and a risk from a contract cycle's own terms.
+// This is the core of Phase 2: the contract stops being a sibling list next to
+// obligations/milestones/risks and becomes the thing that emits them. Each generated
+// object carries contractId (the cycle's id) and generated:true so the UI can label it
+// "from contract" and so regeneration never duplicates or touches user-created objects.
+// Cycle start/end are loose "Mon YYYY" strings (see SEED_ACCTS), so generated dates
+// default to the 1st of the parsed month; treat them as approximate, not contractual.
+function generateFromCycle(cycle){
+  if(!cycle||!cycle.id) return {obligations:[],milestones:[],risks:[]};
+
+  const obligations=(cycle.products||[]).map(product=>({
+    id:"obl_"+uid(),contractId:cycle.id,party:"us",label:product,
+    source:"Contract scope",status:"pending",owner:null,due:null,evidence:null,
+    tags:[],comments:[],generated:true,
+  }));
+
+  const milestones=[];
+  if(cycle.end){
+    const endDate=new Date(cycle.end);
+    if(!isNaN(endDate)){
+      if(cycle.paymentTerms){
+        const netMatch=/Net (\d+)/i.exec(cycle.paymentTerms);
+        const netDays=netMatch?+netMatch[1]:30;
+        const payDate=new Date(endDate);
+        payDate.setDate(payDate.getDate()+netDays);
+        milestones.push({
+          id:uid(),type:"payment",date:payDate.toISOString().slice(0,10),
+          title:`Payment due, ${cycle.label||"contract"}`,
+          note:`${cycle.paymentTerms} from contract end.`,done:false,
+          contractId:cycle.id,generated:true,
+        });
+      }
+      const renewDate=new Date(endDate);
+      renewDate.setMonth(renewDate.getMonth()-2);
+      milestones.push({
+        id:uid(),type:"renewal",date:renewDate.toISOString().slice(0,10),
+        title:`Renewal window opens, ${cycle.label||"contract"}`,
+        note:"Start renewal outreach 2 months before contract end.",done:false,
+        contractId:cycle.id,generated:true,
+      });
+    }
+  }
+
+  const risks=[];
+  const cap=cycle.liabilityCap||0;
+  const proj=cycle.gmvProjected||0;
+  if(!cycle.liabilityCapNA && (cap===0 || cap<proj)){
+    risks.push({
+      risk:cap===0?"Uncapped liability":"Liability cap below projected GMV exposure",
+      severity:"high",
+      action:cap===0
+        ?"Negotiate a liability cap before the contract closes."
+        :`Cap is ${fmt(cap)} against ${fmt(proj)} projected GMV. Push to raise the cap or add insurance.`,
+      contractId:cycle.id,generated:true,
+    });
+  }
+
+  return {obligations,milestones,risks};
+}
+
+// Regenerates an account's contract-derived children from its active cycle, replacing
+// only previously-generated objects (generated:true, matching contractId) and leaving
+// every user-created object untouched. Idempotent: calling this twice in a row with an
+// unchanged cycle produces the same result, not duplicates.
+function regenerateContractChildren(a){
+  const cycles=a.cycles||[];
+  const active=cycles.find(c=>c.active);
+  const keepObl=(a.obligations||[]).filter(o=>!o.generated);
+  const keepMs=(a.milestones||[]).filter(m=>!m.generated);
+  const keepRisks=(a.risks||[]).filter(r=>!r.generated);
+  if(!active) return {...a,obligations:keepObl,milestones:keepMs,risks:keepRisks};
+  const gen=generateFromCycle(active);
+  return {
+    ...a,
+    obligations:[...keepObl,...gen.obligations],
+    milestones:[...keepMs,...gen.milestones],
+    risks:[...keepRisks,...gen.risks],
+  };
+}
+// One-time migration: old flat obligations {party,obligation,source,status} become the
+// new richer shape {id,contractId,party,label,source,owner,due,status,evidence,tags,
+// comments,generated}. Old status values map onto the new 5-state lifecycle via
+// OBL_STATUS_MIGRATE. Migrated obligations are marked generated:false (they were
+// hand-typed, not contract-derived) so they're never touched by regeneration.
+function migrateObligation(o){
+  if(o.id) return o; // already migrated
+  return {
+    id:"obl_"+uid(),contractId:null,party:o.party||"us",
+    label:o.obligation||"",source:o.source||"",
+    status:OBL_STATUS_MIGRATE[o.status]||"pending",
+    owner:null,due:null,evidence:null,tags:[],comments:[],generated:false,
+  };
 }
 
 // ── SEED ──
@@ -314,70 +441,6 @@ const SEED_ACCTS=[
     signals_pending:[],flags:[],
     summary:"1 event. $44.5K GMV. 90 days no contact. Strong sell-through — should be a renewal target.",
     signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],comms:"",
-  },
-  {
-    cycles:[
-      { id:"cy1", label:"Sail4th 250 — inaugural event", start:"May 2026", end:"Jul 2026",
-        products:["Primary ticketing","Sponsor Portal"], events:["Sail4th 250 · Jul 3, 2026"],
-        note:"First contract. Paid anchorage ticketing + free boat tour time-select.", active:true },
-    ],
-    chargebacks:[
-      { id:"cb1", amount:0, reason:"Misbooking — incorrect pier allocation from client CSV", status:"Open", date:"2026-06-10", disputedBy:"Lisa Vitanza", note:"Client allocation error. Informal refund promise made in text. Resolve before Jul 3." },
-    ],
-    features:[
-      { id:"f1", name:"Paid anchorage ticketing — 8 piers", status:"Shipped", scope:"contract", note:"Live since May 2026" },
-      { id:"f2", name:"Free boat tour time-select registration", status:"Shipped", scope:"contract", note:"Live since May 2026" },
-      { id:"f3", name:"Sponsor allocation CSV import", status:"Shipped", scope:"contract", note:"Gwen sends CSV, we import to allocation system" },
-      { id:"f4", name:"Per-pier GMV report for sponsors", status:"In progress", scope:"out-of-scope", note:"Gwen requested Jun 15. NOT in the signed scope — this is a reporting add-on. Log as a scope change request or charge for it." },
-      { id:"f5", name:"Vitanza refund handling", status:"In progress", scope:"out-of-scope", note:"NOT in contract. Informal promise created this obligation. Resolve before Jul 3." },
-      { id:"f6", name:"Sponsor/guest allocation CSV management", status:"Shipped", scope:"out-of-scope", note:"Client sends allocation CSVs for us to import. Not explicitly in scope per Sec 2.1 — they own allocation management. We absorbed this work. Flag for contract cycle 2." },
-      { id:"f6", name:"Moments digital collectibles", status:"Scoped", scope:"future", note:"Target for Cycle 2 renewal conversation." },
-    ],
-    contract:{start:"May 2026",end:"Jul 2026",renewal:"TBD post-event",paymentTerms:"Net 30",
-      platformFeePct:7,kickbackPct:0,kickbackTo:"",netTakePct:7,processingPassThru:true,processingRate:2.9,
-      gmvProjected:1000000,gmvActual:200000,liabilityCap:200000,slaTarget:99.9,exclusive:false,
-      dataRights:"Fan profiles retained by Ticket Tree post-event",autoRenew:false,terminationNotice:"30 days",
-      auditRights:false,ipOwnership:"Ticket Tree owns Moments IP",revenueShareOnUpsells:false,whiteLabel:false,
-      notes:"Scope: paid anchorage ticketing (~$1M GMV, ~$70K fees) + free boat tour time-select. Unresolved: uncapped data breach liability, enterprise insurance requirements, SLA scope undefined, MOR language."},
-    costs:[
-      {id:"c1",type:"flat",label:"Hunter build cost",fields:{amount:0},computed:0,note:"Event infra — TBD",when:"Ongoing"},
-      {id:"c2",type:"time",label:"Carter account mgmt",fields:{rate:150,hours:0},computed:0,note:"Not yet logged",when:"Ongoing"},
-    ],
-    kpis:{daysSinceContact:2,slaActual:99.9,refundRate:1,sentiment:"Watch",chargebacks:1},
-    milestones:[
-      {id:"m1",type:"event_date",date:"2026-07-03",title:"Sail4th 250 — event day",note:"Primary revenue date. All piers live.",done:false},
-      {id:"m2",type:"deadline",date:"2026-06-25",title:"Vitanza chargeback response due",note:"Must send written scope clarification before this date.",done:false},
-      {id:"m3",type:"payment",date:"2026-07-31",title:"Net 30 invoice — post-event",note:"Invoice triggers 30 days after event close.",done:false},
-      {id:"m4",type:"renewal",date:"2026-08-15",title:"Renewal conversation",note:"Opportunity to introduce Moments + Agent-1 for Cycle 2.",done:false},
-      {id:"m5",type:"upsell",date:"2026-08-15",title:"Cycle 2 upsell: Moments + Agent-1",note:"Current: Tickets + Sponsor Portal. Next: add Moments and fan CRM.",done:false},
-      {id:"m6",type:"risk",date:"2026-06-14",title:"Out-of-scope refund promise",note:"The 'make them whole' text. Written obligation outside fee schedule.",done:false},
-    ],
-    comms:"[2026-05-01] ME: Confirmed deal scope with Courtney\n[2026-05-10] THEM: Allocation CSV sent\n[2026-05-28] ME: 8 pier locations live\n[2026-06-10] ME: Chargeback from Lisa Vitanza\n[2026-06-14] ME: don't worry, we'll make the buyer whole on this one\n[2026-06-14] THEM: thanks, seating error was on our allocation sheet\n[2026-06-15] THEM (Gwen): Can you send a pier report for sponsor allocations?",
-    summary:"Anchorage ticketing live across 8 piers. Contact: Gwen Hafner (ghafner@sail4th.org). One active chargeback (Lisa Vitanza). Informal refund promise outside the signed fee schedule.",
-    signal:'On June 14, we told the buyer we\'d "make them whole" on the Vitanza misbooking — no fee-schedule reference.',
-    shift:"Exposure moved from Contained → Watch after the refund language went out.",
-    impact:{pct:"-15%",dir:"neg",label:"Fee exposure if the informal refund promise holds without a written scope clarification.",withAction:"A written clarification tying any refund to the fee schedule caps the exposure."},
-    fault:{verdict:"shared",reasoning:"The misbooking came from the client's allocation CSV. However our text promise created a written obligation the contract doesn't back.",against_us:"We created a written refund obligation without referencing the fee schedule.",against_them:"Their allocation file contained the seating error that caused the misbooking."},
-    obligations:[
-      {party:"us",obligation:"Paid anchorage ticketing platform",source:"Sec 2.1 Scope",status:"met"},
-      {party:"us",obligation:"Free boat tour time-select",source:"Sec 2.1 Scope",status:"met"},
-      {party:"us",obligation:"99.9% uptime SLA",source:"Sec 5.3",status:"at_risk"},
-      {party:"us",obligation:"Data breach liability — uncapped",source:"Contract issue",status:"at_risk"},
-      {party:"them",obligation:"Allocation lists on schedule",source:"Sec 3.2",status:"met"},
-      {party:"them",obligation:"Payment within Net 30",source:"Sec 4.1",status:"unclear"},
-    ],
-    risks:[
-      {risk:"Informal refund promise outside fee schedule",severity:"high",action:"Send written clarification tying any Vitanza refund to the fee schedule before settling."},
-      {risk:"Uncapped data breach liability",severity:"high",action:"Push for a liability cap in a side letter before the event closes."},
-      {risk:"SLA scope undefined",severity:"medium",action:"Define what 99.9% uptime covers and the measurement window in a side letter."},
-      {risk:"GMV tracking at 20% of projection",severity:"medium",action:"$200K realized vs $1M projected. Revisit the GMV model or flag to Gwen."},
-      {risk:"Merchant of record unconfirmed",severity:"medium",action:"Confirm whether Ticket Tree or Sail4th is MOR before final payouts."},
-    ],
-    signals_pending:[
-      {id:"sp1",kind:"Out-of-scope promise",text:'"make them whole" in June 14 text — no fee-schedule reference. Creates an obligation the contract does not back.',sev:"high"},
-      {id:"sp2",kind:"Unresolved contract term",text:"Data breach liability is uncapped. $200K aggregate cap and enterprise insurance flagged in negotiation but not closed.",sev:"high"},
-    ],
-    flags:["Verbal refund commitment in writing, outside the fee schedule","MOR not confirmed — could shift tax/payout responsibility"],
   },
   {
     id:"grass",orgId:"3tree",account:"Grass League",short:"GL",logo:"#2E9E6B",
@@ -671,8 +734,15 @@ export default function AppDesktop(){
     // Always boot from SEED_ACCTS directly — localStorage only used for user edits
     // Check if user has saved edits for any account
     const savedAccts=SEED_ACCTS.map(a=>{
-      try{const saved=localStorage.getItem(`acct:${a.orgId}:${a.id}`);return ensureActiveCycle(saved?JSON.parse(saved):a);}
-      catch{return ensureActiveCycle(a);}
+      try{
+        const saved=localStorage.getItem(`acct:${a.orgId}:${a.id}`);
+        const base=ensureActiveCycle(saved?JSON.parse(saved):a);
+        return {...base,obligations:(base.obligations||[]).map(migrateObligation)};
+      }
+      catch{
+        const base=ensureActiveCycle(a);
+        return {...base,obligations:(base.obligations||[]).map(migrateObligation)};
+      }
     });
     setOrgs([SEED_ORG]);
     setAccts(savedAccts);
@@ -1331,6 +1401,7 @@ function MilestoneRow({m,onToggle,onDelete,first}){
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
           <Tag label={mt.label} c={mt.color}/>
+          {m.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail,letterSpacing:"-0.005em"}}>from contract</span>}
         </div>
         <div style={{fontSize:12,color:T.sub,marginTop:1}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}{m.note?` · ${m.note}`:""}</div>
       </div>
@@ -1359,7 +1430,7 @@ function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
   </div>;
 }
 
-function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete}){
+function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete,onGenerate}){
   const [open,setOpen]=useState(isActive||false);
   const [editMode,setEditMode]=useState(false);
   const gmvActual=cy.gmvActual||0;
@@ -1418,6 +1489,7 @@ function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete}){
             {take!==defaultTake&&<span style={{color:T.purple}}> · {take}% take</span>}
           </div>
           <button onClick={e=>{e.stopPropagation();setEditMode(true);}} style={{...VBtn.small,fontSize:11}}>Quick edit</button>
+          {onGenerate&&<button onClick={e=>{e.stopPropagation();onGenerate();}} style={{...VBtn.small,fontSize:11,color:T.purple,borderColor:T.purpleBar}}>Generate obligations</button>}
           <button onClick={e=>{e.stopPropagation();onDelete();}} style={{...VBtn.small,fontSize:11,color:T.red,borderColor:T.redSoft}}>Delete</button>
         </div>
       }
@@ -1477,7 +1549,24 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   // contract is derived from cycles at save time. If there's no active cycle (a known
   // exception like a multi-cycle rollup awaiting manual resolution), the existing
   // a.contract is preserved rather than being wiped out.
-  function save(patch={}){ const n=patch.cycles||cycles; const mirror=deriveContractMirror(n); onSave({...a,contract:mirror!==undefined?mirror:a.contract,costs,milestones,contractCycle:cycle,cycles:n,chargebacks,features,...patch}); }
+  // Obligations/milestones/risks are regenerated only when a generation-relevant field
+  // of the active cycle actually changes (products, payment terms, end date, liability).
+  // This avoids re-running generation, and re-randomizing generated ids, on every
+  // keystroke when editing unrelated fields like GMV or label. Only previously-generated
+  // objects are replaced; anything hand-created stays untouched.
+  function save(patch={}){
+    const n=patch.cycles||cycles;
+    const mirror=deriveContractMirror(n);
+    const base={...a,contract:mirror!==undefined?mirror:a.contract,costs,milestones,contractCycle:cycle,cycles:n,chargebacks,features,...patch};
+    const prevActive=cycles.find(c2=>c2.active)||{};
+    const nextActive=n.find(c2=>c2.active)||{};
+    const genFields=["products","paymentTerms","end","liabilityCap","liabilityCapNA","gmvProjected"];
+    const genRelevantChange=!!patch.cycles && genFields.some(f=>JSON.stringify(prevActive[f])!==JSON.stringify(nextActive[f]));
+    if(!genRelevantChange){ onSave(base); return; }
+    const regenerated=regenerateContractChildren(base);
+    setMilestones(regenerated.milestones);
+    onSave(regenerated);
+  }
   // Writes into the active cycle (creating one if none exists yet). This replaces the
   // old saveEco, which wrote to a standalone contract object that could drift from cycles.
   function saveEco(k,v){
@@ -1495,6 +1584,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   function addContractCycle(cy){const n=cy.active?[...cycles.map(c=>({...c,active:false})),cy]:[...cycles,cy];setCycles(n);save({cycles:n});}
   function updateContractCycle(id,patch){const n=cycles.map(c=>{if(c.id===id)return{...c,...patch};if(patch.active&&c.active)return{...c,active:false};return c;});setCycles(n);save({cycles:n});}
   function delContractCycle(id){const n=cycles.filter(c=>c.id!==id);setCycles(n);save({cycles:n});}
+  // Obligations aren't tracked in local component state (unlike cycles/chargebacks/
+  // features) since they're written both by the user here and by contract generation
+  // elsewhere. Reads and writes go straight through a.obligations via onSave, bypassing
+  // save()'s cycle-regeneration path entirely since editing a status never changes cycles.
+  function updateObligation(id,patch){
+    const n=(a.obligations||[]).map(o=>o.id===id?{...o,...patch}:o);
+    onSave({...a,obligations:n});
+  }
   function addChargeback(cb){const n=[...chargebacks,cb];setChargebacks(n);save({chargebacks:n});}
   function updateChargeback(id,patch){const n=chargebacks.map(c=>c.id===id?{...c,...patch}:c);setChargebacks(n);save({chargebacks:n});}
   function delChargeback(id){const n=chargebacks.filter(c=>c.id!==id);setChargebacks(n);save({chargebacks:n});}
@@ -1647,7 +1744,10 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                   <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none"}} onMouseEnter={e=>{const b=e.currentTarget.querySelector("[data-undo]");if(b)b.style.opacity="1";}} onMouseLeave={e=>{const b=e.currentTarget.querySelector("[data-undo]");if(b)b.style.opacity="0";}}>
                     <div style={{paddingTop:1}}><Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/></div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2,letterSpacing:"-0.01em"}}>{r.risk}</div>
+                      <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}>
+                        {r.risk}
+                        {r.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail,letterSpacing:"-0.005em"}}>from contract</span>}
+                      </div>
                       <div style={{fontSize:12.5,color:T.sub,lineHeight:1.5,letterSpacing:"-0.01em"}}>→ {r.action}</div>
                     </div>
                     <button data-undo onClick={()=>unrisk(i)} title={r._signal?"Move back to signals":"Remove risk"} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{opacity:0,flexShrink:0,fontSize:11.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"2px 4px",transition:"opacity .12s,color .12s",letterSpacing:"-0.01em"}}>{r._signal?"↩ Move back":"Remove"}</button>
@@ -1660,11 +1760,20 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             {a.obligations?.length>0&&<div style={{marginBottom:32}}>
               <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Obligations vs. contract</div>
               <div>
-                {a.obligations.map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.unclear; return(
-                  <div key={i} style={{display:"grid",gridTemplateColumns:"52px 1fr 90px",gap:14,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none",alignItems:"start"}}>
+                {a.obligations.map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.pending; return(
+                  <div key={o.id||i} style={{display:"grid",gridTemplateColumns:"52px 1fr 110px",gap:14,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none",alignItems:"start"}}>
                     <span style={{fontSize:11.5,fontWeight:500,color:o.party==="us"?T.purple:T.faint,paddingTop:1,letterSpacing:"-0.01em"}}>{o.party}</span>
-                    <div><div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em"}}>{o.obligation}</div><div style={{fontSize:11.5,color:T.faint,marginTop:2}}>{o.source}</div></div>
-                    <span style={{fontSize:12,fontWeight:500,color:s.c,textAlign:"right",paddingTop:1}}>{s.t}</span>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}>
+                        {o.label}
+                        {o.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail,letterSpacing:"-0.005em"}}>from contract</span>}
+                      </div>
+                      <div style={{fontSize:11.5,color:T.faint,marginTop:2}}>{o.source}</div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"flex-end"}}>
+                      <TagPick value={o.status||"pending"} options={Object.entries(OBL_STATUS).map(([v,d])=>({value:v,label:d.t,color:d.c}))}
+                        onChange={v=>updateObligation(o.id,{status:v})} placeholder="Status"/>
+                    </div>
                   </div>
                 );})}
               </div>
@@ -1799,6 +1908,12 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                   setCycles(updated);
                   save({cycles:updated});
                 }}
+                onGenerate={isActive?()=>{
+                  const regenerated=regenerateContractChildren({...a,cycles,obligations:a.obligations||[],milestones,risks:a.risks||[]});
+                  setMilestones(regenerated.milestones);
+                  onSave(regenerated);
+                  setToast("Generated from contract ✓");setTimeout(()=>setToast(null),2000);
+                }:null}
               />;
             })}
 
@@ -1878,7 +1993,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           <div style={{padding:"2px 14px 12px"}}>
             {[
               ["Days since contact", a.kpis.daysSinceContact??"—", (a.kpis.daysSinceContact||0)>14],
-              ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%":"—", a.kpis.slaActual&&a.kpis.slaActual<99.9],
+              ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%"+(eco.slaTarget?` / ${eco.slaTarget}% target`:""):"—", a.kpis.slaActual&&eco.slaTarget&&a.kpis.slaActual<eco.slaTarget],
               ["Chargebacks open", a.kpis.chargebacks??"—", (a.kpis.chargebacks||0)>0],
               ["Sentiment", a.kpis.sentiment||"—", ["Cold","Watch"].includes(a.kpis.sentiment)],
             ].map(([k,v2,flag],i)=>(
@@ -3731,14 +3846,11 @@ function ContractWizard({a, onSave, onCancel}){
       gmvActual:0, type:eventType, active:eventType!=="amendment",
     };
 
-    // Auto-generate milestones
-    const newMs = [...(a.milestones||[])];
+    // Event-end milestone stays wizard-specific (marks the literal contract period
+    // ending, not derived from the cycle's own terms the way payment/renewal are).
+    const eventEndMs=[];
     if(terms.end){
-      newMs.push({id:uid(),type:"event_date",date:terms.end,title:`${terms.label} — ends`,note:"Contract period ends.",done:false});
-      const payDue=new Date(terms.end); payDue.setMonth(payDue.getMonth()+1);
-      newMs.push({id:uid(),type:"payment",date:payDue.toISOString().slice(0,10),title:`Payment due — ${terms.label}`,note:terms.paymentTerms,done:false});
-      const renWin=new Date(terms.end); renWin.setMonth(renWin.getMonth()-2);
-      newMs.push({id:uid(),type:"renewal",date:renWin.toISOString().slice(0,10),title:`Renewal window opens — ${terms.label}`,note:"Start renewal outreach 2 months before end.",done:false});
+      eventEndMs.push({id:uid(),type:"event_date",date:terms.end,title:`${terms.label}, ends`,note:"Contract period ends.",done:false});
     }
 
     // Archive current active cycles if this is a full renewal (not amendment)
@@ -3747,14 +3859,19 @@ function ContractWizard({a, onSave, onCancel}){
       : [...cycles.map(c=>({...c,active:false})), newCycle];
 
     const mirror=deriveContractMirror(updatedCycles);
-    onSave({
+    const base={
       ...a,
       tier:"active", health:"green",
       contractCycle:(a.contractCycle||0)+(eventType==="amendment"?0:1),
       cycles:updatedCycles,
-      milestones:newMs,
+      milestones:[...(a.milestones||[]).filter(m=>!m.generated),...eventEndMs],
       contract:mirror!==undefined?mirror:a.contract,
-    });
+    };
+    // regenerateContractChildren replaces generated obligations/milestones/risks from
+    // the newly-active cycle; the event-end milestone above lacks generated:true so it
+    // passes through untouched, same as any other user-created milestone.
+    const regenerated=regenerateContractChildren(base);
+    onSave(regenerated);
     onCancel();
   }
 
