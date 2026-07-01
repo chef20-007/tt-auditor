@@ -532,7 +532,7 @@ export default function AppDesktop(){
     document.body.style.setProperty("overscroll-behavior","none");
     document.body.style.setProperty("background","#FCFCFB");
     const st=document.createElement("style");st.id="tt-anim";
-    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes ttExpand{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes ttPop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes ttPanelIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}";
+    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes ttExpand{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes ttPop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes ttPanelIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}@keyframes ttPanelOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(24px)}}";
     document.head.appendChild(st);
   },[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
@@ -544,6 +544,8 @@ export default function AppDesktop(){
   const [archiveTarget,setArchiveTarget]=useState(null);
   const [peekAcct,setPeekAcct]=useState(null); // account shown in the shared Accounts side panel (null = closed)
   const [peekTab,setPeekTab]=useState("timeline"); // side panel tab: timeline | activity
+  const [peekClosing,setPeekClosing]=useState(false);
+  const closePeek=()=>{setPeekClosing(true);setTimeout(()=>{setPeekAcct(null);setPeekClosing(false);},200);};
 
   useEffect(()=>{
     // Always boot from SEED_ACCTS directly — localStorage only used for user edits
@@ -767,7 +769,7 @@ export default function AppDesktop(){
           })()}
           {/* Toolbar: master timeline/activity panel toggle */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginBottom:12}}>
-            <button onClick={()=>{if(peekAcct&&peekAcct.__master){setPeekAcct(null);}else{setPeekTab("timeline");setPeekAcct({__master:true});}}} title={peekAcct&&peekAcct.__master?"Close panel":"Open timeline & activity"} style={{display:"flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:"50%",border:`1px solid ${S.border}`,background:peekAcct&&peekAcct.__master?T.ink:"#fff",color:peekAcct&&peekAcct.__master?"#fff":T.sub,cursor:"pointer",fontFamily:sans,fontSize:13,transition:"background .12s,color .12s,border-color .12s"}} onMouseEnter={e=>{if(!(peekAcct&&peekAcct.__master)){e.currentTarget.style.background=T.soft;e.currentTarget.style.color=T.ink;}}} onMouseLeave={e=>{if(!(peekAcct&&peekAcct.__master)){e.currentTarget.style.background="#fff";e.currentTarget.style.color=T.sub;}}}>{peekAcct&&peekAcct.__master?"▣":"◨"}</button>
+            <button onClick={()=>{if(peekAcct&&peekAcct.__master){closePeek();}else{setPeekTab("timeline");setPeekClosing(false);setPeekAcct({__master:true});}}} title={peekAcct&&peekAcct.__master?"Close panel":"Open timeline & activity"} style={{display:"flex",alignItems:"center",justifyContent:"center",width:30,height:30,borderRadius:"50%",border:`1px solid ${S.border}`,background:peekAcct&&peekAcct.__master?T.ink:"#fff",color:peekAcct&&peekAcct.__master?"#fff":T.sub,cursor:"pointer",fontFamily:sans,fontSize:13,transition:"background .12s,color .12s,border-color .12s"}} onMouseEnter={e=>{if(!(peekAcct&&peekAcct.__master)){e.currentTarget.style.background=T.soft;e.currentTarget.style.color=T.ink;}}} onMouseLeave={e=>{if(!(peekAcct&&peekAcct.__master)){e.currentTarget.style.background="#fff";e.currentTarget.style.color=T.sub;}}}>{peekAcct&&peekAcct.__master?"▣":"◨"}</button>
           </div>
           {(()=>{
             const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
@@ -801,8 +803,8 @@ export default function AppDesktop(){
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(fees):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13,color:net<0?T.red:T.ink}}>{c?(net<0?"-":"")+fmtK(Math.abs(net)):"—"}</div>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6}}>
-                        <span onClick={e=>{e.stopPropagation();setPeekTab("timeline");setPeekAcct(a);}} title="Quick view" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,color:peekAcct&&peekAcct.id===a.id?T.ink:T.faint,background:peekAcct&&peekAcct.id===a.id?T.hairS:"transparent",cursor:"pointer",fontSize:15,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{const on=peekAcct&&peekAcct.id===a.id;e.currentTarget.style.background=on?T.hairS:"transparent";e.currentTarget.style.color=on?T.ink:T.faint;}}>⋯</span>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,paddingLeft:16}}>
+                        <span onClick={e=>{e.stopPropagation();setPeekTab("timeline");setPeekClosing(false);setPeekAcct(a);}} title="Quick view" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,color:peekAcct&&peekAcct.id===a.id?T.ink:T.faint,background:peekAcct&&peekAcct.id===a.id?T.hairS:"transparent",cursor:"pointer",fontSize:15,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{const on=peekAcct&&peekAcct.id===a.id;e.currentTarget.style.background=on?T.hairS:"transparent";e.currentTarget.style.color=on?T.ink:T.faint;}}>⋯</span>
                         <span onClick={e=>{e.stopPropagation();setArchiveTarget(a);}} style={{fontSize:11,color:S.labelText,cursor:"pointer",padding:0,fontFamily:sans}}>Archive</span>
                         <span style={{fontSize:12,color:T.purple,fontWeight:500}}>View →</span>
                       </div>
@@ -847,7 +849,7 @@ export default function AppDesktop(){
             const milestones=srcAccts.flatMap(a=>(a.milestones||[]).map(m=>({...m,_acct:a}))).sort((x,y)=>new Date(x.date)-new Date(y.date));
             const activity=srcAccts.flatMap(a=>(a.signals_pending||[]).concat(a.risks||[]).map(s=>({...s,_acct:a}))).slice(0,master?40:6);
             const c=master?null:peekAcct.contract;
-            return<div style={{position:"absolute",top:0,right:0,bottom:0,width:352,zIndex:40,background:"#fff",borderRadius:13,border:`1px solid ${T.hairS}`,boxShadow:"0 12px 40px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",margin:"8px 8px 8px 0",display:"flex",flexDirection:"column",animation:"ttPanelIn .22s cubic-bezier(.22,.61,.36,1)",overflow:"hidden"}}>
+            return<div key={master?"master":peekAcct.id} style={{position:"absolute",top:272,right:8,bottom:8,width:352,zIndex:40,background:"#fff",borderRadius:13,border:`1px solid ${T.hairS}`,boxShadow:"0 12px 40px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",display:"flex",flexDirection:"column",animation:peekClosing?"ttPanelOut .2s cubic-bezier(.4,0,1,1) forwards":"ttPanelIn .26s cubic-bezier(.22,.61,.36,1)",overflow:"hidden"}}>
               {/* panel header */}
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 16px 13px",borderBottom:`1px solid ${T.hair}`}}>
                 {master
@@ -857,7 +859,7 @@ export default function AppDesktop(){
                   <div style={{fontSize:14,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{master?"All accounts":peekAcct.account}</div>
                   <div style={{fontSize:11.5,color:T.faint,marginTop:1}}>{master?`${live.length} live accounts`:`${peekAcct.owner} · ${c?fmtK(c.gmvActual||0)+" GMV":peekAcct.value||"—"}`}</div>
                 </div>
-                <button onClick={()=>setPeekAcct(null)} title="Close" style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,border:"none",background:"transparent",color:T.faint,cursor:"pointer",fontSize:16,flexShrink:0,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=T.faint;}}>✕</button>
+                <button onClick={closePeek} title="Close" style={{display:"flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,border:"none",background:"transparent",color:T.faint,cursor:"pointer",fontSize:16,flexShrink:0,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=T.faint;}}>✕</button>
               </div>
               {/* toggles */}
               <div style={{display:"flex",gap:3,padding:"12px 14px 4px"}}>
