@@ -466,7 +466,7 @@ const Tag=({label,c,s})=><span style={{
   borderRadius:6,
   background:"#FEFEFE",color:c,
   border:`1px solid ${T.btnBorder}`,
-  boxShadow:"0 1px 6px rgba(0,0,0,0.05)",
+  boxShadow:"0 1px 6px rgba(0,0,0,0.025)",
   letterSpacing:"-0.01em",
   whiteSpace:"nowrap",
   lineHeight:"17px",
@@ -498,7 +498,7 @@ function TagPick({value,options,onChange,placeholder="Set"}){
     return()=>{document.removeEventListener("mousedown",close);window.removeEventListener("scroll",onScroll,true);window.removeEventListener("resize",onScroll);};
   },[open]);
   return <span style={{display:"inline-block"}}>
-    <button ref={btnRef} onClick={toggle} onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.hover;}} onMouseLeave={e=>{e.currentTarget.style.background="#FEFEFE";}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:"#FEFEFE",color:cur?cur.color:T.faint,border:`1px solid ${T.btnBorder}`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)",letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
+    <button ref={btnRef} onClick={toggle} onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.hover;}} onMouseLeave={e=>{e.currentTarget.style.background="#FEFEFE";}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:"#FEFEFE",color:cur?cur.color:T.faint,border:`1px solid ${T.btnBorder}`,boxShadow:"0 1px 6px rgba(0,0,0,0.025)",letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
       {cur?<><span style={{width:6,height:6,borderRadius:"50%",background:cur.color,flexShrink:0}}/>{cur.label}</>:placeholder}
       <span style={{fontSize:8,opacity:.5,marginLeft:1}}>▾</span>
     </button>
@@ -526,7 +526,7 @@ function DateChip({value,onChange}){
   const ref=useRef(null);
   const label=value?new Date(value+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"Set date";
   return <span style={{position:"relative",display:"inline-flex"}}>
-    <button onClick={()=>{try{ref.current.showPicker();}catch{ref.current.focus();}}} onMouseEnter={e=>e.currentTarget.style.background=T.hover} onMouseLeave={e=>e.currentTarget.style.background="#FEFEFE"} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:"#FEFEFE",color:value?T.ink:T.faint,border:`1px solid ${T.btnBorder}`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)",letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
+    <button onClick={()=>{try{ref.current.showPicker();}catch{ref.current.focus();}}} onMouseEnter={e=>e.currentTarget.style.background=T.hover} onMouseLeave={e=>e.currentTarget.style.background="#FEFEFE"} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:"#FEFEFE",color:value?T.ink:T.faint,border:`1px solid ${T.btnBorder}`,boxShadow:"0 1px 6px rgba(0,0,0,0.025)",letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
       <span style={{fontSize:11,opacity:.7}}>◷</span>{label}
     </button>
     <input ref={ref} type="date" value={value||""} onChange={e=>onChange(e.target.value)} style={{position:"absolute",opacity:0,width:1,height:1,pointerEvents:"none",bottom:0,left:0}}/>
@@ -1478,7 +1478,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 <b style={{color:T.ink,fontWeight:500}}>{a.owner}</b> · {a.eventType} · {a.sponsorMode}
                 {c&&<> · <b style={{color:T.ink,fontWeight:500}}>{c.start} – {c.end}</b></>}
               </div>
-              <textarea value={summary} onChange={e=>setSummary(e.target.value)} onBlur={()=>{if((a.summary||"")!==summary)save({summary});}} rows={1} placeholder="Add a short summary…" onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}}} style={{marginTop:9,width:"100%",maxWidth:640,border:`1px solid ${T.hair}`,outline:"none",resize:"none",background:T.pillBg,fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.5,color:summary?T.ink:T.faint,letterSpacing:"-0.01em",padding:"10px 12px",overflow:"hidden",display:"block",borderRadius:6}}/>
+              <textarea value={summary} onChange={e=>setSummary(e.target.value)} onBlur={()=>{if((a.summary||"")!==summary)save({summary});}} rows={1} placeholder="Add a short summary…" onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}}} style={{marginTop:9,width:"100%",maxWidth:640,border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.5,color:summary?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block"}}/>
               <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
                 {(a.products||[]).map(p=><span key={p} style={{fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:T.purpleSoft,color:T.purple,border:`1px solid ${T.purple}22`}}>{p}</span>)}
               </div>
@@ -1517,7 +1517,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             );})()}
             {/* Notes — collapsible, Linear/Notion style */}
             <CollapsibleSection title="Notes" defaultOpen={true}>
-              <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={e=>{if((a.notes||"")!==notes)save({notes});e.target.style.background=T.pillBg;e.target.style.borderColor=T.hair;}} onFocus={e=>{e.target.style.background="#fff";e.target.style.borderColor=T.faint;}} placeholder="Add a short summary..." onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,60)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,60)+"px";}}} style={{width:"100%",border:`1px solid ${T.hair}`,outline:"none",resize:"none",background:T.pillBg,fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:"12px 14px",overflow:"hidden",display:"block",minHeight:60,borderRadius:8,transition:"background .12s,border-color .12s"}}/>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>{if((a.notes||"")!==notes)save({notes});}} placeholder="Add a short summary..." onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,44)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,44)+"px";}}} style={{width:"100%",border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block",minHeight:44}}/>
             </CollapsibleSection>
             {(a.signals_pending||[]).length>0&&<div style={{marginBottom:32}}>
               <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Signals to review</div>
@@ -1905,7 +1905,7 @@ function NewCycleForm({products,onSave,onCancel}){
     <InlineText value={note} onChange={setNote} placeholder="Add a note…" size={12.5} style={{marginBottom:12,color:note?T.sub:T.faint}}/>
     <div style={{fontSize:11.5,color:T.faint,marginBottom:7}}>Products in scope</div>
     <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-      {PRODUCTS.map(p=>{const has=prods.includes(p); return <button key={p} onClick={()=>setProds(has?prods.filter(x=>x!==p):[...prods,p])} onMouseEnter={e=>{if(!has)e.currentTarget.style.background=T.hover;}} onMouseLeave={e=>{if(!has)e.currentTarget.style.background="#FEFEFE";}} style={{fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green+"3F":T.btnBorder}`,background:has?T.green+"14":"#FEFEFE",color:has?T.green:T.sub,fontFamily:sans,boxShadow:has?"none":"0 1px 6px rgba(0,0,0,0.05)",transition:"background .12s"}}>{has?"✓ ":""}{p}</button>;})}
+      {PRODUCTS.map(p=>{const has=prods.includes(p); return <button key={p} onClick={()=>setProds(has?prods.filter(x=>x!==p):[...prods,p])} onMouseEnter={e=>{if(!has)e.currentTarget.style.background=T.hover;}} onMouseLeave={e=>{if(!has)e.currentTarget.style.background="#FEFEFE";}} style={{fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green+"3F":T.btnBorder}`,background:has?T.green+"14":"#FEFEFE",color:has?T.green:T.sub,fontFamily:sans,boxShadow:has?"none":"0 1px 6px rgba(0,0,0,0.025)",transition:"background .12s"}}>{has?"✓ ":""}{p}</button>;})}
     </div>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       <button disabled={!label} onClick={()=>onSave({id:uid(),label,start,end,products:prods,events:[],note,active:true})} style={{...VBtn.small,fontSize:12,opacity:label?1:.45,cursor:label?"pointer":"default"}}>Create cycle</button>
