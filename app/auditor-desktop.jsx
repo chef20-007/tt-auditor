@@ -527,8 +527,11 @@ export default function AppDesktop(){
     l.href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
     document.head.appendChild(l);
     document.body.style.setProperty("-webkit-font-smoothing","antialiased");
+    document.documentElement.style.setProperty("overscroll-behavior","none");
+    document.body.style.setProperty("overscroll-behavior","none");
+    document.body.style.setProperty("background","#FCFCFB");
     const st=document.createElement("style");st.id="tt-anim";
-    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}";
+    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}";
     document.head.appendChild(st);
   },[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
@@ -642,7 +645,7 @@ export default function AppDesktop(){
       </div>}
 
       {/* MAIN CONTENT — lifted panel on the warm-gray back-plane */}
-      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0",animation:isMobile?"none":"ttFadeUp .34s cubic-bezier(.22,.61,.36,1)"}}>
+      <div style={{flex:1,overflow:"auto",overscrollBehavior:"none",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0",animation:isMobile?"none":"ttFadeUp .34s cubic-bezier(.22,.61,.36,1)"}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
@@ -2327,7 +2330,7 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
 
   return <>
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.28)",zIndex:200}}/>
-    <div style={{position:"fixed",top:0,right:0,bottom:0,width:W,maxWidth:"100vw",background:"#fff",zIndex:201,boxShadow:"-8px 0 30px rgba(0,0,0,0.12)",display:"flex",flexDirection:"column"}}>
+    <div style={{position:"fixed",top:10,right:10,bottom:10,width:W,maxWidth:"calc(100vw - 20px)",background:"#fff",zIndex:201,borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",display:"flex",flexDirection:"column",overflow:"hidden",animation:"ttDrawerIn .26s cubic-bezier(.22,.61,.36,1)"}}>
       {/* top bar */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"12px 16px",borderBottom:`1px solid ${S.border}`}}>
         <div style={{display:"flex",gap:4,alignItems:"center"}}>
@@ -2552,55 +2555,56 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
 
   return <div>
     {/* Kanban pipeline board */}
-    <div style={{marginBottom:24}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12,flexWrap:"wrap",gap:8}}>
+    <div style={{marginBottom:28}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:16,flexWrap:"wrap",gap:8}}>
         <div>
           <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Board</div>
-          <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Pipeline board</div>
+          <div style={{fontSize:16,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Pipeline board</div>
         </div>
-        <div style={{fontSize:12,color:S.labelText}}>{isMobile?"Tap a card's stage to move it":"Drag cards between stages"}</div>
+        <div style={{fontSize:12,color:T.faint}}>{isMobile?"Tap a card's stage to move it":"Drag cards between stages"}</div>
       </div>
-      <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:6}}>
+      <div style={{display:"flex",gap:isMobile?12:18,overflowX:"auto",paddingBottom:6,alignItems:"flex-start"}}>
         {Object.entries(PIPE_STAGES).map(([stage,cfg])=>{
           const col=targets.filter(t=>t.stage===stage);
           const colVal=col.reduce((n,t)=>n+dealValue(t),0);
           return(
             <div key={stage}
-              onDragOver={e=>{if(!isMobile){e.preventDefault();e.currentTarget.style.background=cfg.s;}}}
-              onDragLeave={e=>{if(!isMobile)e.currentTarget.style.background="#FAFAFA";}}
-              onDrop={e=>{if(isMobile)return;e.preventDefault();e.currentTarget.style.background="#FAFAFA";const id=e.dataTransfer.getData("text/plain");if(id)setStage(id,stage);}}
-              style={{flex:isMobile?"0 0 244px":"1 1 0",minWidth:isMobile?244:158,background:T.rail,border:`1px solid ${T.hair}`,borderRadius:11,padding:10,transition:"background .12s"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"2px 4px"}}>
+              onDragOver={e=>{if(!isMobile){e.preventDefault();e.currentTarget.style.background=cfg.s+"55";}}}
+              onDragLeave={e=>{if(!isMobile)e.currentTarget.style.background="transparent";}}
+              onDrop={e=>{if(isMobile)return;e.preventDefault();e.currentTarget.style.background="transparent";const id=e.dataTransfer.getData("text/plain");if(id)setStage(id,stage);}}
+              style={{flex:isMobile?"0 0 244px":"1 1 0",minWidth:isMobile?244:168,borderRadius:10,padding:"2px 4px 8px",transition:"background .14s"}}>
+              {/* column header */}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 6px 8px",marginBottom:8,borderBottom:`1px solid ${T.hair}`}}>
                 <span style={{display:"flex",alignItems:"center",gap:7}}>
-                  <span style={{width:8,height:8,borderRadius:2,background:cfg.c}}/>
-                  <span style={{fontSize:12,fontWeight:600,color:T.ink}}>{cfg.label}</span>
-                  <span style={{fontSize:11,color:S.labelText}}>{col.length}</span>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:cfg.c}}/>
+                  <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>{cfg.label}</span>
+                  <span style={{fontSize:11.5,color:T.faint}}>{col.length}</span>
                 </span>
-                {colVal>0&&<span style={{fontSize:10.5,fontWeight:500,color:S.labelText}}>{fmtK(colVal)}</span>}
+                {colVal>0&&<span style={{fontSize:11,fontWeight:500,color:T.faint}}>{fmtK(colVal)}</span>}
               </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:60}}>
-                {col.map(t=>{const v=dealValue(t);return(
+              <div style={{display:"flex",flexDirection:"column",gap:7,minHeight:50}}>
+                {col.map(t=>{const v=dealValue(t);const tc=PIPE_TIERS[t.tier].c;return(
                   <div key={t.id}
                     draggable={!isMobile}
                     onDragStart={e=>{e.dataTransfer.setData("text/plain",t.id);e.dataTransfer.effectAllowed="move";}}
                     onClick={()=>setOpenId(t.id)}
-                    style={{background:openId===t.id?"#F6F7F9":"#fff",border:`1px solid ${openId===t.id?T.hairS:S.border}`,borderRadius:8,padding:"12px 14px",cursor:"pointer",transition:"background .12s,border-color .12s"}}
-                    onMouseEnter={e=>{if(openId!==t.id)e.currentTarget.style.background="#FAFBFC";}}
-                    onMouseLeave={e=>{if(openId!==t.id)e.currentTarget.style.background="#fff";}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:600,color:T.ink,lineHeight:1.3}}>{t.name}</span>
-                      {v>0&&<span style={{fontSize:12,fontWeight:600,color:T.ink,whiteSpace:"nowrap"}}>{fmtK(v)}</span>}
+                    style={{position:"relative",background:"#fff",border:`1px solid ${openId===t.id?T.hairS:T.hair}`,borderRadius:8,padding:"11px 13px",cursor:"pointer",boxShadow:openId===t.id?"0 2px 8px rgba(0,0,0,0.07)":"0 1px 2px rgba(0,0,0,0.03)",transition:"box-shadow .14s,border-color .14s,transform .14s"}}
+                    onMouseEnter={e=>{if(openId!==t.id){e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.07)";e.currentTarget.style.transform="translateY(-1px)";}}}
+                    onMouseLeave={e=>{if(openId!==t.id){e.currentTarget.style.boxShadow="0 1px 2px rgba(0,0,0,0.03)";e.currentTarget.style.transform="translateY(0)";}}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:7}}>
+                      <span style={{fontSize:13,fontWeight:600,color:T.ink,lineHeight:1.3,letterSpacing:"-0.01em"}}>{t.name}</span>
+                      {v>0&&<span style={{fontSize:12,fontWeight:600,color:T.ink,whiteSpace:"nowrap",letterSpacing:"-0.01em"}}>{fmtK(v)}</span>}
                     </div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:10,fontWeight:600,color:PIPE_TIERS[t.tier].c}}>{PIPE_TIERS[t.tier].label}</span>
-                      <span style={{fontSize:11,color:S.inactiveText}}>{t.vertical}</span>
+                      <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,fontWeight:500,color:tc}}><span style={{width:5,height:5,borderRadius:"50%",background:tc}}/>{PIPE_TIERS[t.tier].label}</span>
+                      <span style={{fontSize:11,color:T.faint}}>{t.vertical}</span>
                     </div>
-                    {isMobile&&<select value={t.stage} onClick={e=>e.stopPropagation()} onChange={e=>setStage(t.id,e.target.value)} style={{marginTop:8,width:"100%",fontSize:11,padding:"4px 6px",borderRadius:5,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans}}>
+                    {isMobile&&<select value={t.stage} onClick={e=>e.stopPropagation()} onChange={e=>setStage(t.id,e.target.value)} style={{marginTop:8,width:"100%",fontSize:11,padding:"4px 6px",borderRadius:5,border:`1px solid ${T.hair}`,background:"#fff",color:T.ink,fontFamily:sans}}>
                       {Object.entries(PIPE_STAGES).map(([k,v2])=><option key={k} value={k}>{v2.label}</option>)}
                     </select>}
                   </div>
                 );})}
-                {col.length===0&&<div style={{fontSize:11,color:S.faint,textAlign:"center",padding:"14px 0",border:`1px dashed ${S.border}`,borderRadius:6}}>{isMobile?"Empty":"Drop here"}</div>}
+                {col.length===0&&<div style={{fontSize:11,color:T.faint,textAlign:"center",padding:"16px 0",border:`1px dashed ${T.hairS}`,borderRadius:7}}>{isMobile?"Empty":"Drop here"}</div>}
               </div>
             </div>
           );
