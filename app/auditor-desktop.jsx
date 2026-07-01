@@ -1,6 +1,6 @@
 "use client";
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const T = {
   bg:"#FFFFFF", soft:"#F4F4F3", ink:"#17181B", sub:"#6A6E77", faint:"#8C9099",
@@ -463,6 +463,50 @@ const Tag=({label,c,s})=><span style={{
   lineHeight:"17px",
 }}>{label}</span>;
 
+// Linear-style tag picker: a colored pill that opens a small dropdown of options.
+// options: [{value, label, color}], value: current, onChange(value)
+function TagPick({value,options,onChange,placeholder="Set"}){
+  const [open,setOpen]=useState(false);
+  const ref=useRef(null);
+  const cur=options.find(o=>o.value===value);
+  useEffect(()=>{if(!open)return;const fn=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",fn);return()=>document.removeEventListener("mousedown",fn);},[open]);
+  return <span ref={ref} style={{position:"relative",display:"inline-block"}}>
+    <button onClick={e=>{e.stopPropagation();setOpen(o=>!o);}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:cur?cur.color+"18":T.soft,color:cur?cur.color:T.faint,border:`1px solid ${cur?cur.color+"1F":T.hairS}`,letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
+      {cur?<><span style={{width:6,height:6,borderRadius:"50%",background:cur.color,flexShrink:0}}/>{cur.label}</>:placeholder}
+      <span style={{fontSize:8,opacity:.5,marginLeft:1}}>▾</span>
+    </button>
+    {open&&<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:50,minWidth:150,background:"#fff",border:`1px solid ${T.hairS}`,borderRadius:9,boxShadow:"0 8px 28px rgba(0,0,0,0.13), 0 1px 3px rgba(0,0,0,0.06)",padding:4,animation:"ttPop .14s cubic-bezier(.4,0,.2,1)"}}>
+      {options.map(o=>(
+        <button key={o.value} onClick={e=>{e.stopPropagation();onChange(o.value);setOpen(false);}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"6px 9px",borderRadius:6,border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:12.5,color:T.ink,letterSpacing:"-0.01em",transition:"background .1s",textAlign:"left"}}>
+          <span style={{width:7,height:7,borderRadius:"50%",background:o.color,flexShrink:0}}/>
+          <span style={{flex:1}}>{o.label}</span>
+          {o.value===value&&<span style={{fontSize:11,color:T.faint}}>✓</span>}
+        </button>
+      ))}
+    </div>}
+  </span>;
+}
+
+// Borderless Notion/Linear-style text input — reads as plain text, no chrome.
+function InlineText({value,onChange,onCommit,placeholder,bold,size=13,area=false,style={}}){
+  const base={border:"none",outline:"none",background:"transparent",fontFamily:sans,fontSize:size,fontWeight:bold?600:400,color:value?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,width:"100%",lineHeight:1.5,...style};
+  if(area)return <textarea value={value} onChange={e=>onChange(e.target.value)} onBlur={onCommit} placeholder={placeholder} rows={1} onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}}} style={{...base,resize:"none",overflow:"hidden",display:"block"}}/>;
+  return <input value={value} onChange={e=>onChange(e.target.value)} onBlur={onCommit} placeholder={placeholder} style={base}/>;
+}
+
+// Compact date pill — click to reveal native picker, shows a clean formatted chip.
+function DateChip({value,onChange}){
+  const ref=useRef(null);
+  const label=value?new Date(value+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"Set date";
+  return <span style={{position:"relative",display:"inline-flex"}}>
+    <button onClick={()=>{try{ref.current.showPicker();}catch{ref.current.focus();}}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:value?T.soft:T.soft,color:value?T.ink:T.faint,border:`1px solid ${T.hairS}`,letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans}}>
+      <span style={{fontSize:11,opacity:.7}}>◷</span>{label}
+    </button>
+    <input ref={ref} type="date" value={value||""} onChange={e=>onChange(e.target.value)} style={{position:"absolute",opacity:0,width:1,height:1,pointerEvents:"none",bottom:0,left:0}}/>
+  </span>;
+}
+
+
 // Vercel-style collapsible section with smooth CSS transition
 function CollapsibleSection({title,badge,badgeColor,badgeBg,defaultOpen=true,onAdd,addLabel="+ Add",children}){
   const [open,setOpen]=useState(defaultOpen);
@@ -775,7 +819,7 @@ export default function AppDesktop(){
             const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
             if(allRows.length===0)return<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText,border:`1px solid ${S.border}`,borderRadius:8}}>No accounts yet.</div>;
             return<>
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"8px 14px":"8px 20px",background:T.rail,border:`1px solid ${T.hair}`,borderRadius:"11px 11px 0 0"}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr .9fr .9fr .9fr 190px",padding:isMobile?"8px 14px":"8px 20px",background:T.rail,border:`1px solid ${T.hair}`,borderRadius:"11px 11px 0 0"}}>
                 {["Account","Tier","GMV realized","Fees earned","Net revenue",""].map((h,i)=>(
                   <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,textAlign:i>=2&&i<5?"right":"left"}}>{h}</div>
                 ))}
@@ -792,7 +836,7 @@ export default function AppDesktop(){
                     {showTierHeader&&i>0&&<div style={{padding:"14px 20px 6px",background:"#fff",borderTop:`1px solid ${T.hair}`}}>
                       <span style={{fontSize:11.5,fontWeight:600,letterSpacing:"-0.01em",color:tier.c}}>{tier.label}</span>
                     </div>}
-                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left",transition:"background .12s"}}
+                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr .9fr .9fr .9fr 190px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left",transition:"background .12s"}}
                       onMouseEnter={e=>e.currentTarget.style.background=T.soft}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -803,10 +847,10 @@ export default function AppDesktop(){
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(fees):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13,color:net<0?T.red:T.ink}}>{c?(net<0?"-":"")+fmtK(Math.abs(net)):"—"}</div>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:12,paddingLeft:28}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:14,whiteSpace:"nowrap"}}>
                         <span onClick={e=>{e.stopPropagation();setPeekTab("timeline");setPeekClosing(false);setPeekAcct(a);}} title="Quick view" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,color:peekAcct&&peekAcct.id===a.id?T.ink:T.faint,background:peekAcct&&peekAcct.id===a.id?T.hairS:"transparent",cursor:"pointer",fontSize:15,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{const on=peekAcct&&peekAcct.id===a.id;e.currentTarget.style.background=on?T.hairS:"transparent";e.currentTarget.style.color=on?T.ink:T.faint;}}>⋯</span>
                         <span onClick={e=>{e.stopPropagation();setArchiveTarget(a);}} style={{fontSize:11,color:S.labelText,cursor:"pointer",padding:0,fontFamily:sans}}>Archive</span>
-                        <span style={{fontSize:12,color:T.purple,fontWeight:500}}>View →</span>
+                        <span style={{fontSize:12,color:T.purple,fontWeight:500,whiteSpace:"nowrap"}}>View →</span>
                       </div>
                     </button>
                   </div>;
@@ -819,7 +863,7 @@ export default function AppDesktop(){
                 </div>
                 <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",background:"#fff",opacity:.7}}>
                   {archivedAccts.map((a,i)=>(
-                    <div key={a.id} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr 1fr 1fr 1fr 120px",padding:"11px 20px",borderTop:i?`1px solid ${S.border}`:"none",alignItems:"center"}}>
+                    <div key={a.id} style={{display:"grid",gridTemplateColumns:"2.2fr .8fr .9fr .9fr .9fr 190px",padding:"11px 20px",borderTop:i?`1px solid ${S.border}`:"none",alignItems:"center"}}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         <div style={{width:28,height:28,borderRadius:6,background:"#D1D5DB",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff"}}>{a.short}</div>
                         <div><div style={{fontSize:13,color:S.inactiveText}}>{a.account}</div><div style={{fontSize:11.5,color:S.labelText,marginTop:1}}>{a.owner}</div></div>
@@ -1183,19 +1227,17 @@ function MilestoneAdd({onAdd,onCancel}){
   const [title,setTitle]=useState("");
   const [date,setDate]=useState("");
   const [note,setNote]=useState("");
-  return <div style={{background:T.rail,border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:8}}>
-    <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:10}}>Add milestone</div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12}}>
-      {Object.entries(MILESTONE_TYPES).map(([k,v])=><button key={k} onClick={()=>setType(k)} style={{padding:"6px 4px",borderRadius:5,fontFamily:sans,fontSize:11,fontWeight:type===k?600:400,cursor:"pointer",border:`1px solid ${type===k?v.color:S.border}`,background:type===k?v.color+"12":"#fff",color:type===k?v.color:S.inactiveText,textAlign:"center"}}>{v.label}</button>)}
+  const typeOpts=Object.entries(MILESTONE_TYPES).map(([k,v])=>({value:k,label:v.label,color:v.color}));
+  return <div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:10,padding:"12px 14px",marginTop:8}}>
+    <InlineText value={title} onChange={setTitle} placeholder="Milestone title…" bold size={14} style={{marginBottom:8}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}}>
+      <TagPick value={type} options={typeOpts} onChange={setType} placeholder="Type"/>
+      <DateChip value={date} onChange={setDate}/>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Title</label><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Event day" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Date</label><input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-    </div>
-    <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Note (optional)</label><input value={note} onChange={e=>setNote(e.target.value)} placeholder="Add context" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-    <div style={{display:"flex",gap:8}}>
-      <button disabled={!title||!date} onClick={()=>{onAdd({id:uid(),type,title,date,note,done:false});onCancel();}} style={{...VBtn.primary,fontSize:12,opacity:(!title||!date)?.5:1}}>Add</button>
-      <button onClick={onCancel} style={{...VBtn.secondary,fontSize:12}}>Cancel</button>
+    <InlineText value={note} onChange={setNote} placeholder="Add a note…" size={12.5} style={{marginBottom:10,color:note?T.sub:T.faint}}/>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      <button disabled={!title||!date} onClick={()=>{onAdd({id:uid(),type,title,date,note,done:false});onCancel();}} style={{...VBtn.small,fontSize:12,opacity:(!title||!date)?.45:1,cursor:(!title||!date)?"default":"pointer"}}>Add milestone</button>
+      <button onClick={onCancel} style={{fontSize:12,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"5px 8px"}}>Cancel</button>
     </div>
   </div>;
 }
@@ -1269,26 +1311,25 @@ function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete}){
     {open&&<div style={{borderTop:`1px solid ${S.border}`}}>
       {/* Quick GMV edit row */}
       {editMode
-        ?<div style={{padding:"14px 16px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
-          <div style={{fontSize:11,fontWeight:600,color:T.ink,marginBottom:10,textTransform:"uppercase",letterSpacing:.4}}>Quick edit</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
-            {[["GMV realized ($)","gmvActual","number",gmvActual],["GMV projected ($)","gmvProjected","number",gmvProj],["Net take %","netTakePct","number",take]].map(([l,k,t2,v])=>(
-              <div key={k}>
-                <label style={{fontSize:10.5,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.3,display:"block",marginBottom:4}}>{l}</label>
-                <input type={t2} value={v} onChange={e=>onUpdate({[k]:+e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        ?<div style={{padding:"14px 16px",background:S.bg,borderBottom:`1px solid ${T.hair}`}}>
+          <InlineText value={cy.label||""} onChange={v=>onUpdate({label:v})} placeholder="Cycle label…" bold size={14} style={{marginBottom:10}}/>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:12}}>
+            <span style={{fontSize:11.5,color:T.faint}}>Period</span>
+            <DateChip value={cy.start} onChange={v=>onUpdate({start:v})}/>
+            <span style={{fontSize:12,color:T.faint}}>→</span>
+            <DateChip value={cy.end} onChange={v=>onUpdate({end:v})}/>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",marginBottom:8}}>
+            {[["GMV realized","gmvActual",gmvActual],["GMV projected","gmvProjected",gmvProj],["Net take %","netTakePct",take]].map(([l,k,v])=>(
+              <div key={k} style={{display:"flex",flexDirection:"column",gap:3}}>
+                <span style={{fontSize:11,color:T.faint,letterSpacing:"-0.01em"}}>{l}</span>
+                <span style={{display:"inline-flex",alignItems:"center",gap:2,fontSize:13,fontWeight:500}}>{k!=="netTakePct"&&<span style={{color:T.faint}}>$</span>}<input type="number" value={v} onChange={e=>onUpdate({[k]:+e.target.value})} style={{border:"none",outline:"none",background:"transparent",fontFamily:sans,fontSize:13,fontWeight:500,color:T.ink,width:k==="netTakePct"?44:80,padding:0}}/>{k==="netTakePct"&&<span style={{color:T.faint}}>%</span>}</span>
               </div>
             ))}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            {[["Label","label","text",cy.label||""],["Start","start","text",cy.start||""],["End","end","text",cy.end||""],["Payment","paymentTerms","text",cy.paymentTerms||""]].map(([l,k,t2,v])=>(
-              <div key={k}>
-                <label style={{fontSize:10.5,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.3,display:"block",marginBottom:4}}>{l}</label>
-                <input type={t2} value={v} onChange={e=>onUpdate({[k]:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box",background:"#fff"}}/>
-              </div>
-            ))}
-          </div>
+          <InlineText value={cy.paymentTerms||""} onChange={v=>onUpdate({paymentTerms:v})} placeholder="Payment terms…" size={12.5} style={{marginBottom:10,color:cy.paymentTerms?T.sub:T.faint}}/>
           <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-            <button onClick={()=>setEditMode(false)} style={{...VBtn.secondary,fontSize:12}}>Done</button>
+            <button onClick={()=>setEditMode(false)} style={{...VBtn.small,fontSize:12}}>Done</button>
           </div>
         </div>
         :<div style={{padding:"12px 16px",background:T.rail,borderBottom:`1px solid ${S.border}`,display:"flex",gap:10}}>
@@ -1762,22 +1803,22 @@ function CostAddStripe({onAdd}){
   const [note,setNote]=useState("");
   const ct=COST_TYPES.find(c=>c.id===type);
   const computed=ct.calc(fields);
-  if(!open) return <button onClick={()=>setOpen(true)} style={{marginTop:10,width:"100%",padding:"10px",borderRadius:7,border:`1px dashed ${S.border}`,background:"#fff",color:T.purple,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer"}}>+ Log a cost</button>;
-  return <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:10,background:"#fff"}}>
-    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-      {COST_TYPES.map(c=><button key={c.id} onClick={()=>setType(c.id)} style={{padding:"5px 10px",borderRadius:5,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${type===c.id?T.purple:S.border}`,background:type===c.id?T.purpleSoft:"#fff",color:type===c.id?T.purple:S.inactiveText}}>{c.label}</button>)}
+  if(!open) return <button onClick={()=>setOpen(true)} style={{marginTop:10,width:"100%",padding:"10px",borderRadius:8,border:`1px dashed ${T.hairS}`,background:"transparent",color:T.faint,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.soft;e.currentTarget.style.color=T.sub;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.color=T.faint;}}>+ Log a cost</button>;
+  return <div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:10,padding:"12px 14px",marginTop:10}}>
+    <InlineText value={label} onChange={setLabel} placeholder="Cost label…" bold size={14} style={{marginBottom:9}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}}>
+      <TagPick value={type} options={COST_TYPES.map(c=>({value:c.id,label:c.label,color:T.purple}))} onChange={setType} placeholder="Type"/>
+      {ct.fields.map(f=>(
+        <span key={f} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:T.soft,border:`1px solid ${T.hairS}`,color:T.sub}}>
+          <span style={{color:T.faint}}>{FIELD_DEFS[f].l}</span>
+          <input type="number" value={fields[f]} onChange={e=>setFields(p=>({...p,[f]:+e.target.value||0}))} style={{border:"none",outline:"none",background:"transparent",fontFamily:sans,fontSize:11.5,fontWeight:500,color:T.ink,width:52,padding:0}}/>
+        </span>
+      ))}
+      <span style={{marginLeft:"auto",fontSize:13,fontWeight:600,color:T.purple}}>= {fmt(computed)}</span>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-      <div style={{border:`1px solid ${S.border}`,borderRadius:6,padding:"8px 10px"}}><label style={{fontSize:11,color:S.labelText,display:"block",fontWeight:600,textTransform:"uppercase",letterSpacing:.3}}>Label</label><input value={label} onChange={e=>setLabel(e.target.value)} style={{border:"none",outline:"none",fontSize:13,fontWeight:500,width:"100%",marginTop:2,fontFamily:sans}}/></div>
-      {ct.fields.map(f=><div key={f} style={{border:`1px solid ${S.border}`,borderRadius:6,padding:"8px 10px"}}><label style={{fontSize:11,color:S.labelText,display:"block",fontWeight:600,textTransform:"uppercase",letterSpacing:.3}}>{FIELD_DEFS[f].l}</label><input type="number" value={fields[f]} onChange={e=>setFields(p=>({...p,[f]:+e.target.value||0}))} style={{border:"none",outline:"none",fontSize:13,fontWeight:500,width:"100%",marginTop:2,fontFamily:sans}}/></div>)}
-    </div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:T.purpleSoft,borderRadius:6,marginBottom:10}}>
-      <span style={{fontSize:12,color:T.purple,fontWeight:600}}>Computed</span>
-      <span style={{fontSize:16,fontWeight:700,color:T.purple}}>{fmt(computed)}</span>
-    </div>
-    <div style={{display:"flex",gap:8}}>
-      <button disabled={!computed&&!label} onClick={()=>{onAdd({id:uid(),type,label:label||ct.label,fields,computed,note,when:new Date().toLocaleDateString("en-US",{month:"short",year:"numeric"}),detail:ct.fields.map(f=>`${FIELD_DEFS[f].l}: ${fields[f]}`).join(" · ")});setOpen(false);setLabel("");setFields({amount:0,rate:150,hours:0,pct:0,base:0});}} style={{flex:1,padding:"8px",borderRadius:6,border:"none",background:(computed||label)?T.ink:"rgba(0,0,0,.08)",color:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Add cost</button>
-      <button onClick={()=>setOpen(false)} style={{padding:"8px 14px",borderRadius:6,border:`1px solid ${S.border}`,background:"#fff",color:S.inactiveText,fontFamily:sans,fontSize:13,cursor:"pointer"}}>Cancel</button>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      <button disabled={!computed&&!label} onClick={()=>{onAdd({id:uid(),type,label:label||ct.label,fields,computed,note,when:new Date().toLocaleDateString("en-US",{month:"short",year:"numeric"}),detail:ct.fields.map(f=>`${FIELD_DEFS[f].l}: ${fields[f]}`).join(" · ")});setOpen(false);setLabel("");setFields({amount:0,rate:150,hours:0,pct:0,base:0});}} style={{...VBtn.small,fontSize:12,opacity:(computed||label)?1:.45,cursor:(computed||label)?"pointer":"default"}}>Add cost</button>
+      <button onClick={()=>setOpen(false)} style={{fontSize:12,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"5px 8px"}}>Cancel</button>
     </div>
   </div>;
 }
@@ -1822,23 +1863,22 @@ function CycleCard({cy,index,onUpdate,onDelete}){
 function NewCycleForm({products,onSave,onCancel}){
   const [label,setLabel]=useState("");const [start,setStart]=useState("");const [end,setEnd]=useState("");
   const [prods,setProds]=useState([...products]);const [note,setNote]=useState("");
-  return <div style={{background:T.soft,border:HD,borderRadius:8,padding:14,marginTop:10}}>
-    <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:10}}>New contract cycle</div>
-    <div style={{display:"grid",gap:8}}>
-      <EF label="Cycle label" value={label} onChange={setLabel} placeholder="Sail4th 250 — Year 2"/>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-        <EF label="Start" value={start} onChange={setStart} placeholder="May 2027"/>
-        <EF label="End" value={end} onChange={setEnd} placeholder="Jul 2027"/>
-      </div>
-      <EF label="Notes" value={note} onChange={setNote}/>
+  return <div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:10,padding:"12px 14px",marginTop:10}}>
+    <InlineText value={label} onChange={setLabel} placeholder="Cycle label…" bold size={14} style={{marginBottom:9}}/>
+    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:10}}>
+      <span style={{fontSize:11.5,color:T.faint}}>Period</span>
+      <DateChip value={start} onChange={setStart}/>
+      <span style={{fontSize:12,color:T.faint}}>→</span>
+      <DateChip value={end} onChange={setEnd}/>
     </div>
-    <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:T.faint,margin:"12px 2px 8px"}}>Products in scope</div>
+    <InlineText value={note} onChange={setNote} placeholder="Add a note…" size={12.5} style={{marginBottom:12,color:note?T.sub:T.faint}}/>
+    <div style={{fontSize:11.5,color:T.faint,marginBottom:7}}>Products in scope</div>
     <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-      {PRODUCTS.map(p=>{const has=prods.includes(p); return <button key={p} onClick={()=>setProds(has?prods.filter(x=>x!==p):[...prods,p])} style={{fontSize:12,fontWeight:600,padding:"4px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green:T.hairS}`,background:has?T.greenSoft:T.bg,color:has?T.green:T.sub,fontFamily:sans}}>{has?"✓ ":""}{p}</button>;})}
+      {PRODUCTS.map(p=>{const has=prods.includes(p); return <button key={p} onClick={()=>setProds(has?prods.filter(x=>x!==p):[...prods,p])} style={{fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green+"1F":T.hairS}`,background:has?T.green+"18":T.soft,color:has?T.green:T.faint,fontFamily:sans,transition:"background .12s"}}>{has?"✓ ":""}{p}</button>;})}
     </div>
-    <div style={{display:"flex",gap:8}}>
-      <button disabled={!label} onClick={()=>onSave({id:uid(),label,start,end,products:prods,events:[],note,active:true})} style={{flex:1,padding:10,borderRadius:8,border:"none",background:label?T.ink:T.hairS,color:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Create cycle</button>
-      <button onClick={onCancel} style={{padding:"10px 14px",borderRadius:8,border:BD,background:T.bg,color:T.sub,fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Cancel</button>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      <button disabled={!label} onClick={()=>onSave({id:uid(),label,start,end,products:prods,events:[],note,active:true})} style={{...VBtn.small,fontSize:12,opacity:label?1:.45,cursor:label?"pointer":"default"}}>Create cycle</button>
+      <button onClick={onCancel} style={{fontSize:12,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"5px 8px"}}>Cancel</button>
     </div>
   </div>;
 }
@@ -1860,19 +1900,14 @@ function ChargebackRow({cb,onUpdate,onDelete}){
       </div>
       <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>x</button>
     </div>
-    {open&&<div style={{marginTop:10,padding:"14px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:8}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
-        {[["Disputed by","text",cb.disputedBy||"","disputedBy"],["Amount ($)","number",cb.amount||0,"amount"],["Date","text",cb.date||"","date"]].map(([lbl,tp,val,key])=>(
-          <div key={key}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>{lbl}</label>
-          <input type={tp} value={val} onChange={e=>onUpdate({[key]:tp==="number"?+e.target.value:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-        ))}
-      </div>
-      <div style={{marginBottom:10}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Reason</label>
-        <input value={cb.reason||""} onChange={e=>onUpdate({reason:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-      <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Notes</label>
-        <textarea value={cb.note||""} onChange={e=>onUpdate({note:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",resize:"none",minHeight:48,boxSizing:"border-box"}}/></div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        {CHARGEBACK_STATUS.map(s=>{const sc2=SC[s]||SC["Open"]; return <button key={s} onClick={()=>onUpdate({status:s})} style={{...VBtn.small,border:`1px solid ${cb.status===s?sc2.c:S.border}`,background:cb.status===s?sc2.s:"#fff",color:cb.status===s?sc2.c:S.inactiveText,fontSize:11}}>{s}</button>;})}
+    {open&&<div style={{marginTop:10,padding:"12px 14px",background:S.bg,border:`1px solid ${T.hair}`,borderRadius:10}}>
+      <InlineText value={cb.disputedBy||""} onChange={v=>onUpdate({disputedBy:v})} placeholder="Disputed by…" bold size={14} style={{marginBottom:7}}/>
+      <InlineText value={cb.reason||""} onChange={v=>onUpdate({reason:v})} placeholder="Reason…" size={12.5} style={{marginBottom:7,color:cb.reason?T.sub:T.faint}}/>
+      <InlineText value={cb.note||""} onChange={v=>onUpdate({note:v})} placeholder="Add a note…" area size={12.5} style={{marginBottom:12,color:cb.note?T.sub:T.faint}}/>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <TagPick value={cb.status} options={CHARGEBACK_STATUS.map(s=>({value:s,label:s,color:(SC[s]||SC.Open).c}))} onChange={s=>onUpdate({status:s})} placeholder="Status"/>
+        <DateChip value={cb.date} onChange={v=>onUpdate({date:v})}/>
+        <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:T.soft,border:`1px solid ${T.hairS}`,color:T.sub}}>$<input type="number" value={cb.amount||0} onChange={e=>onUpdate({amount:+e.target.value})} style={{border:"none",outline:"none",background:"transparent",fontFamily:sans,fontSize:11.5,fontWeight:500,color:T.ink,width:56,padding:0}}/></span>
       </div>
     </div>}
   </div>;
@@ -1910,29 +1945,14 @@ function FeatureRow({f,onUpdate,onDelete}){
       </div>
       <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>x</button>
     </div>
-    {open&&<div style={{marginTop:10,padding:"14px",background:T.rail,border:`1px solid ${isOos?T.redSoft:S.border}`,borderRadius:8}}>
+    {open&&<div style={{marginTop:10,padding:"12px 14px",background:S.bg,border:`1px solid ${isOos?T.redSoft:T.hair}`,borderRadius:10}}>
       {isOos&&<div style={{fontSize:12,color:T.red,marginBottom:10,lineHeight:1.5}}>Out of scope — not covered by the signed contract. Resolve before next cycle.</div>}
-      <div style={{marginBottom:10}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Feature name</label>
-        <input value={f.name||""} onChange={e=>onUpdate({name:e.target.value})} placeholder="e.g. Per-pier GMV report" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
-      <div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Notes</label>
-        <textarea value={f.note||""} onChange={e=>onUpdate({note:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",resize:"none",minHeight:48,boxSizing:"border-box"}}/></div>
-      {isOos&&<div style={{marginBottom:12}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Resolution</label>
-        <select value={f.scopeResolution||""} onChange={e=>onUpdate({scopeResolution:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",background:"#fff"}}>
-          <option value="">Select resolution</option>
-          <option value="absorb">We absorbed it</option>
-          <option value="charge">Bill the client</option>
-          <option value="add_to_contract">Add to next cycle</option>
-          <option value="scope_change">Raise scope change request</option>
-          <option value="remove">Stop this work</option>
-        </select></div>}
-      <div style={{marginBottom:10}}>
-        <label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:6}}>Status</label>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{FEATURE_STATUS.map(s=>{const i2=FEATURE_STATUS.indexOf(s);const c2=i2===0?T.sub:i2===1?T.blue:i2===2?T.green:i2===3?T.yellow:T.red; return <button key={s} onClick={()=>onUpdate({status:s})} style={{...VBtn.small,border:`1px solid ${f.status===s?c2:S.border}`,background:f.status===s?c2+"14":"#fff",color:f.status===s?c2:S.inactiveText,fontSize:11}}>{s}</button>;})}
-        </div>
-      </div>
-      <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:6}}>Scope</label>
-        <div style={{display:"flex",gap:5}}>{SCOPES.map(([s,l])=>{const sc2=FEATURE_SCOPE_C[s]||FEATURE_SCOPE_C.contract;const on=f.scope===s||(s==="out-of-scope"&&f.scope==="oos"); return <button key={s} onClick={()=>onUpdate({scope:s})} style={{...VBtn.small,border:`1px solid ${on?sc2.c:S.border}`,background:on?sc2.c+"14":"#fff",color:on?sc2.c:S.inactiveText,fontSize:11}}>{l}</button>;})}
-        </div>
+      <InlineText value={f.name||""} onChange={v=>onUpdate({name:v})} placeholder="Feature name…" bold size={14} style={{marginBottom:7}}/>
+      <InlineText value={f.note||""} onChange={v=>onUpdate({note:v})} placeholder="Add a note…" area size={12.5} style={{marginBottom:12,color:f.note?T.sub:T.faint}}/>
+      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <TagPick value={f.status||"Scoped"} options={FEATURE_STATUS.map((s,i)=>({value:s,label:s,color:i===0?T.sub:i===1?T.blue:i===2?T.green:i===3?T.yellow:T.red}))} onChange={s=>onUpdate({status:s})} placeholder="Status"/>
+        <TagPick value={f.scope==="oos"?"out-of-scope":(f.scope||"contract")} options={SCOPES.map(([s,l])=>({value:s,label:l,color:(FEATURE_SCOPE_C[s]||FEATURE_SCOPE_C.contract).c}))} onChange={s=>onUpdate({scope:s})} placeholder="Scope"/>
+        {isOos&&<TagPick value={f.scopeResolution||""} options={[{value:"absorb",label:"We absorbed it",color:T.sub},{value:"charge",label:"Bill the client",color:T.green},{value:"add_to_contract",label:"Add to next cycle",color:T.blue},{value:"scope_change",label:"Raise scope change",color:T.yellow},{value:"remove",label:"Stop this work",color:T.red}]} onChange={v=>onUpdate({scopeResolution:v})} placeholder="Resolution"/>}
       </div>
     </div>}
   </div>;
