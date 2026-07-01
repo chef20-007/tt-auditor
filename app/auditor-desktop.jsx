@@ -1421,11 +1421,20 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   function delFeature(id){const n=features.filter(f=>f.id!==id);setFeatures(n);save({features:n});}
   function resolveSignal(s,keep){
     const pend=(a.signals_pending||[]).filter(x=>x.id!==s.id);
-    const risks=keep?[...(a.risks||[]),{risk:s.kind,severity:s.sev,action:s.text}]:(a.risks||[]);
+    const risks=keep?[...(a.risks||[]),{risk:s.kind,severity:s.sev,action:s.text,_signal:s}]:(a.risks||[]);
     const dismissed=keep?(a.dismissed_signals||[]):[...(a.dismissed_signals||[]),{...s,dismissedAt:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}];
     setToast(keep?"Added to risks ✓":"Dismissed");
     setTimeout(()=>setToast(null),2000);
     save({signals_pending:pend,risks,dismissed_signals:dismissed});
+  }
+  function unrisk(idx){
+    const r=(a.risks||[])[idx];if(!r)return;
+    const risks=(a.risks||[]).filter((_,i)=>i!==idx);
+    // If this risk came from a signal, restore it to pending so it can be reviewed again
+    const pend=r._signal?[...(a.signals_pending||[]),r._signal]:(a.signals_pending||[]);
+    setToast(r._signal?"Moved back to signals":"Risk removed");
+    setTimeout(()=>setToast(null),2000);
+    save({risks,signals_pending:pend});
   }
 
   const h=HEALTH[a.health];
@@ -1494,11 +1503,10 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 {pt.note&&<span style={{fontSize:12.5,color:T.faint,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pt.note}</span>}
               </div>
             );})()}
-            {/* Notes — free text, Linear/Notion style */}
-            <div style={{marginBottom:26}}>
-              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:9}}>Notes</div>
+            {/* Notes — collapsible, Linear/Notion style */}
+            <CollapsibleSection title="Notes" defaultOpen={true}>
               <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>{if((a.notes||"")!==notes)save({notes});}} placeholder="Add a note…" onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,44)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,44)+"px";}}} style={{width:"100%",border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block",minHeight:44}}/>
-            </div>
+            </CollapsibleSection>
             {(a.signals_pending||[]).length>0&&<div style={{marginBottom:32}}>
               <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Signals to review</div>
               <div style={{border:`1px solid ${T.hairS}`,borderRadius:11,overflow:"hidden",background:S.bg}}>
@@ -1509,9 +1517,9 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                         <span style={{fontSize:13,fontWeight:600,color:T.red,letterSpacing:"-0.01em"}}>⚑ {s.kind}</span>
                         <Tag label={SEV[s.sev].l} c={SEV[s.sev].c} s={SEV[s.sev].s}/>
                       </div>
-                      <div style={{display:"flex",gap:6,flexShrink:0}}>
-                        <button onClick={()=>resolveSignal(s,true)} style={{...VBtn.small,fontSize:11.5,background:T.ink,color:"#fff",borderColor:T.ink}}>Add as risk</button>
-                        <button onClick={()=>resolveSignal(s,false)} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{fontSize:11.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"5px 6px",transition:"color .12s"}}>Dismiss</button>
+                      <div style={{display:"flex",gap:4,flexShrink:0,alignItems:"center"}}>
+                        <button onClick={()=>resolveSignal(s,true)} onMouseEnter={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.borderColor=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="transparent";e.currentTarget.style.color=T.sub;}} style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:6,background:"transparent",border:`1px solid transparent`,color:T.sub,cursor:"pointer",fontFamily:sans,letterSpacing:"-0.01em",transition:"background .12s,border-color .12s,color .12s"}}><span style={{fontSize:13,lineHeight:1,marginTop:-1}}>+</span>Track as risk</button>
+                        <button onClick={()=>resolveSignal(s,false)} onMouseEnter={e=>e.currentTarget.style.color=T.faint} onMouseLeave={e=>e.currentTarget.style.color=T.faint+"99"} style={{fontSize:11.5,color:T.faint+"99",background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"3px 6px",transition:"color .12s",letterSpacing:"-0.01em"}}>Dismiss</button>
                       </div>
                     </div>
                     <div style={{fontSize:13,color:T.sub,lineHeight:1.5,letterSpacing:"-0.01em"}}>{s.text}</div>
@@ -1554,12 +1562,13 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
               <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Risks & exposure</div>
               <div>
                 {a.risks.map((r,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none"}} onMouseEnter={e=>{const b=e.currentTarget.querySelector("[data-undo]");if(b)b.style.opacity="1";}} onMouseLeave={e=>{const b=e.currentTarget.querySelector("[data-undo]");if(b)b.style.opacity="0";}}>
                     <div style={{paddingTop:1}}><Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/></div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2,letterSpacing:"-0.01em"}}>{r.risk}</div>
                       <div style={{fontSize:12.5,color:T.sub,lineHeight:1.5,letterSpacing:"-0.01em"}}>→ {r.action}</div>
                     </div>
+                    <button data-undo onClick={()=>unrisk(i)} title={r._signal?"Move back to signals":"Remove risk"} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{opacity:0,flexShrink:0,fontSize:11.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"2px 4px",transition:"opacity .12s,color .12s",letterSpacing:"-0.01em"}}>{r._signal?"↩ Move back":"Remove"}</button>
                   </div>
                 ))}
               </div>
