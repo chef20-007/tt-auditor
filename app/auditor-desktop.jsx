@@ -9,7 +9,7 @@ const T = {
   green:"#1F9A63", greenSoft:"#E6F5EC", red:"#D64B44", redSoft:"#FBE9E7",
   yellow:"#B08006", yellowSoft:"#F8EFD6", blue:"#5A8FD6", blueLt:"#B3CDEC",
   // Tonal light depth (Linear light): back-plane deeper, content/rail near-white
-  backplane:"#F1F0EE", page:"#FCFCFB", rail:"#F4F3F1",
+  backplane:"#F6F5F4", page:"#FCFCFB", rail:"#F4F3F1",
   railText:"#3D4046", railTextActive:"#17181B", railHover:"rgba(0,0,0,0.045)",
   railActive:"rgba(0,0,0,0.065)", railLabel:"#9A9DA4", railHair:"rgba(0,0,0,0.07)",
 };
@@ -527,6 +527,9 @@ export default function AppDesktop(){
     l.href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap";
     document.head.appendChild(l);
     document.body.style.setProperty("-webkit-font-smoothing","antialiased");
+    const st=document.createElement("style");st.id="tt-anim";
+    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}";
+    document.head.appendChild(st);
   },[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
   const [selected,setSelected]=useState(()=>{try{return sessionStorage.getItem('tt_selected')||null;}catch{return null;}});
@@ -613,7 +616,7 @@ export default function AppDesktop(){
           {n.label}
         </button>;})}
       </div>}
-      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:"transparent",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:"transparent",display:"flex",flexDirection:"column",overflow:"hidden",margin:"8px 0 8px 8px",animation:"ttSlideIn .32s cubic-bezier(.22,.61,.36,1)"}}>
         <div style={{padding:"14px 14px 10px"}}>
           <div style={{display:"flex",alignItems:"center",gap:9,padding:"5px 8px",borderRadius:7,cursor:"default"}}>
             <div style={{width:26,height:26,borderRadius:6,background:T.ink,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:11,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
@@ -639,7 +642,7 @@ export default function AppDesktop(){
       </div>}
 
       {/* MAIN CONTENT — lifted panel on the warm-gray back-plane */}
-      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0"}}>
+      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0",animation:isMobile?"none":"ttFadeUp .34s cubic-bezier(.22,.61,.36,1)"}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
@@ -1468,8 +1471,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           {tab==="economics"&&c&&<>
             <ContractHealthRing eco={eco} costs={costs} obligations={a.obligations||[]} chargebacks={chargebacks} kpis={a.kpis||{}} risks={a.risks||[]}/>
             <div style={{marginTop:28}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:14}}>Revenue structure</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:16}}>Revenue structure</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"20px 32px",marginBottom:24,paddingBottom:24,borderBottom:`1px solid ${T.hair}`}}>
                 {[
                   {k:"Platform fee",v:(eco.platformFeePct||0)+"%"},
                   {k:"Kickback",v:(eco.kickbackPct||0)+"% → "+(eco.kickbackTo||"—")},
@@ -1478,13 +1481,13 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                   {k:"GMV projected",v:fmtK(eco.gmvProjected||0)},
                   {k:"Coverage",v:eco.gmvProjected>0?Math.round(100*(eco.gmvActual||0)/eco.gmvProjected)+"%":"—"},
                 ].map((item,i)=>(
-                  <div key={i} style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"12px 14px"}}>
-                    <div style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.3,marginBottom:4}}>{item.k}</div>
-                    <div style={{fontSize:16,fontWeight:600,color:T.ink}}>{item.v}</div>
+                  <div key={i}>
+                    <div style={{fontSize:12.5,color:T.faint,marginBottom:5,letterSpacing:"-0.01em"}}>{item.k}</div>
+                    <div style={{fontSize:20,fontWeight:600,color:T.ink,letterSpacing:"-0.02em"}}>{item.v}</div>
                   </div>
                 ))}
               </div>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginBottom:20}}>
+              <div style={{marginBottom:20}}>
                 {[
                   {k:"Platform fees earned",v:fmt((eco.gmvActual||0)*(eco.platformFeePct||0)/100)},
                   {k:`Kickback (${eco.kickbackPct||0}% → ${eco.kickbackTo||"partner"})`,v:"−"+fmt((eco.gmvActual||0)*(eco.kickbackPct||0)/100)},
@@ -1492,9 +1495,9 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                   {k:"Running costs",v:fmt(tc)},
                   {k:"Net so far",v:(net<0?"-":"")+fmt(Math.abs(net)),bold:true,color:net<0?T.red:T.green},
                 ].map((row,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"12px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
-                    <span style={{fontSize:13,color:row.bold?T.ink:S.inactiveText,fontWeight:row.bold?600:400}}>{row.k}</span>
-                    <span style={{fontSize:13,fontWeight:row.bold?700:500,color:row.color||T.ink}}>{row.v}</span>
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"11px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                    <span style={{fontSize:13.5,color:row.bold?T.ink:T.sub,fontWeight:row.bold?600:400,letterSpacing:"-0.01em"}}>{row.k}</span>
+                    <span style={{fontSize:13.5,fontWeight:row.bold?600:500,color:row.color||T.ink,letterSpacing:"-0.01em"}}>{row.v}</span>
                   </div>
                 ))}
               </div>
@@ -2336,51 +2339,65 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
       {/* body */}
       <div style={{flex:1,overflowY:"auto",padding:"20px 22px 20px"}}>
         {/* identity */}
-        <div style={{display:"flex",alignItems:"center",gap:13,marginBottom:16}}>
-          <div style={{width:46,height:46,borderRadius:"50%",background:acct?.logo||tier.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff",flexShrink:0}}>{(t.name||"?").slice(0,2).toUpperCase()}</div>
+        <div style={{display:"flex",alignItems:"center",gap:13,marginBottom:20}}>
+          <div style={{width:44,height:44,borderRadius:"50%",background:acct?.logo||tier.c,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#fff",flexShrink:0,boxShadow:`0 0 0 4px ${(acct?.logo||tier.c)}1A`}}>{(t.name||"?").slice(0,2).toUpperCase()}</div>
           <div style={{minWidth:0}}>
-            <div style={{fontSize:20,fontWeight:700,color:T.ink,letterSpacing:-.4,lineHeight:1.15}}>{t.name}</div>
+            <div style={{fontSize:20,fontWeight:600,color:T.ink,letterSpacing:"-0.02em",lineHeight:1.15}}>{t.name}</div>
             {acct
-              ?<div style={{fontSize:13,color:S.inactiveText}}>for <span onClick={()=>onOpenAccount(acct.id)} style={{color:T.purple,cursor:"pointer"}}>{acct.account}</span></div>
-              :<div style={{fontSize:13,color:S.inactiveText}}>{t.vertical}</div>}
+              ?<div style={{fontSize:13,color:T.sub}}>for <span onClick={()=>onOpenAccount(acct.id)} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.purple} style={{color:T.purple,cursor:"pointer"}}>{acct.account}</span></div>
+              :<div style={{fontSize:13,color:T.sub}}>{t.vertical}</div>}
           </div>
         </div>
 
-        {/* tags */}
-        <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-          <span style={{fontSize:12,fontWeight:600,padding:"3px 10px",borderRadius:6,background:cfg.s,color:cfg.c}}>{cfg.label}</span>
-          <span style={{fontSize:12,fontWeight:600,padding:"3px 10px",borderRadius:6,background:"#F0F1F3",color:tier.c}}>{tier.label}</span>
+        {/* ACME-style metric strip — label above, value below, hover changes text color only */}
+        <div style={{display:"grid",gridTemplateColumns:"auto auto 1fr auto",gap:"0 28px",marginBottom:22,alignItems:"start"}}>
+          <div>
+            <div style={{fontSize:13,color:T.faint,marginBottom:4,letterSpacing:"-0.01em"}}>Status</div>
+            {editingField==="stage"
+              ?<select autoFocus value={t.stage} onChange={e=>{onPatch(t.id,{stage:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{Object.keys(PIPE_STAGES).map(k=><option key={k} value={k}>{PIPE_STAGES[k].label}</option>)}</select>
+              :<div onClick={()=>setEditingField("stage")} onMouseEnter={e=>e.currentTarget.style.color=cfg.c} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontSize:14.5,fontWeight:500,color:T.ink,cursor:"pointer",letterSpacing:"-0.01em",transition:"color .12s",whiteSpace:"nowrap"}}>{cfg.label}</div>}
+          </div>
+          <div>
+            <div style={{fontSize:13,color:T.faint,marginBottom:4,letterSpacing:"-0.01em"}}>Tier</div>
+            {editingField==="tier"
+              ?<select autoFocus value={t.tier} onChange={e=>{onPatch(t.id,{tier:+e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{[1,2,3].map(n=><option key={n} value={n}>{PIPE_TIERS[n].label}</option>)}</select>
+              :<div onClick={()=>setEditingField("tier")} onMouseEnter={e=>e.currentTarget.style.color=tier.c} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontSize:14.5,fontWeight:500,color:T.ink,cursor:"pointer",letterSpacing:"-0.01em",transition:"color .12s",whiteSpace:"nowrap"}}>{tier.label}</div>}
+          </div>
+          <div>
+            <div style={{fontSize:13,color:T.faint,marginBottom:4,letterSpacing:"-0.01em"}}>Expected value</div>
+            {editingVal
+              ?<input autoFocus value={valDraft} onChange={e=>setValDraft(e.target.value)}
+                 onKeyDown={e=>{if(e.key==="Enter")commitVal();if(e.key==="Escape"){setValDraft(String(value));setEditingVal(false);}}} onBlur={commitVal}
+                 style={{fontSize:14.5,fontWeight:600,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"1px 6px",width:96,fontFamily:sans}}/>
+              :<div onClick={()=>{setValDraft(String(value));setEditingVal(true);}} onMouseEnter={e=>e.currentTarget.style.color=T.purple} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontSize:14.5,fontWeight:600,color:T.ink,cursor:"pointer",letterSpacing:"-0.01em",transition:"color .12s",whiteSpace:"nowrap"}}>{fmtK(value)}</div>}
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:13,color:T.faint,marginBottom:4,letterSpacing:"-0.01em"}}>Owner</div>
+            {editingField==="owner"
+              ?<select autoFocus value={t.owner} onChange={e=>{onPatch(t.id,{owner:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{["Carter","Elijah","Hunter"].map(o=><option key={o}>{o}</option>)}</select>
+              :<div onClick={()=>setEditingField("owner")} onMouseEnter={e=>e.currentTarget.style.color=T.purple} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontSize:14.5,fontWeight:500,color:T.ink,cursor:"pointer",letterSpacing:"-0.01em",transition:"color .12s",whiteSpace:"nowrap"}}>{t.owner}</div>}
+          </div>
         </div>
 
         {/* notes as prose, click to edit */}
         {editingNote
           ?<div style={{marginBottom:20}}>
             <textarea autoFocus value={noteDraft} onChange={e=>setNoteDraft(e.target.value)} onBlur={()=>{onPatch(t.id,{note:noteDraft});setEditingNote(false);}}
-              style={{width:"100%",minHeight:72,fontSize:14,lineHeight:1.55,padding:"10px 12px",borderRadius:8,border:`1px solid ${T.ink}`,fontFamily:sans,color:T.ink,resize:"vertical",boxSizing:"border-box"}}/>
+              style={{width:"100%",minHeight:64,fontSize:14,lineHeight:1.55,padding:"10px 12px",borderRadius:8,border:`1px solid ${T.ink}`,fontFamily:sans,color:T.ink,resize:"vertical",boxSizing:"border-box"}}/>
           </div>
-          :<div onClick={()=>{setNoteDraft(t.note||"");setEditingNote(true);}} style={{fontSize:14,lineHeight:1.55,color:t.note?T.ink:S.faint,marginBottom:20,cursor:"text",padding:"2px 0"}}>
+          :<div onClick={()=>{setNoteDraft(t.note||"");setEditingNote(true);}} style={{fontSize:14,lineHeight:1.55,color:t.note?T.ink:T.faint,marginBottom:20,cursor:"text",padding:"2px 0"}}>
             {t.note||"Add deal notes…"}
           </div>}
 
-        {/* key-value facts */}
+        {/* stage progress + close date — quiet rows on the page, hairline dividers */}
         <div style={{marginBottom:22}}>
-          {/* expected value inline edit */}
-          <div style={{...kv,borderTop:"none"}}>
-            <span style={kvLabel}>Expected value</span>
-            {editingVal
-              ?<input autoFocus value={valDraft} onChange={e=>setValDraft(e.target.value)}
-                 onKeyDown={e=>{if(e.key==="Enter")commitVal();if(e.key==="Escape"){setValDraft(String(value));setEditingVal(false);}}} onBlur={commitVal}
-                 style={{fontSize:14,fontWeight:600,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"2px 7px",width:110,textAlign:"right",fontFamily:sans}}/>
-              :<span onClick={()=>{setValDraft(String(value));setEditingVal(true);}} onMouseEnter={()=>setValHover(true)} onMouseLeave={()=>setValHover(false)}
-                 style={{fontSize:14,fontWeight:600,color:valHover?"#000":T.ink,cursor:"text",padding:"1px 6px",borderRadius:5,background:valHover?"#F3F4F6":"transparent",transition:"background .1s"}}>{fmtK(value)}</span>}
-          </div>
           {/* stage + progress */}
-          <div style={{padding:"12px 0",borderTop:`1px solid ${S.border}`}}>
+          <div style={{padding:"12px 0",borderTop:`1px solid ${T.hair}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,fontSize:14}}>
-              <span style={kvLabel}>Stage</span>
-              <span style={{fontWeight:500,color:T.ink}}>{cfg.label} <span style={{color:S.faint,fontWeight:400}}>{t.stage==="lost"?"":`(${Math.round(progressPct)}%)`}</span></span>
+              <span style={kvLabel}>Stage progress</span>
+              <span style={{fontWeight:500,color:T.ink}}>{cfg.label} <span style={{color:T.faint,fontWeight:400}}>{t.stage==="lost"?"":`(${Math.round(progressPct)}%)`}</span></span>
             </div>
-            <div style={{height:5,borderRadius:3,background:"#F1F2F4",overflow:"hidden"}}>
+            <div style={{height:5,borderRadius:3,background:T.soft,overflow:"hidden"}}>
               <div style={{width:progressPct+"%",height:"100%",borderRadius:3,background:t.stage==="lost"?T.red:cfg.c,transition:"width .2s"}}/>
             </div>
           </div>
@@ -2390,24 +2407,15 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
             {editingClose
               ?<input type="date" autoFocus value={closeDraft} onChange={e=>setCloseDraft(e.target.value)} onBlur={()=>{onPatch(t.id,{closeDate:closeDraft});setEditingClose(false);}}
                  style={{fontSize:13,color:T.ink,border:`1px solid ${T.ink}`,borderRadius:5,padding:"2px 7px",fontFamily:sans}}/>
-              :<span onClick={()=>{setCloseDraft(t.closeDate||"");setEditingClose(true);}} style={{fontWeight:500,color:t.closeDate?T.ink:S.faint,cursor:"text",padding:"1px 6px",borderRadius:5}}>{t.closeDate||"None"}</span>}
-          </div>
-          <div style={kv}><span style={kvLabel}>Owner</span>
-            {editingField==="owner"
-              ?<select autoFocus value={t.owner} onChange={e=>{onPatch(t.id,{owner:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{["Carter","Elijah","Hunter"].map(o=><option key={o}>{o}</option>)}</select>
-              :<span onClick={()=>setEditingField("owner")} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={editableVal}>{t.owner}</span>}
-          </div>
-          <div style={kv}><span style={kvLabel}>Tier</span>
-            {editingField==="tier"
-              ?<select autoFocus value={t.tier} onChange={e=>{onPatch(t.id,{tier:+e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{[1,2,3].map(n=><option key={n} value={n}>{PIPE_TIERS[n].label}</option>)}</select>
-              :<span onClick={()=>setEditingField("tier")} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{...editableVal,fontWeight:600,color:tier.c}}>{tier.label}</span>}
+              :<span onClick={()=>{setCloseDraft(t.closeDate||"");setEditingClose(true);}} onMouseEnter={e=>e.currentTarget.style.color=T.purple} onMouseLeave={e=>e.currentTarget.style.color=t.closeDate?T.ink:T.faint} style={{fontWeight:500,color:t.closeDate?T.ink:T.faint,cursor:"pointer",transition:"color .12s"}}>{t.closeDate||"None"}</span>}
           </div>
           <div style={kv}><span style={kvLabel}>Vertical</span>
             {editingField==="vertical"
               ?<select autoFocus value={t.vertical} onChange={e=>{onPatch(t.id,{vertical:e.target.value});setEditingField(null);}} onBlur={()=>setEditingField(null)} style={inlineSel}>{GTM_VERTICALS.map(v=><option key={v}>{v}</option>)}</select>
-              :<span onClick={()=>setEditingField("vertical")} onMouseEnter={e=>e.currentTarget.style.background="#F3F4F6"} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={editableVal}>{t.vertical}</span>}
+              :<span onClick={()=>setEditingField("vertical")} onMouseEnter={e=>e.currentTarget.style.color=T.purple} onMouseLeave={e=>e.currentTarget.style.color=T.ink} style={{fontWeight:500,color:T.ink,cursor:"pointer",transition:"color .12s"}}>{t.vertical}</span>}
           </div>
         </div>
+
 
         {/* Next Task */}
         <div style={{marginBottom:22}}>
@@ -2892,7 +2900,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
     ?activeAccts.filter(a=>a.contract).reduce((n,a)=>n+(a.contract?.netTakePct||10),0)/activeAccts.filter(a=>a.contract).length
     :10;
 
-  return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px",maxWidth:1100}}>
+  return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
 
     {/* Header */}
     <div style={{marginBottom:22}}>
@@ -3261,7 +3269,7 @@ function AgentPage({accounts=[]}){
   useEffect(()=>{if(pullState!=="scanning")return;const iv=setInterval(()=>setScanStep(s=>(s+1)%STEPS.length),700);return()=>clearInterval(iv);},[pullState]);
   function toggle(id){if(CONNECTORS.find(c=>c.id===id)?.soon)return;setConnections(p=>{const n={...p,[id]:p[id]==="connected"?"disconnected":"connected"};localStorage.setItem("tt_connections",JSON.stringify(n));return n;});}
   function runPull(){setPullState("scanning");setTimeout(()=>{setDigest({pulledAt:new Date().toLocaleString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),accounts:accounts.map(a=>({name:a.account,tier:a.tier,topRisk:(a.risks||[])[0]||null,nextMs:(a.milestones||[]).filter(m=>!m.done).sort((x,y)=>new Date(x.date)-new Date(y.date))[0]||null,daysSince:a.kpis?.daysSinceContact||0})),actions:accounts.flatMap(a=>(a.risks||[]).filter(r=>r.severity==="high").map(r=>({...r,acct:a.account})))});setPullState("done");setTab("digest");},(STEPS.length+1)*700);}
-  return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px",maxWidth:860}}>
+  return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
       <div>
         <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Agent</div>
