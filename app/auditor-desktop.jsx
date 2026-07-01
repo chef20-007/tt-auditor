@@ -738,6 +738,30 @@ export default function AppDesktop(){
             <button onClick={()=>setEditMode(true)} style={{...VBtn.primary}}>+ New account</button>
           </div>
           {(()=>{
+            const book=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
+            const bookGmv=book.reduce((n,a)=>n+(a.contract?.gmvActual||0),0);
+            const bookNet=book.reduce((n,a)=>{const c=a.contract;const f=c?(c.gmvActual||0)*(c.netTakePct||0)/100:0;return n+(f-sumCosts(a));},0);
+            const sorted=[...book].sort((x,y)=>(y.contract?.gmvActual||0)-(x.contract?.gmvActual||0));
+            const topShare=bookGmv>0?Math.round(100*(sorted[0]?.contract?.gmvActual||0)/bookGmv):0;
+            const atRisk=book.filter(a=>(a.kpis?.daysSinceContact||0)>=30||["Cold","Watch"].includes(a.kpis?.sentiment)).length;
+            const concFlag=topShare>25;
+            const strip=[
+              {label:"Book GMV",value:fmtK(bookGmv),sub:`${book.length} live accounts`},
+              {label:"Net revenue",value:(bookNet<0?"-":"")+fmtK(Math.abs(bookNet)),sub:"realized to date"},
+              {label:"Top-account share",value:topShare+"%",sub:sorted[0]?.account||"—",flag:concFlag},
+              {label:"At-risk accounts",value:String(atRisk),sub:"stale or cooling",flag:atRisk>0},
+            ];
+            return<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:"0 40px",marginBottom:24,paddingBottom:22,borderBottom:`1px solid ${T.hair}`}}>
+              {strip.map((s,i)=>(
+                <div key={i}>
+                  <div style={{fontSize:12.5,fontWeight:500,color:T.faint,marginBottom:7,letterSpacing:"-0.01em"}}>{s.label}</div>
+                  <div style={{fontSize:23,fontWeight:600,letterSpacing:"-0.03em",color:s.flag?T.red:T.ink,marginBottom:3}}>{s.value}{s.flag&&<span style={{fontSize:11,marginLeft:5,verticalAlign:"middle"}}>▲</span>}</div>
+                  <div style={{fontSize:11.5,color:T.faint,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.sub}</div>
+                </div>
+              ))}
+            </div>;
+          })()}
+          {(()=>{
             const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
             if(allRows.length===0)return<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText,border:`1px solid ${S.border}`,borderRadius:8}}>No accounts yet.</div>;
             return<>
@@ -755,8 +779,8 @@ export default function AppDesktop(){
                   const prevTier=i>0?(allRows[i-1].tier||"active"):null;
                   const showTierHeader=a.tier!==prevTier;
                   return<div key={a.id}>
-                    {showTierHeader&&i>0&&<div style={{padding:"8px 20px 5px",background:T.rail,borderTop:`1px solid ${S.border}`}}>
-                      <span style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:tier.c}}>{tier.label}</span>
+                    {showTierHeader&&i>0&&<div style={{padding:"14px 20px 6px",background:"#fff",borderTop:`1px solid ${T.hair}`}}>
+                      <span style={{fontSize:11.5,fontWeight:600,letterSpacing:"-0.01em",color:tier.c}}>{tier.label}</span>
                     </div>}
                     <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"}
@@ -1255,6 +1279,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const [features,setFeatures]=useState(a.features||[]);
   const [toast,setToast]=useState(null);
   const [cycle,setCycle]=useState(a.contractCycle||1);
+  const [railOpen,setRailOpen]=useState(()=>{try{return JSON.parse(localStorage.getItem("tt_rail_sections")||'{"details":true,"performance":true}');}catch{return {details:true,performance:true};}});
+  const toggleRail=k=>setRailOpen(p=>{const n={...p,[k]:!p[k]};try{localStorage.setItem("tt_rail_sections",JSON.stringify(n));}catch{}return n;});
 
   function save(patch={}){ onSave({...a,contract:eco,costs,milestones,contractCycle:cycle,cycles,chargebacks,features,...patch}); }
   function saveEco(k,v){const n={...eco,[k]:v};setEco(n);save({contract:n});}
@@ -1337,13 +1363,13 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           {tab==="overview"&&<>
             {/* Pipeline summary */}
             {(()=>{const pt=pipelineForAcct(a.id);if(!pt)return null;const cfg=PIPE_STAGES[pt.stage];return(
-              <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",border:`1px solid ${T.hair}`,borderRadius:11,padding:"12px 16px",marginBottom:24,background:T.rail}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",paddingBottom:16,marginBottom:22,borderBottom:`1px solid ${T.hair}`}}>
                 <span style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint}}>Pipeline</span>
-                <span style={{fontSize:12,fontWeight:600,padding:"2px 9px",borderRadius:5,background:cfg.s,color:cfg.c}}>{cfg.label}</span>
-                <span style={{fontSize:12,fontWeight:600,color:PIPE_TIERS[pt.tier].c}}>{PIPE_TIERS[pt.tier].label}</span>
-                <span style={{fontSize:12,color:S.inactiveText}}>{pt.vertical}</span>
-                <span style={{fontSize:12,color:S.inactiveText}}>· {pt.owner}</span>
-                {pt.note&&<span style={{fontSize:12,color:S.labelText,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pt.note}</span>}
+                <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:12.5,fontWeight:600,color:cfg.c}}><span style={{width:7,height:7,borderRadius:"50%",background:cfg.c}}/>{cfg.label}</span>
+                <span style={{fontSize:12.5,fontWeight:500,color:PIPE_TIERS[pt.tier].c}}>{PIPE_TIERS[pt.tier].label}</span>
+                <span style={{fontSize:12.5,color:T.sub}}>{pt.vertical}</span>
+                <span style={{fontSize:12.5,color:T.faint}}>· {pt.owner}</span>
+                {pt.note&&<span style={{fontSize:12.5,color:T.faint,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pt.note}</span>}
               </div>
             );})()}
             {/* Pending signals */}
@@ -1587,45 +1613,56 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
       </div>
 
       {/* RIGHT SIDEBAR — hidden on mobile, shown inline below tabs */}
-      {!mobile&&<div style={{width:288,flexShrink:0,borderLeft:`1px solid ${T.hair}`,overflow:"auto",background:T.rail,padding:"24px 22px"}}>
-        <div style={{fontSize:11,fontWeight:500,color:T.faint,margin:"0 0 12px",letterSpacing:"0.02em"}}>Details</div>
-        {[
-          ["Deal value", a.value||"—"],
-          ["Owner", a.owner||"—"],
-          ["Event type", a.eventType||"—"],
-          ["Sponsor", a.sponsorMode||"—"],
-          c&&["Take rate", (eco.netTakePct||0)+"%"],
-          c&&["GMV realized", fmtK(eco.gmvActual||0)],
-          c&&["GMV projected", fmtK(eco.gmvProjected||0)],
-          c&&["Fees earned", fmt(fees)],
-          c&&["Running costs", fmt(tc)],
-          c&&["Net so far", (net<0?"-":"")+fmt(Math.abs(net))],
-          c&&["Renewal", eco.renewal||"TBD"],
-          c&&["Liability cap", eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
-        ].filter(Boolean).map(([k,v2],i)=>(
-          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"4.5px 0"}}>
-            <span style={{fontSize:13,color:T.faint,letterSpacing:"-0.01em",flexShrink:0}}>{k}</span>
-            <span style={{fontSize:13,color:String(v2).startsWith("⚠")?T.red:T.ink,fontWeight:500,textAlign:"right",letterSpacing:"-0.01em"}}>{v2}</span>
-          </div>
-        ))}
-        {a.kpis&&<>
-          <div style={{borderTop:`1px solid ${T.hair}`,margin:"14px 0"}}/>
-          <div style={{fontSize:11,fontWeight:500,color:T.faint,margin:"0 0 8px",letterSpacing:"0.02em"}}>Performance</div>
-          {[
-            ["Days since contact", a.kpis.daysSinceContact??"—", (a.kpis.daysSinceContact||0)>14],
-            ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%":"—", a.kpis.slaActual&&a.kpis.slaActual<99.9],
-            ["Chargebacks open", a.kpis.chargebacks??"—", (a.kpis.chargebacks||0)>0],
-            ["Sentiment", a.kpis.sentiment||"—", ["Cold","Watch"].includes(a.kpis.sentiment)],
-          ].map(([k,v2,flag],i)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"4.5px 0"}}>
-              <span style={{fontSize:13,color:T.faint,letterSpacing:"-0.01em"}}>{k}</span>
-              <span style={{fontSize:13,fontWeight:500,color:flag?T.red:T.ink}}>{v2}{flag&&<span style={{fontSize:10,marginLeft:4}}>▲</span>}</span>
-            </div>
-          ))}
-        </>}
-        <div style={{borderTop:`1px solid ${T.hair}`,margin:"16px 0"}}/>
-        <p style={{fontSize:11,color:T.faint,lineHeight:1.6,margin:0}}>Internal gut-check, not legal advice. Hand disputes to counsel.</p>
-        <div style={{borderTop:`1px solid ${T.hair}`,margin:"16px 0"}}/>
+      {!mobile&&<div style={{width:288,flexShrink:0,borderLeft:`1px solid ${T.hair}`,overflow:"auto",background:T.rail,padding:"18px 16px"}}>
+        {/* Details mini-card */}
+        <div style={{background:"#fff",border:`1px solid ${T.hair}`,borderRadius:10,marginBottom:12,overflow:"hidden",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
+          <button onClick={()=>toggleRail("details")} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans}}>
+            <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Details</span>
+            <span style={{fontSize:11,color:T.faint,transform:railOpen.details?"rotate(0deg)":"rotate(-90deg)",transition:"transform .15s"}}>▾</span>
+          </button>
+          {railOpen.details&&<div style={{padding:"2px 14px 12px"}}>
+            {[
+              ["Deal value", a.value||"—"],
+              ["Owner", a.owner||"—"],
+              ["Event type", a.eventType||"—"],
+              ["Sponsor", a.sponsorMode||"—"],
+              c&&["Take rate", (eco.netTakePct||0)+"%"],
+              c&&["GMV realized", fmtK(eco.gmvActual||0)],
+              c&&["GMV projected", fmtK(eco.gmvProjected||0)],
+              c&&["Fees earned", fmt(fees)],
+              c&&["Running costs", fmt(tc)],
+              c&&["Net so far", (net<0?"-":"")+fmt(Math.abs(net))],
+              c&&["Renewal", eco.renewal||"TBD"],
+              c&&["Liability cap", eco.liabilityCap?fmt(eco.liabilityCap):"⚠ Uncapped"],
+            ].filter(Boolean).map(([k,v2],i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"4.5px 0"}}>
+                <span style={{fontSize:13,color:T.faint,letterSpacing:"-0.01em",flexShrink:0}}>{k}</span>
+                <span style={{fontSize:13,color:String(v2).startsWith("⚠")?T.red:T.ink,fontWeight:500,textAlign:"right",letterSpacing:"-0.01em"}}>{v2}</span>
+              </div>
+            ))}
+          </div>}
+        </div>
+        {/* Performance mini-card */}
+        {a.kpis&&<div style={{background:"#fff",border:`1px solid ${T.hair}`,borderRadius:10,marginBottom:12,overflow:"hidden",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
+          <button onClick={()=>toggleRail("performance")} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans}}>
+            <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Performance</span>
+            <span style={{fontSize:11,color:T.faint,transform:railOpen.performance?"rotate(0deg)":"rotate(-90deg)",transition:"transform .15s"}}>▾</span>
+          </button>
+          {railOpen.performance&&<div style={{padding:"2px 14px 12px"}}>
+            {[
+              ["Days since contact", a.kpis.daysSinceContact??"—", (a.kpis.daysSinceContact||0)>14],
+              ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%":"—", a.kpis.slaActual&&a.kpis.slaActual<99.9],
+              ["Chargebacks open", a.kpis.chargebacks??"—", (a.kpis.chargebacks||0)>0],
+              ["Sentiment", a.kpis.sentiment||"—", ["Cold","Watch"].includes(a.kpis.sentiment)],
+            ].map(([k,v2,flag],i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,padding:"4.5px 0"}}>
+                <span style={{fontSize:13,color:T.faint,letterSpacing:"-0.01em"}}>{k}</span>
+                <span style={{fontSize:13,fontWeight:500,color:flag?T.red:T.ink}}>{v2}{flag&&<span style={{fontSize:10,marginLeft:4}}>▲</span>}</span>
+              </div>
+            ))}
+          </div>}
+        </div>}
+        <p style={{fontSize:11,color:T.faint,lineHeight:1.6,margin:"4px 2px 14px"}}>Internal gut-check, not legal advice. Hand disputes to counsel.</p>
         <button onClick={()=>{onSave({...a,health:a.health==="archived"?"green":"archived"});onBack();}} style={{...VBtn.small,width:"100%",justifyContent:"center",color:a.health==="archived"?T.green:T.sub,borderColor:S.border,background:"#fff"}}>
           {a.health==="archived"?"↩ Restore to active":"Archive this account"}
         </button>
