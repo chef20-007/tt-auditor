@@ -8,11 +8,10 @@ const T = {
   black:"#1F2023", purple:"#5E6AD2", purpleSoft:"#EEEFFB", purpleBar:"#C9CDF2",
   green:"#1F9A63", greenSoft:"#E6F5EC", red:"#D64B44", redSoft:"#FBE9E7",
   yellow:"#B08006", yellowSoft:"#F8EFD6", blue:"#5A8FD6", blueLt:"#B3CDEC",
-  page:"#FBFBFA", rail:"#F7F7F6",
-  // Dark sidebar (charcoal back-plane, Linear-style)
-  railDark:"#191A1C", railDarkTop:"#242528", railText:"#B9BCC2", railTextActive:"#F2F3F5",
-  railHover:"rgba(255,255,255,0.055)", railActive:"rgba(255,255,255,0.09)", railLabel:"#71757D",
-  railHair:"rgba(255,255,255,0.07)",
+  // Tonal light depth (Linear light): back-plane deeper, content/rail near-white
+  backplane:"#ECEBE8", page:"#FBFBFA", rail:"#F4F3F1",
+  railText:"#3D4046", railTextActive:"#17181B", railHover:"rgba(0,0,0,0.045)",
+  railActive:"rgba(0,0,0,0.065)", railLabel:"#9A9DA4", railHair:"rgba(0,0,0,0.07)",
 };
 const serif='"Georgia","Times New Roman",serif';
 const sans='"Inter","SF Pro Text",-apple-system,system-ui,sans-serif';
@@ -455,12 +454,13 @@ const GTM_TARGET_GOALS={1:6,2:8,3:12};
 const Tag=({label,c,s})=><span style={{
   display:"inline-flex",alignItems:"center",
   fontSize:11.5,fontWeight:500,
-  padding:"2px 7px",
-  borderRadius:4,
+  padding:"2px 8px",
+  borderRadius:6,
   background:s,color:c,
-  letterSpacing:-.1,
+  border:`1px solid ${c}1F`,
+  letterSpacing:"-0.01em",
   whiteSpace:"nowrap",
-  lineHeight:"18px",
+  lineHeight:"17px",
 }}>{label}</span>;
 
 // Vercel-style collapsible section with smooth CSS transition
@@ -507,11 +507,11 @@ const NAV_ITEMS=[
   {id:"costs",    label:"Cost ledger", section:"Shortcuts"},
 ];
 const VBtn={
-  primary:  {padding:"6px 13px",borderRadius:7,border:"none",background:T.purple,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"0 1px 2px rgba(0,0,0,0.08)"},
-  secondary:{padding:"6px 13px",borderRadius:7,border:`1px solid ${T.hairS}`,background:"#fff",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
-  ghost:    {padding:"6px 13px",borderRadius:7,border:"none",background:"transparent",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:400,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
-  danger:   {padding:"6px 13px",borderRadius:7,border:`1px solid ${T.hairS}`,background:"#fff",color:T.red,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
-  small:    {padding:"5px 10px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"#fff",color:T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,letterSpacing:"-0.01em"},
+  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"linear-gradient(180deg,#6C77E0,#5E6AD2)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(30,32,60,0.24)"},
+  secondary:{padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
+  ghost:    {padding:"6px 13px",borderRadius:6,border:"none",background:"transparent",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:400,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
+  danger:   {padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.red,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
+  small:    {padding:"4px 9px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7)"},
 };
 
 
@@ -604,7 +604,7 @@ export default function AppDesktop(){
   function selectAcct(id,tab){const t=tab||'overview';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
 
   return(
-    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.railDark,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
+    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.backplane,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
 
       {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
       {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
@@ -613,10 +613,10 @@ export default function AppDesktop(){
           {n.label}
         </button>;})}
       </div>}
-      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:`linear-gradient(180deg, ${T.railDarkTop} 0%, ${T.railDark} 42%)`,boxShadow:"inset 0 1px 0 rgba(255,255,255,0.06)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:"transparent",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"14px 14px 10px"}}>
           <div style={{display:"flex",alignItems:"center",gap:9,padding:"5px 8px",borderRadius:7,cursor:"default"}}>
-            <div style={{width:26,height:26,borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:T.ink,fontSize:11,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
+            <div style={{width:26,height:26,borderRadius:6,background:T.ink,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:11,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
             <div style={{minWidth:0}}><div style={{fontSize:13.5,fontWeight:600,color:T.railTextActive,letterSpacing:"-0.01em"}}>3 Tree Labs</div><div style={{fontSize:11,color:T.railLabel,marginTop:0}}>Account Intelligence</div></div>
           </div>
         </div>
@@ -638,8 +638,8 @@ export default function AppDesktop(){
         </div>
       </div>}
 
-      {/* MAIN CONTENT — lifted panel on the dark back-plane */}
-      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:10,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.16), -14px 0 24px -12px rgba(0,0,0,0.32)",marginTop:isMobile?0:8}}>
+      {/* MAIN CONTENT — lifted panel on the warm-gray back-plane */}
+      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0"}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
