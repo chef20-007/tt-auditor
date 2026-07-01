@@ -537,8 +537,8 @@ function CollapsibleSection({title,badge,badgeColor,badgeBg,defaultOpen=true,onA
       </div>
       {open&&onAdd&&<button onClick={e=>{e.stopPropagation();onAdd();}} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{fontSize:12,color:T.faint,background:"none",border:"none",cursor:"pointer",fontWeight:500,padding:0,fontFamily:sans,transition:"color .12s"}}>{addLabel}</button>}
     </div>
-    <div style={{overflow:"hidden",maxHeight:open?"3000px":"0px",opacity:open?1:0,transition:"max-height .24s cubic-bezier(.4,0,.2,1), opacity .18s ease"}}>
-      {children}
+    <div style={{display:"grid",gridTemplateRows:open?"1fr":"0fr",opacity:open?1:0,transition:"grid-template-rows .26s cubic-bezier(.4,0,.2,1), opacity .2s ease"}}>
+      <div style={{overflow:"hidden",minHeight:0}}>{children}</div>
     </div>
   </div>;
 }
@@ -1496,93 +1496,94 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             );})()}
             {/* Notes — free text, Linear/Notion style */}
             <div style={{marginBottom:26}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:8}}>Notes</div>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:9}}>Notes</div>
               <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>{if((a.notes||"")!==notes)save({notes});}} placeholder="Add a note…" onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,44)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,44)+"px";}}} style={{width:"100%",border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block",minHeight:44}}/>
             </div>
-            {(a.signals_pending||[]).length>0&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Signals to review</div>
-              {a.signals_pending.map(s=>(
-                <div key={s.id} style={{border:`1px solid ${T.redSoft}`,borderRadius:8,padding:"14px 16px",marginBottom:8,background:"#fff"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:12,fontWeight:600,color:T.red}}>⚑ {s.kind}</span>
-                      <Tag label={SEV[s.sev].l} c={SEV[s.sev].c} s={SEV[s.sev].s}/>
+            {(a.signals_pending||[]).length>0&&<div style={{marginBottom:32}}>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Signals to review</div>
+              <div style={{border:`1px solid ${T.hairS}`,borderRadius:11,overflow:"hidden",background:S.bg}}>
+                {a.signals_pending.map((s,i)=>(
+                  <div key={s.id} style={{padding:"13px 15px",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:7}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+                        <span style={{fontSize:13,fontWeight:600,color:T.red,letterSpacing:"-0.01em"}}>⚑ {s.kind}</span>
+                        <Tag label={SEV[s.sev].l} c={SEV[s.sev].c} s={SEV[s.sev].s}/>
+                      </div>
+                      <div style={{display:"flex",gap:6,flexShrink:0}}>
+                        <button onClick={()=>resolveSignal(s,true)} style={{...VBtn.small,fontSize:11.5,background:T.ink,color:"#fff",borderColor:T.ink}}>Add as risk</button>
+                        <button onClick={()=>resolveSignal(s,false)} onMouseEnter={e=>e.currentTarget.style.color=T.ink} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{fontSize:11.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"5px 6px",transition:"color .12s"}}>Dismiss</button>
+                      </div>
                     </div>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>resolveSignal(s,true)} style={{padding:"5px 12px",borderRadius:5,border:"none",background:T.ink,color:"#fff",fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer"}}>Add as risk</button>
-                      <button onClick={()=>resolveSignal(s,false)} style={{padding:"5px 12px",borderRadius:5,border:`1px solid ${S.border}`,background:"#fff",color:S.inactiveText,fontFamily:sans,fontSize:12,cursor:"pointer"}}>Dismiss</button>
-                    </div>
+                    <div style={{fontSize:13,color:T.sub,lineHeight:1.5,letterSpacing:"-0.01em"}}>{s.text}</div>
                   </div>
-                  <div style={{fontSize:13,color:T.ink,lineHeight:1.5}}>{s.text}</div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>}
 
-            {/* What changed */}
-            {(a.signal||a.shift)&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Recent activity</div>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
-                {a.signal&&<div style={{padding:"14px 16px",borderBottom:a.shift?`1px solid ${S.border}`:"none"}}>
-                  <div style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:6}}>✉ Signal detected</div>
-                  <div style={{fontSize:13,color:T.ink,lineHeight:1.5}}>{a.signal}</div>
+            {/* Recent activity — borderless Linear timeline */}
+            {(a.signal||a.shift)&&<div style={{marginBottom:32}}>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:14}}>Recent activity</div>
+              <div style={{position:"relative",paddingLeft:26}}>
+                <div style={{position:"absolute",left:8,top:6,bottom:6,width:1.5,background:T.hair}}/>
+                {a.signal&&<div style={{position:"relative",marginBottom:a.shift?18:0}}>
+                  <div style={{position:"absolute",left:-25,top:1,width:17,height:17,borderRadius:"50%",background:S.bg,border:`1px solid ${T.hairS}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:T.faint}}>✉</div>
+                  <div style={{fontSize:12.5,color:T.sub,lineHeight:1.55,letterSpacing:"-0.01em"}}><b style={{color:T.ink,fontWeight:600}}>Signal detected</b>  {a.signal}</div>
                 </div>}
-                {a.shift&&<div style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:6}}>↗ Exposure shift</div>
-                  <div style={{fontSize:13,color:T.ink,lineHeight:1.5}}>{a.shift}</div>
+                {a.shift&&<div style={{position:"relative"}}>
+                  <div style={{position:"absolute",left:-25,top:1,width:17,height:17,borderRadius:"50%",background:S.bg,border:`1px solid ${T.hairS}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:T.faint}}>↗</div>
+                  <div style={{fontSize:12.5,color:T.sub,lineHeight:1.55,letterSpacing:"-0.01em"}}><b style={{color:T.ink,fontWeight:600}}>Exposure shift</b>  {a.shift}</div>
                 </div>}
               </div>
             </div>}
 
-            {/* Fault assessment */}
-            {fa.verdict&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Fault assessment</div>
-              <div style={{border:`1px solid ${S.border}`,borderLeft:`3px solid ${v.c}`,borderRadius:8,padding:"16px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                  <span style={{fontSize:12,fontWeight:600,padding:"4px 10px",borderRadius:4,background:v.s,color:v.c}}>{v.label}</span>
-                </div>
-                <p style={{fontSize:13,lineHeight:1.55,margin:"0 0 12px",color:T.ink}}>{fa.reasoning}</p>
-                <div style={{fontSize:13,lineHeight:1.7,color:S.inactiveText}}>
-                  <div><b style={{color:T.red}}>Against us:</b> {fa.against_us}</div>
-                  <div><b style={{color:T.green}}>Against them:</b> {fa.against_them}</div>
+            {/* Fault assessment — airy block, no card */}
+            {fa.verdict&&<div style={{marginBottom:32}}>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Fault assessment</div>
+              <div style={{borderLeft:`2px solid ${v.c}`,paddingLeft:16}}>
+                <div style={{marginBottom:10}}><Tag label={v.label} c={v.c} s={v.s}/></div>
+                <p style={{fontSize:13,lineHeight:1.6,margin:"0 0 12px",color:T.ink,letterSpacing:"-0.01em"}}>{fa.reasoning}</p>
+                <div style={{fontSize:12.5,lineHeight:1.75,color:T.sub,letterSpacing:"-0.01em"}}>
+                  <div><b style={{color:T.red,fontWeight:600}}>Against us:</b> {fa.against_us}</div>
+                  <div><b style={{color:T.green,fontWeight:600}}>Against them:</b> {fa.against_them}</div>
                 </div>
               </div>
             </div>}
 
-            {/* Risks */}
-            {a.risks?.length>0&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Risks & exposure</div>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
+            {/* Risks — airy rows, no box */}
+            {a.risks?.length>0&&<div style={{marginBottom:32}}>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Risks & exposure</div>
+              <div>
                 {a.risks.map((r,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
-                    <Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:3}}>{r.risk}</div>
-                      <div style={{fontSize:12,color:S.inactiveText,lineHeight:1.45}}>→ {r.action}</div>
+                  <div key={i} style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                    <div style={{paddingTop:1}}><Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/></div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2,letterSpacing:"-0.01em"}}>{r.risk}</div>
+                      <div style={{fontSize:12.5,color:T.sub,lineHeight:1.5,letterSpacing:"-0.01em"}}>→ {r.action}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>}
 
-            {/* Obligations */}
-            {a.obligations?.length>0&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Obligations vs. contract</div>
-              <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
+            {/* Obligations — airy rows, no box */}
+            {a.obligations?.length>0&&<div style={{marginBottom:32}}>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Obligations vs. contract</div>
+              <div>
                 {a.obligations.map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.unclear; return(
-                  <div key={i} style={{display:"grid",gridTemplateColumns:"60px 1fr 80px",gap:16,padding:"12px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",alignItems:"start"}}>
-                    <span style={{fontSize:11,fontWeight:600,textTransform:"uppercase",color:o.party==="us"?T.purple:S.inactiveText,paddingTop:2}}>{o.party}</span>
-                    <div><div style={{fontSize:13,fontWeight:500,color:T.ink}}>{o.obligation}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:2}}>{o.source}</div></div>
-                    <span style={{fontSize:12,fontWeight:600,color:s.c,textAlign:"right",paddingTop:2}}>{s.t}</span>
+                  <div key={i} style={{display:"grid",gridTemplateColumns:"52px 1fr 90px",gap:14,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none",alignItems:"start"}}>
+                    <span style={{fontSize:11.5,fontWeight:500,color:o.party==="us"?T.purple:T.faint,paddingTop:1,letterSpacing:"-0.01em"}}>{o.party}</span>
+                    <div><div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em"}}>{o.obligation}</div><div style={{fontSize:11.5,color:T.faint,marginTop:2}}>{o.source}</div></div>
+                    <span style={{fontSize:12,fontWeight:500,color:s.c,textAlign:"right",paddingTop:1}}>{s.t}</span>
                   </div>
                 );})}
               </div>
             </div>}
 
-            {/* Overextension */}
-            {a.flags?.length>0&&<div>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Overextension</div>
-              <div style={{border:`1px solid ${T.redSoft}`,borderRadius:8,padding:"14px 16px"}}>
-                {a.flags.map((f,i)=><div key={i} style={{fontSize:13,color:T.ink,lineHeight:1.5,padding:"4px 0",borderTop:i?`1px solid ${S.border}`:"none",display:"flex",gap:8}}><span style={{color:T.red,fontSize:9,marginTop:5}}>▲</span>{f}</div>)}
+            {/* Overextension — airy block */}
+            {a.flags?.length>0&&<div style={{marginBottom:8}}>
+              <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Overextension</div>
+              <div style={{borderLeft:`2px solid ${T.red}`,paddingLeft:16}}>
+                {a.flags.map((f,i)=><div key={i} style={{fontSize:13,color:T.sub,lineHeight:1.55,padding:"5px 0",display:"flex",gap:8,letterSpacing:"-0.01em"}}><span style={{color:T.red,fontSize:9,marginTop:5}}>▲</span>{f}</div>)}
               </div>
             </div>}
           </>}
