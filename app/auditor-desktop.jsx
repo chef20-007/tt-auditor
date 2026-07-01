@@ -9,6 +9,10 @@ const T = {
   green:"#1F9A63", greenSoft:"#E6F5EC", red:"#D64B44", redSoft:"#FBE9E7",
   yellow:"#B08006", yellowSoft:"#F8EFD6", blue:"#5A8FD6", blueLt:"#B3CDEC",
   page:"#FBFBFA", rail:"#F7F7F6",
+  // Dark sidebar (charcoal back-plane, Linear-style)
+  railDark:"#191A1C", railDarkTop:"#242528", railText:"#B9BCC2", railTextActive:"#F2F3F5",
+  railHover:"rgba(255,255,255,0.055)", railActive:"rgba(255,255,255,0.09)", railLabel:"#71757D",
+  railHair:"rgba(255,255,255,0.07)",
 };
 const serif='"Georgia","Times New Roman",serif';
 const sans='"Inter","SF Pro Text",-apple-system,system-ui,sans-serif';
@@ -600,7 +604,7 @@ export default function AppDesktop(){
   function selectAcct(id,tab){const t=tab||'overview';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
 
   return(
-    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.page,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
+    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.railDark,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
 
       {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
       {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
@@ -609,33 +613,33 @@ export default function AppDesktop(){
           {n.label}
         </button>;})}
       </div>}
-      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:T.rail,borderRight:`1px solid ${T.hair}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {!isMobile&&<div style={{width:SIDEBAR_W,flexShrink:0,background:`linear-gradient(180deg, ${T.railDarkTop} 0%, ${T.railDark} 42%)`,boxShadow:"inset 0 1px 0 rgba(255,255,255,0.06)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
         <div style={{padding:"14px 14px 10px"}}>
           <div style={{display:"flex",alignItems:"center",gap:9,padding:"5px 8px",borderRadius:7,cursor:"default"}}>
-            <div style={{width:26,height:26,borderRadius:6,background:T.ink,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:"#fff",fontSize:11,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
-            <div style={{minWidth:0}}><div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>3 Tree Labs</div><div style={{fontSize:11,color:T.faint,marginTop:0}}>Account Intelligence</div></div>
+            <div style={{width:26,height:26,borderRadius:6,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{color:T.ink,fontSize:11,fontWeight:700,letterSpacing:-.3}}>TT</span></div>
+            <div style={{minWidth:0}}><div style={{fontSize:13.5,fontWeight:600,color:T.railTextActive,letterSpacing:"-0.01em"}}>3 Tree Labs</div><div style={{fontSize:11,color:T.railLabel,marginTop:0}}>Account Intelligence</div></div>
           </div>
         </div>
         <div style={{padding:"8px 0",flex:1,overflowY:"auto"}}>
-          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&(n.id==="accounts"||!showDetail);return<div key={n.id}>{showLabel&&<div style={{fontSize:11,fontWeight:500,letterSpacing:"0.02em",color:T.faint,padding:"14px 20px 4px"}}>{n.section}</div>}<button
+          {(()=>{let lastSection=undefined;return NAV_ITEMS.map(n=>{const showLabel=n.section&&n.section!==lastSection;lastSection=n.section;const isActive=(nav===n.id)&&(n.id==="accounts"||!showDetail);return<div key={n.id}>{showLabel&&<div style={{fontSize:11,fontWeight:500,letterSpacing:"0.02em",color:T.railLabel,padding:"14px 20px 4px"}}>{n.section}</div>}<button
   onClick={()=>{navigate(n.id);selectAcct(null);}}
-  onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background=S.hoverBg;e.currentTarget.style.color=T.ink;}}
-  onMouseLeave={e=>{e.currentTarget.style.background=isActive?S.activeBg:"transparent";e.currentTarget.style.color=isActive?S.activeText:S.inactiveText;}}
-  style={{display:"flex",alignItems:"center",padding:"6px 10px",border:"none",borderRadius:6,margin:"1px 8px",width:"calc(100% - 16px)",cursor:"pointer",fontFamily:sans,fontSize:13.5,fontWeight:isActive?500:400,background:isActive?S.activeBg:"transparent",color:isActive?S.activeText:S.inactiveText,textAlign:"left",letterSpacing:"-0.01em",transition:"background .1s,color .1s"}}>{n.label}</button></div>;});})()}
+  onMouseEnter={e=>{if(!isActive){e.currentTarget.style.background=T.railHover;e.currentTarget.style.color=T.railTextActive;}}}
+  onMouseLeave={e=>{e.currentTarget.style.background=isActive?T.railActive:"transparent";e.currentTarget.style.color=isActive?T.railTextActive:T.railText;}}
+  style={{display:"flex",alignItems:"center",padding:"6px 10px",border:"none",borderRadius:6,margin:"1px 8px",width:"calc(100% - 16px)",cursor:"pointer",fontFamily:sans,fontSize:13.5,fontWeight:isActive?500:400,background:isActive?T.railActive:"transparent",color:isActive?T.railTextActive:T.railText,textAlign:"left",letterSpacing:"-0.01em",transition:"background .1s,color .1s"}}>{n.label}</button></div>;});})()}
         </div>
-        <div style={{padding:"12px 16px 16px",borderTop:`1px solid ${S.border}`}}>
+        <div style={{padding:"12px 16px 16px",borderTop:`1px solid ${T.railHair}`}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>Agent</div>
+            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:T.railLabel}}>Agent</div>
             <div style={{width:7,height:7,borderRadius:"50%",background:T.green}}/>
           </div>
-          <div style={{fontSize:12,color:T.ink,fontWeight:500,marginBottom:1}}>Weekly pull ready</div>
-          <div style={{fontSize:11,color:S.inactiveText,marginBottom:10}}>Last run: not yet</div>
+          <div style={{fontSize:12,color:T.railTextActive,fontWeight:500,marginBottom:1}}>Weekly pull ready</div>
+          <div style={{fontSize:11,color:T.railLabel,marginBottom:10}}>Last run: not yet</div>
           <button onClick={()=>navigate("digest")} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:12}}>Run pull</button>
         </div>
       </div>}
 
-      {/* MAIN CONTENT */}
-      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0}}>
+      {/* MAIN CONTENT — lifted panel on the dark back-plane */}
+      <div style={{flex:1,overflow:"auto",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:10,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.16), -14px 0 24px -12px rgba(0,0,0,0.32)",marginTop:isMobile?0:8}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
@@ -1282,7 +1286,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const TABS=["overview","timeline","economics","contract"];
 
   return (
-    <div style={{display:"flex",height:"100%",background:"#fff"}}>
+    <div style={{display:"flex",height:"100%",background:T.page}}>
       {/* ── LEFT: main content ── */}
       <div style={{flex:1,overflow:"auto",padding:"0",minWidth:0}}>
         {/* Breadcrumb + title — Linear style */}
