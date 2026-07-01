@@ -532,7 +532,7 @@ export default function AppDesktop(){
     document.body.style.setProperty("overscroll-behavior","none");
     document.body.style.setProperty("background","#FCFCFB");
     const st=document.createElement("style");st.id="tt-anim";
-    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes ttExpand{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes ttPop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes ttPanelIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}@keyframes ttPanelOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(24px)}}";
+    st.textContent="@keyframes ttSlideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}@keyframes ttFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}@keyframes ttDrawerIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}@keyframes ttDrawerOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(16px)}}@keyframes ttExpand{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}@keyframes ttPop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}@keyframes ttPanelIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}@keyframes ttPanelOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(24px)}}";
     document.head.appendChild(st);
   },[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
@@ -545,7 +545,7 @@ export default function AppDesktop(){
   const [peekAcct,setPeekAcct]=useState(null); // account shown in the shared Accounts side panel (null = closed)
   const [peekTab,setPeekTab]=useState("timeline"); // side panel tab: timeline | activity
   const [peekClosing,setPeekClosing]=useState(false);
-  const closePeek=()=>{setPeekClosing(true);setTimeout(()=>{setPeekAcct(null);setPeekClosing(false);},200);};
+  const closePeek=()=>{setPeekClosing(true);setTimeout(()=>{setPeekAcct(null);setPeekClosing(false);},220);};
 
   useEffect(()=>{
     // Always boot from SEED_ACCTS directly — localStorage only used for user edits
@@ -803,7 +803,7 @@ export default function AppDesktop(){
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(fees):"—"}</div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13,color:net<0?T.red:T.ink}}>{c?(net<0?"-":"")+fmtK(Math.abs(net)):"—"}</div>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:6,paddingLeft:16}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:12,paddingLeft:28}}>
                         <span onClick={e=>{e.stopPropagation();setPeekTab("timeline");setPeekClosing(false);setPeekAcct(a);}} title="Quick view" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:26,height:26,borderRadius:6,color:peekAcct&&peekAcct.id===a.id?T.ink:T.faint,background:peekAcct&&peekAcct.id===a.id?T.hairS:"transparent",cursor:"pointer",fontSize:15,transition:"background .12s,color .12s"}} onMouseEnter={e=>{e.currentTarget.style.background=T.hairS;e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{const on=peekAcct&&peekAcct.id===a.id;e.currentTarget.style.background=on?T.hairS:"transparent";e.currentTarget.style.color=on?T.ink:T.faint;}}>⋯</span>
                         <span onClick={e=>{e.stopPropagation();setArchiveTarget(a);}} style={{fontSize:11,color:S.labelText,cursor:"pointer",padding:0,fontFamily:sans}}>Archive</span>
                         <span style={{fontSize:12,color:T.purple,fontWeight:500}}>View →</span>
@@ -849,7 +849,7 @@ export default function AppDesktop(){
             const milestones=srcAccts.flatMap(a=>(a.milestones||[]).map(m=>({...m,_acct:a}))).sort((x,y)=>new Date(x.date)-new Date(y.date));
             const activity=srcAccts.flatMap(a=>(a.signals_pending||[]).concat(a.risks||[]).map(s=>({...s,_acct:a}))).slice(0,master?40:6);
             const c=master?null:peekAcct.contract;
-            return<div key={master?"master":peekAcct.id} style={{position:"absolute",top:272,right:8,bottom:8,width:352,zIndex:40,background:"#fff",borderRadius:13,border:`1px solid ${T.hairS}`,boxShadow:"0 12px 40px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",display:"flex",flexDirection:"column",animation:peekClosing?"ttPanelOut .2s cubic-bezier(.4,0,1,1) forwards":"ttPanelIn .26s cubic-bezier(.22,.61,.36,1)",overflow:"hidden"}}>
+            return<div key={master?"master":peekAcct.id} style={{position:"absolute",top:272,right:8,bottom:8,width:352,zIndex:40,background:"#fff",borderRadius:13,border:`1px solid ${T.hairS}`,boxShadow:"0 12px 40px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",display:"flex",flexDirection:"column",animation:peekClosing?"ttPanelOut .22s cubic-bezier(.4,0,.2,1) forwards":"ttPanelIn .22s cubic-bezier(.4,0,.2,1)",overflow:"hidden"}}>
               {/* panel header */}
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 16px 13px",borderBottom:`1px solid ${T.hair}`}}>
                 {master
@@ -1347,6 +1347,9 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const [cycle,setCycle]=useState(a.contractCycle||1);
   const [railOpen,setRailOpen]=useState(()=>{try{return JSON.parse(localStorage.getItem("tt_rail_sections")||'{"details":true,"performance":true}');}catch{return {details:true,performance:true};}});
   const toggleRail=k=>setRailOpen(p=>{const n={...p,[k]:!p[k]};try{localStorage.setItem("tt_rail_sections",JSON.stringify(n));}catch{}return n;});
+  const [summary,setSummary]=useState(a.summary||"");
+  const [notes,setNotes]=useState(a.notes||"");
+  useEffect(()=>{setSummary(a.summary||"");setNotes(a.notes||"");},[a.id]);
 
   function save(patch={}){ onSave({...a,contract:eco,costs,milestones,contractCycle:cycle,cycles,chargebacks,features,...patch}); }
   function saveEco(k,v){const n={...eco,[k]:v};setEco(n);save({contract:n});}
@@ -1402,6 +1405,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 <b style={{color:T.ink,fontWeight:500}}>{a.owner}</b> · {a.eventType} · {a.sponsorMode}
                 {c&&<> · <b style={{color:T.ink,fontWeight:500}}>{c.start} – {c.end}</b></>}
               </div>
+              <textarea value={summary} onChange={e=>setSummary(e.target.value)} onBlur={()=>{if((a.summary||"")!==summary)save({summary});}} rows={1} placeholder="Add a short summary…" onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}}} style={{marginTop:9,width:"100%",maxWidth:640,border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.5,color:summary?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block"}}/>
               <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
                 {(a.products||[]).map(p=><span key={p} style={{fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:T.purpleSoft,color:T.purple,border:`1px solid ${T.purple}22`}}>{p}</span>)}
               </div>
@@ -1438,7 +1442,11 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 {pt.note&&<span style={{fontSize:12.5,color:T.faint,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pt.note}</span>}
               </div>
             );})()}
-            {/* Pending signals */}
+            {/* Notes — free text, Linear/Notion style */}
+            <div style={{marginBottom:26}}>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:8}}>Notes</div>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>{if((a.notes||"")!==notes)save({notes});}} placeholder="Add a note…" onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,44)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,44)+"px";}}} style={{width:"100%",border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block",minHeight:44}}/>
+            </div>
             {(a.signals_pending||[]).length>0&&<div style={{marginBottom:24}}>
               <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Signals to review</div>
               {a.signals_pending.map(s=>(
@@ -1684,9 +1692,11 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
         <div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:11,marginBottom:10,overflow:"hidden"}}>
           <button onClick={()=>toggleRail("details")} onMouseEnter={e=>e.currentTarget.style.background=T.hairS} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
             <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Details</span>
-            <span style={{fontSize:11,color:T.faint,transform:railOpen.details?"rotate(0deg)":"rotate(-90deg)",transition:"transform .18s cubic-bezier(.4,0,.2,1)"}}>▾</span>
+            <span style={{fontSize:11,color:T.faint,transform:railOpen.details?"rotate(0deg)":"rotate(-90deg)",transition:"transform .24s cubic-bezier(.4,0,.2,1)"}}>▾</span>
           </button>
-          {railOpen.details&&<div style={{padding:"2px 14px 12px",animation:"ttExpand .2s cubic-bezier(.22,.61,.36,1)"}}>
+          <div style={{display:"grid",gridTemplateRows:railOpen.details?"1fr":"0fr",transition:"grid-template-rows .24s cubic-bezier(.4,0,.2,1)"}}>
+          <div style={{overflow:"hidden",minHeight:0}}>
+          <div style={{padding:"2px 14px 12px"}}>
             {[
               ["Deal value", a.value||"—"],
               ["Owner", a.owner||"—"],
@@ -1706,15 +1716,17 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 <span style={{fontSize:13,color:String(v2).startsWith("⚠")?T.red:T.ink,fontWeight:500,textAlign:"right",letterSpacing:"-0.01em"}}>{v2}</span>
               </div>
             ))}
-          </div>}
+          </div></div></div>
         </div>
         {/* Performance mini-card */}
         {a.kpis&&<div style={{background:S.bg,border:`1px solid ${T.hair}`,borderRadius:11,marginBottom:10,overflow:"hidden"}}>
           <button onClick={()=>toggleRail("performance")} onMouseEnter={e=>e.currentTarget.style.background=T.hairS} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 14px",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
             <span style={{fontSize:12.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Performance</span>
-            <span style={{fontSize:11,color:T.faint,transform:railOpen.performance?"rotate(0deg)":"rotate(-90deg)",transition:"transform .18s cubic-bezier(.4,0,.2,1)"}}>▾</span>
+            <span style={{fontSize:11,color:T.faint,transform:railOpen.performance?"rotate(0deg)":"rotate(-90deg)",transition:"transform .24s cubic-bezier(.4,0,.2,1)"}}>▾</span>
           </button>
-          {railOpen.performance&&<div style={{padding:"2px 14px 12px",animation:"ttExpand .2s cubic-bezier(.22,.61,.36,1)"}}>
+          <div style={{display:"grid",gridTemplateRows:railOpen.performance?"1fr":"0fr",transition:"grid-template-rows .24s cubic-bezier(.4,0,.2,1)"}}>
+          <div style={{overflow:"hidden",minHeight:0}}>
+          <div style={{padding:"2px 14px 12px"}}>
             {[
               ["Days since contact", a.kpis.daysSinceContact??"—", (a.kpis.daysSinceContact||0)>14],
               ["SLA actual", a.kpis.slaActual?a.kpis.slaActual+"%":"—", a.kpis.slaActual&&a.kpis.slaActual<99.9],
@@ -1726,7 +1738,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 <span style={{fontSize:13,fontWeight:500,color:flag?T.red:T.ink}}>{v2}{flag&&<span style={{fontSize:10,marginLeft:4}}>▲</span>}</span>
               </div>
             ))}
-          </div>}
+          </div></div></div>
         </div>}
         <p style={{fontSize:11,color:T.faint,lineHeight:1.6,margin:"4px 2px 14px"}}>Internal gut-check, not legal advice. Hand disputes to counsel.</p>
         <button onClick={()=>{onSave({...a,health:a.health==="archived"?"green":"archived"});onBack();}} style={{...VBtn.small,width:"100%",justifyContent:"center",color:a.health==="archived"?T.green:T.sub,borderColor:S.border,background:"#fff"}}>
@@ -2416,6 +2428,8 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
   const [showTask,setShowTask]=useState(false);
   const [showLog,setShowLog]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
+  const [closing,setClosing]=useState(false);
+  const handleClose=()=>{setClosing(true);setTimeout(()=>onClose(),220);};
 
   function addTask(tk){onPatch(t.id,{tasks:[...tasks,tk]});setShowTask(false);}
   function toggleTask(id){onPatch(t.id,{tasks:tasks.map(x=>x.id===id?{...x,done:!x.done}:x)});}
@@ -2432,13 +2446,13 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
   const actionLink={fontSize:13,fontWeight:500,color:T.ink,background:"none",border:"none",cursor:"pointer",fontFamily:sans};
 
   return <>
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.28)",zIndex:200}}/>
-    <div style={{position:"fixed",top:10,right:10,bottom:10,width:W,maxWidth:"calc(100vw - 20px)",background:"#fff",zIndex:201,borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",display:"flex",flexDirection:"column",overflow:"hidden",animation:"ttDrawerIn .26s cubic-bezier(.22,.61,.36,1)"}}>
+    <div onClick={handleClose} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.28)",zIndex:200,animation:closing?"none":undefined,opacity:closing?0:1,transition:"opacity .22s cubic-bezier(.4,0,.2,1)"}}/>
+    <div style={{position:"fixed",top:10,right:10,bottom:10,width:W,maxWidth:"calc(100vw - 20px)",background:"#fff",zIndex:201,borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",display:"flex",flexDirection:"column",overflow:"hidden",animation:closing?"ttDrawerOut .22s cubic-bezier(.4,0,.2,1) forwards":"ttDrawerIn .22s cubic-bezier(.4,0,.2,1)"}}>
       {/* top bar */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",padding:"12px 16px",borderBottom:`1px solid ${S.border}`}}>
         <div style={{display:"flex",gap:4,alignItems:"center"}}>
           {acct&&<button onClick={()=>onOpenAccount(acct.id)} title="Open account" style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",color:S.labelText,fontSize:15,borderRadius:6}}>⇱</button>}
-          <button onClick={onClose} style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",color:S.labelText,fontSize:19,borderRadius:6}}>×</button>
+          <button onClick={handleClose} style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",color:S.labelText,fontSize:19,borderRadius:6}}>×</button>
         </div>
       </div>
 
