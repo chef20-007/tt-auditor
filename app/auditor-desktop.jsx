@@ -67,6 +67,62 @@ const uid=()=>Math.random().toString(36).slice(2,9);
 const sumCosts=a=>(a.costs||[]).reduce((n,c)=>n+(c.computed||0),0);
 const daysDiff=(d)=>Math.round((new Date(d)-new Date())/(1000*60*60*24));
 
+// Cycles is the single source of truth for contract terms. a.contract is a read-only
+// mirror kept in lockstep for the call sites outside StripeDetail (dashboard, finance,
+// GTM) that read it directly. This migration runs on load: if an account has no active
+// cycle but has (or had) contract data on a.contract, reconcile without ever
+// duplicating GMV that already exists in cycles:
+//   1. Exactly one cycle whose GMV matches a.contract -> same contract shown twice
+//      (pre-Phase-2 drift). Reactivate it in place.
+//   2. No cycles at all -> synthesize a new cycle from a.contract so nothing is lost.
+//   3. Multiple cycles that don't cleanly map to a single active cycle (e.g. a.contract
+//      was a rollup summary across several concurrent, none-individually-active
+//      engagements) -> left untouched. Flagged in KNOWN_MIGRATION_EXCEPTIONS below for
+//      manual review rather than guessing which cycle should represent the contract.
+// Idempotent, safe to call every render.
+const KNOWN_MIGRATION_EXCEPTIONS=["mojo"]; // accounts with multi-cycle rollups that need a human to pick the active cycle
+function ensureActiveCycle(a){
+  const cycles=a.cycles||[];
+  if(cycles.some(c=>c.active)) return a; // already has a source of truth, nothing to do
+  const c=a.contract;
+  if(!c) return a; // true pre-contract account (e.g. Grass League), leave alone
+  if(KNOWN_MIGRATION_EXCEPTIONS.includes(a.id)) return a; // needs manual cycle selection, don't guess
+  if(cycles.length===1 && (cycles[0].gmvActual||0)===(c.gmvActual||0)){
+    return {...a,cycles:[{...cycles[0],active:true}]};
+  }
+  if(cycles.length===0){
+    const synthesized={
+      id:"cy_migrated_"+uid(),
+      label:c.label||(a.account?`${a.account}, Contract`:"Contract"),
+      start:c.start||"",end:c.end||"",
+      products:a.products||[],events:[],
+      note:c.notes||"Migrated from legacy contract field.",
+      active:true,
+      gmvProjected:c.gmvProjected||0,gmvActual:c.gmvActual||0,
+      netTakePct:c.netTakePct||0,platformFeePct:c.platformFeePct||0,
+      kickbackPct:c.kickbackPct||0,kickbackTo:c.kickbackTo||"",
+      paymentTerms:c.paymentTerms||"",liabilityCap:c.liabilityCap||0,
+      slaTarget:c.slaTarget||0,dataRights:c.dataRights||"",
+      autoRenew:c.autoRenew||false,terminationNotice:c.terminationNotice||"",
+      renewal:c.renewal||"",
+    };
+    return {...a,cycles:[...cycles,synthesized]};
+  }
+  return a; // multiple cycles, none matching a.contract 1:1, leave for manual review
+}
+// Derives the read-only a.contract mirror from the active cycle. Called on every save
+// so every outside read site (dashboard, finance, GTM pages) stays correct without
+// being rewritten to know about cycles. Returns undefined (not null) when there's no
+// active cycle, so callers can fall back to the account's existing a.contract instead
+// of overwriting it with null. This matters for known exceptions like Mojo, whose
+// rollup contract data must survive saves until a human resolves the active cycle.
+function deriveContractMirror(cycles){
+  const active=(cycles||[]).find(c=>c.active);
+  if(!active) return undefined;
+  const {id,label,products,events,note,active:_a,...terms}=active;
+  return {...terms,notes:note};
+}
+
 // ── SEED ──
 const SEED_ORG={id:"3tree",name:"3 Tree Labs",sub:"Ticket Tree"};
 // ── CRM TIERS ──
@@ -615,8 +671,8 @@ export default function AppDesktop(){
     // Always boot from SEED_ACCTS directly — localStorage only used for user edits
     // Check if user has saved edits for any account
     const savedAccts=SEED_ACCTS.map(a=>{
-      try{const saved=localStorage.getItem(`acct:${a.orgId}:${a.id}`);return saved?JSON.parse(saved):a;}
-      catch{return a;}
+      try{const saved=localStorage.getItem(`acct:${a.orgId}:${a.id}`);return ensureActiveCycle(saved?JSON.parse(saved):a);}
+      catch{return ensureActiveCycle(a);}
     });
     setOrgs([SEED_ORG]);
     setAccts(savedAccts);
@@ -1400,11 +1456,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   useEffect(()=>{const fn=()=>setMobile(window.innerWidth<768);window.addEventListener('resize',fn);return()=>window.removeEventListener('resize',fn);},[]);
   const [costs,setCosts]=useState(a.costs||[]);
   const [milestones,setMilestones]=useState(a.milestones||[]);
-  const [eco,setEco]=useState(a.contract||{});
   const [addingCost,setAddingCost]=useState(false);
   const [cycles,setCycles]=useState(a.cycles||[]);
   // Sync cycles when parent account updates (e.g. after wizard creates new cycle)
   useEffect(()=>{ setCycles(a.cycles||[]); },[a.cycles]);
+  // cycles is the single source of truth for contract terms. The active cycle IS the
+  // contract; there is no separate eco/contract state to drift out of sync with it.
+  const activeCycle=cycles.find(c=>c.active)||cycles[0]||{};
+  const eco=activeCycle; // kept as an alias so downstream JSX below reads unchanged
   const [chargebacks,setChargebacks]=useState(a.chargebacks||[]);
   const [features,setFeatures]=useState(a.features||[]);
   const [toast,setToast]=useState(null);
@@ -1415,15 +1474,26 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const [notes,setNotes]=useState(a.notes||"");
   useEffect(()=>{setSummary(a.summary||"");setNotes(a.notes||"");},[a.id]);
 
-  function save(patch={}){ onSave({...a,contract:eco,costs,milestones,contractCycle:cycle,cycles,chargebacks,features,...patch}); }
-  function saveEco(k,v){const n={...eco,[k]:v};setEco(n);save({contract:n});}
+  // contract is derived from cycles at save time. If there's no active cycle (a known
+  // exception like a multi-cycle rollup awaiting manual resolution), the existing
+  // a.contract is preserved rather than being wiped out.
+  function save(patch={}){ const n=patch.cycles||cycles; const mirror=deriveContractMirror(n); onSave({...a,contract:mirror!==undefined?mirror:a.contract,costs,milestones,contractCycle:cycle,cycles:n,chargebacks,features,...patch}); }
+  // Writes into the active cycle (creating one if none exists yet). This replaces the
+  // old saveEco, which wrote to a standalone contract object that could drift from cycles.
+  function saveEco(k,v){
+    const hasActive=cycles.some(c=>c.active);
+    const n=hasActive
+      ? cycles.map(c=>c.active?{...c,[k]:v}:c)
+      : [...cycles,{id:uid(),label:a.account?`${a.account}, Contract`:"Contract",start:"",end:"",products:a.products||[],events:[],note:"",active:true,[k]:v}];
+    setCycles(n);save({cycles:n});
+  }
   function addCost(c2){const n=[...costs,c2];setCosts(n);save({costs:n});}
   function delCost(id){const n=costs.filter(x=>x.id!==id);setCosts(n);save({costs:n});}
   function addMilestone(m){const n=[...milestones,m];setMilestones(n);save({milestones:n});}
   function toggleMilestone(id){const n=milestones.map(m=>m.id===id?{...m,done:!m.done}:m);setMilestones(n);save({milestones:n});}
   function delMilestone(id){const n=milestones.filter(m=>m.id!==id);setMilestones(n);save({milestones:n});}
-  function addContractCycle(cy){const n=[...cycles,cy];setCycles(n);save({cycles:n});}
-  function updateContractCycle(id,patch){const n=cycles.map(c=>c.id===id?{...c,...patch}:c);setCycles(n);save({cycles:n});}
+  function addContractCycle(cy){const n=cy.active?[...cycles.map(c=>({...c,active:false})),cy]:[...cycles,cy];setCycles(n);save({cycles:n});}
+  function updateContractCycle(id,patch){const n=cycles.map(c=>{if(c.id===id)return{...c,...patch};if(patch.active&&c.active)return{...c,active:false};return c;});setCycles(n);save({cycles:n});}
   function delContractCycle(id){const n=cycles.filter(c=>c.id!==id);setCycles(n);save({cycles:n});}
   function addChargeback(cb){const n=[...chargebacks,cb];setChargebacks(n);save({chargebacks:n});}
   function updateChargeback(id,patch){const n=chargebacks.map(c=>c.id===id?{...c,...patch}:c);setChargebacks(n);save({chargebacks:n});}
@@ -1450,7 +1520,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   }
 
   const h=HEALTH[a.health];
-  const c=a.contract;
+  const c=cycles.some(cy=>cy.active)?activeCycle:null;
   const tc=costs.reduce((n,x)=>n+(x.computed||0),0);
   const fees=c?(eco.gmvActual||0)*(eco.netTakePct||0)/100:0;
   const net=fees-tc;
@@ -1736,7 +1806,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             <div style={{marginTop:16}}>
               <CollapsibleSection title="Import contract terms" defaultOpen={false}>
                 <div style={{marginTop:8}}>
-                  <ContractImport onImport={parsed=>{const n={...eco,...parsed};setEco(n);save({contract:n});setToast("Imported ✓");setTimeout(()=>setToast(null),2000);}}/>
+                  <ContractImport onImport={parsed=>{
+                    const hasActive=cycles.some(cy=>cy.active);
+                    const n=hasActive
+                      ? cycles.map(cy=>cy.active?{...cy,...parsed}:cy)
+                      : [...cycles,{id:uid(),label:a.account?`${a.account}, Contract`:"Contract",start:"",end:"",products:a.products||[],events:[],note:"",active:true,...parsed}];
+                    setCycles(n);save({cycles:n});
+                    setToast("Imported ✓");setTimeout(()=>setToast(null),2000);
+                  }}/>
                 </div>
               </CollapsibleSection>
             </div>
@@ -3669,13 +3746,14 @@ function ContractWizard({a, onSave, onCancel}){
       ? [...cycles, newCycle]
       : [...cycles.map(c=>({...c,active:false})), newCycle];
 
+    const mirror=deriveContractMirror(updatedCycles);
     onSave({
       ...a,
       tier:"active", health:"green",
       contractCycle:(a.contractCycle||0)+(eventType==="amendment"?0:1),
       cycles:updatedCycles,
       milestones:newMs,
-      contract:{...a.contract,...econ,...terms,gmvActual:0,gmvProjected:econ.gmvProjected,start:terms.start,end:terms.end},
+      contract:mirror!==undefined?mirror:a.contract,
     });
     onCancel();
   }
