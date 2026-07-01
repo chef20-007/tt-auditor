@@ -3,15 +3,23 @@
 import { useState, useEffect, useRef } from "react";
 
 const T = {
-  bg:"#FFFFFF", soft:"#F4F4F3", ink:"#17181B", sub:"#6A6E77", faint:"#8C9099",
-  hair:"rgba(0,0,0,.06)", hairS:"rgba(0,0,0,.09)",
-  black:"#1F2023", purple:"#C67B5C", purpleSoft:"#F7ECE6", purpleBar:"#E4C4B4",
+  // Linear light palette
+  bg:"#FFFFFF", page:"#FCFCFD", rail:"#F3F3F4",
+  ink:"#232324", sub:"#656567", faint:"#9D9EA0", header:"#6E6E70",
+  hair:"rgba(0,0,0,.04)", hairS:"rgba(0,0,0,.06)", hairSoft:"rgba(0,0,0,.03)",
+  // Semantic colors
+  purple:"#C67B5C", purpleSoft:"#F7ECE6", purpleBar:"#E4C4B4",
   green:"#1F9A63", greenSoft:"#E6F5EC", red:"#D64B44", redSoft:"#FBE9E7",
   yellow:"#B08006", yellowSoft:"#F8EFD6", blue:"#5A8FD6", blueLt:"#B3CDEC",
-  // Tonal light depth (Linear light): back-plane deeper, content/rail near-white
-  backplane:"#F6F5F4", page:"#FCFCFB", rail:"#F4F3F1",
-  railText:"#3D4046", railTextActive:"#17181B", railHover:"rgba(0,0,0,0.045)",
-  railActive:"rgba(0,0,0,0.065)", railLabel:"#9A9DA4", railHair:"rgba(0,0,0,0.07)",
+  // Buttons & interactive
+  btnBg:"#FEFEFE", btnBorder:"#D7D6D6", btnShadow:"rgba(0,0,0,0.06)",
+  pillBg:"#FCFCFD", pillText:"#5B5B5E", pillHover:"#EFEFF0", pillActive:"#EFEFF0",
+  hover:"#F6F6F7", soft:"#F6F6F7",
+  // Checkboxes
+  checkBorder:"#9E9FA1", checkDone:"#444446",
+  // Rail (sidebar) aliases
+  railText:"#656567", railTextActive:"#232324", railHover:"#F6F6F7",
+  railActive:"#EFEFF0", railLabel:"#9D9EA0", railHair:"rgba(0,0,0,0.06)",
 };
 const serif='"Georgia","Times New Roman",serif';
 const sans='"Inter","SF Pro Text",-apple-system,system-ui,sans-serif';
@@ -45,7 +53,7 @@ const MILESTONE_TYPES={
   upsell:{label:"Upsell",icon:"",color:T.purple},
   risk:{label:"Risk trigger",icon:"",color:T.red},
   review:{label:"Review",icon:"",color:T.sub},
-  contract_end:{label:"Contract end",icon:"",color:T.black},
+  contract_end:{label:"Contract end",icon:"",color:T.ink},
 };
 // Cycles are account-specific and tied to renewals/events — no fixed template.
 // Each cycle: { id, label, start, end, products[], events[], note, active }
@@ -456,8 +464,9 @@ const Tag=({label,c,s})=><span style={{
   fontSize:11.5,fontWeight:500,
   padding:"2px 8px",
   borderRadius:6,
-  background:s,color:c,
-  border:`1px solid ${c}1F`,
+  background:"#FEFEFE",color:c,
+  border:`1px solid ${T.btnBorder}`,
+  boxShadow:"0 1px 6px rgba(0,0,0,0.05)",
   letterSpacing:"-0.01em",
   whiteSpace:"nowrap",
   lineHeight:"17px",
@@ -489,13 +498,13 @@ function TagPick({value,options,onChange,placeholder="Set"}){
     return()=>{document.removeEventListener("mousedown",close);window.removeEventListener("scroll",onScroll,true);window.removeEventListener("resize",onScroll);};
   },[open]);
   return <span style={{display:"inline-block"}}>
-    <button ref={btnRef} onClick={toggle} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:cur?cur.color+"18":T.soft,color:cur?cur.color:T.faint,border:`1px solid ${cur?cur.color+"1F":T.hairS}`,letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
+    <button ref={btnRef} onClick={toggle} onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.hover;}} onMouseLeave={e=>{e.currentTarget.style.background="#FEFEFE";}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:"#FEFEFE",color:cur?cur.color:T.faint,border:`1px solid ${T.btnBorder}`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)",letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
       {cur?<><span style={{width:6,height:6,borderRadius:"50%",background:cur.color,flexShrink:0}}/>{cur.label}</>:placeholder}
       <span style={{fontSize:8,opacity:.5,marginLeft:1}}>▾</span>
     </button>
     {open&&pos&&<div ref={menuRef} style={{position:"fixed",left:pos.left,top:pos.top,zIndex:9000,width:pos.width,maxHeight:260,overflowY:"auto",background:"#fff",border:`1px solid ${T.hairS}`,borderRadius:9,boxShadow:"0 8px 28px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08)",padding:4,animation:"ttPop .14s cubic-bezier(.4,0,.2,1)"}}>
       {options.map(o=>(
-        <button key={o.value} onClick={e=>{e.stopPropagation();onChange(o.value);setOpen(false);}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"6px 9px",borderRadius:6,border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:12.5,color:T.ink,letterSpacing:"-0.01em",transition:"background .1s",textAlign:"left"}}>
+        <button key={o.value} onClick={e=>{e.stopPropagation();onChange(o.value);setOpen(false);}} onMouseEnter={e=>e.currentTarget.style.background=T.hover} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"6px 9px",borderRadius:6,border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:12.5,color:T.ink,letterSpacing:"-0.01em",transition:"background .1s",textAlign:"left"}}>
           <span style={{width:7,height:7,borderRadius:"50%",background:o.color,flexShrink:0}}/>
           <span style={{flex:1}}>{o.label}</span>
           {o.value===value&&<span style={{fontSize:11,color:T.faint}}>✓</span>}
@@ -517,7 +526,7 @@ function DateChip({value,onChange}){
   const ref=useRef(null);
   const label=value?new Date(value+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"Set date";
   return <span style={{position:"relative",display:"inline-flex"}}>
-    <button onClick={()=>{try{ref.current.showPicker();}catch{ref.current.focus();}}} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:value?T.soft:T.soft,color:value?T.ink:T.faint,border:`1px solid ${T.hairS}`,letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans}}>
+    <button onClick={()=>{try{ref.current.showPicker();}catch{ref.current.focus();}}} onMouseEnter={e=>e.currentTarget.style.background=T.hover} onMouseLeave={e=>e.currentTarget.style.background="#FEFEFE"} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:"#FEFEFE",color:value?T.ink:T.faint,border:`1px solid ${T.btnBorder}`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)",letterSpacing:"-0.01em",whiteSpace:"nowrap",lineHeight:"17px",cursor:"pointer",fontFamily:sans,transition:"background .12s"}}>
       <span style={{fontSize:11,opacity:.7}}>◷</span>{label}
     </button>
     <input ref={ref} type="date" value={value||""} onChange={e=>onChange(e.target.value)} style={{position:"absolute",opacity:0,width:1,height:1,pointerEvents:"none",bottom:0,left:0}}/>
@@ -547,7 +556,7 @@ const Sec=({children,right})=><div style={{display:"flex",justifyContent:"space-
 const icbtn={width:40,height:40,borderRadius:8,background:T.bg,border:BD,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,color:T.ink,cursor:"pointer"};
 
 // ── Vercel sidebar colors ──
-const S={bg:"#F7F7F6",activeBg:"#ECECEA",activeText:"#17181B",inactiveText:"#6A6E77",labelText:"#8C9099",border:"rgba(0,0,0,.08)",activeBorder:"transparent",hoverBg:"#EFEFEE"};
+const S={bg:"#FCFCFD",activeBg:"#F3F3F4",activeText:"#232324",inactiveText:"#656567",labelText:"#9D9EA0",border:"rgba(0,0,0,.06)",activeBorder:"transparent",hoverBg:"#F6F6F7",cardBg:"#FFFFFF",cardShadow:"0 2px 8px rgba(0,0,0,0.08)",cardBorderShadow:"0 1px 0px rgba(0,0,0,0.04)"};
 const SIDEBAR_W=220;
 const NAV_ITEMS=[
   {id:"dashboard",label:"Home",       section:null},
@@ -562,11 +571,11 @@ const NAV_ITEMS=[
   {id:"costs",    label:"Cost ledger", section:"Shortcuts"},
 ];
 const VBtn={
-  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"linear-gradient(165deg,#33343A,#1C1D20)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.09), 0 1px 2px rgba(0,0,0,0.18)"},
-  secondary:{padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
+  primary:  {padding:"6px 13px",borderRadius:6,border:"none",background:"#232324",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"0 1px 2px rgba(0,0,0,0.1)"},
+  secondary:{padding:"6px 13px",borderRadius:6,border:`1px solid ${T.btnBorder}`,background:"#FEFEFE",color:T.ink,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:`0 1px 0 ${T.btnShadow}`},
   ghost:    {padding:"6px 13px",borderRadius:6,border:"none",background:"transparent",color:T.sub,fontFamily:sans,fontSize:13,fontWeight:400,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em"},
-  danger:   {padding:"6px 13px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.red,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7), 0 1px 1.5px rgba(0,0,0,0.04)"},
-  small:    {padding:"4px 9px",borderRadius:6,border:`1px solid ${T.hairS}`,background:"linear-gradient(180deg,#FFFFFF,#FBFBFA)",color:T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,letterSpacing:"-0.01em",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.7)"},
+  danger:   {padding:"6px 13px",borderRadius:6,border:`1px solid ${T.btnBorder}`,background:"#FEFEFE",color:T.red,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,letterSpacing:"-0.01em",boxShadow:`0 1px 0 ${T.btnShadow}`},
+  small:    {padding:"4px 9px",borderRadius:6,border:`1px solid ${T.btnBorder}`,background:"#FEFEFE",color:T.ink,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5,letterSpacing:"-0.01em",boxShadow:`0 1px 0 ${T.btnShadow}`},
 };
 
 
@@ -670,7 +679,7 @@ export default function AppDesktop(){
   function selectAcct(id,tab){const t=tab||'overview';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
 
   return(
-    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.backplane,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
+    <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.rail,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
 
       {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
       {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
@@ -704,7 +713,7 @@ export default function AppDesktop(){
         </div>
       </div>}
 
-      <div style={{flex:1,overflow:"auto",overscrollBehavior:"none",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.05), -10px 0 22px -14px rgba(0,0,0,0.14)",margin:isMobile?0:"8px 8px 8px 0",animation:isMobile?"none":"ttFadeUp .34s cubic-bezier(.22,.61,.36,1)"}}>
+      <div style={{flex:1,overflow:"auto",overscrollBehavior:"none",background:T.page,minWidth:0,paddingBottom:isMobile?56:0,borderTopLeftRadius:isMobile?0:11,borderBottomLeftRadius:isMobile?0:11,boxShadow:isMobile?"none":"-1px 0 0 rgba(0,0,0,0.04), -4px 0 8px rgba(0,0,0,0.06)",margin:isMobile?0:"8px 8px 8px 0",animation:isMobile?"none":"ttFadeUp .34s cubic-bezier(.22,.61,.36,1)"}}>
 
         {showDetail&&<StripeDetail a={selectedAcct} tab={detailTab} onTabChange={t=>{try{sessionStorage.setItem('tt_tab',t);}catch{}setDetailTab(t);}} onBack={()=>selectAcct(null)} onEdit={()=>setEditMode(true)} onNewContract={()=>setWizardOpen(true)} onDelete={async()=>{await delAcct(selectedAcct);}} onSave={saveAcct}/>}
 
@@ -754,7 +763,7 @@ export default function AppDesktop(){
             <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
               <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div><div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>AI Powered</div><div style={{fontSize:15,fontWeight:600,color:T.ink}}>Priority Actions</div></div>
-                <span style={{width:24,height:24,borderRadius:"50%",background:T.black,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{actions.length}</span>
+                <span style={{width:24,height:24,borderRadius:"50%",background:T.ink,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{actions.length}</span>
               </div>
               {actions.slice(0,4).map((r,i)=>(
                 <button key={i} onClick={()=>{setSelected(r.aid);navigate("accounts");setDetailTab("overview");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="#fff"} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left",transition:"background .12s"}}>
@@ -904,7 +913,7 @@ export default function AppDesktop(){
             const milestones=srcAccts.flatMap(a=>(a.milestones||[]).map(m=>({...m,_acct:a}))).sort((x,y)=>new Date(x.date)-new Date(y.date));
             const activity=srcAccts.flatMap(a=>(a.signals_pending||[]).concat(a.risks||[]).map(s=>({...s,_acct:a}))).slice(0,master?40:6);
             const c=master?null:peekAcct.contract;
-            return<div key={master?"master":peekAcct.id} style={{position:"absolute",top:272,right:8,bottom:8,width:352,zIndex:40,background:"#fff",borderRadius:13,border:`1px solid ${T.hairS}`,boxShadow:"0 12px 40px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",display:"flex",flexDirection:"column",animation:peekClosing?"ttPanelOut .22s cubic-bezier(.4,0,.2,1) forwards":"ttPanelIn .22s cubic-bezier(.4,0,.2,1)",overflow:"hidden"}}>
+            return<div key={master?"master":peekAcct.id} style={{position:"absolute",top:272,right:8,bottom:8,width:352,zIndex:40,background:"#FFFFFF",borderRadius:13,border:`1px solid ${T.hair}`,boxShadow:"0 2px 8px rgba(0,0,0,0.08), 0 1px 0px rgba(0,0,0,0.04)",display:"flex",flexDirection:"column",animation:peekClosing?"ttPanelOut .22s cubic-bezier(.4,0,.2,1) forwards":"ttPanelIn .22s cubic-bezier(.4,0,.2,1)",overflow:"hidden"}}>
               {/* panel header */}
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"16px 16px 13px",borderBottom:`1px solid ${T.hair}`}}>
                 {master
@@ -1253,24 +1262,27 @@ function MilestoneAdd({onAdd,onCancel}){
   </div>;
 }
 
-function MilestoneRow({m,onToggle,onDelete}){
+function MilestoneRow({m,onToggle,onDelete,first}){
   const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
   const d=daysDiff(m.date);
   const urgent=d<=3&&!m.done;
   const soon=d<=7&&!m.done&&!urgent;
-  return <div style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderTop:`1px solid ${S.border}`,opacity:m.done?.45:1}}>
-    <button onClick={()=>onToggle(m.id)} style={{width:18,height:18,borderRadius:4,border:`1.5px solid ${m.done?T.green:"#D1D5DB"}`,background:m.done?T.green:"transparent",color:"#fff",fontSize:10,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>{m.done?"✓":""}</button>
-    <div style={{flex:1,minWidth:0}}>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
-        <Tag label={mt.label} c={mt.color} s={mt.color+"18"}/>
+  return <>
+    {!first&&<div style={{height:1,background:S.border,margin:"10px 0"}}/>}
+    <div style={{display:"flex",alignItems:"center",gap:12,padding:"6px 8px",borderRadius:8,marginLeft:-8,marginRight:-8,opacity:m.done?.5:1,transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.hover} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      <button onClick={()=>onToggle(m.id)} style={{width:18,height:18,borderRadius:4,border:`1.5px solid ${m.done?T.checkDone:T.checkBorder}`,background:m.done?T.checkDone:"transparent",color:"#fff",fontSize:10,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0,transition:"border-color .12s,background .12s"}}>{m.done?"✓":""}</button>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:13,fontWeight:500,color:T.ink}}>{m.title}</span>
+          <Tag label={mt.label} c={mt.color}/>
+        </div>
+        <div style={{fontSize:12,color:T.sub,marginTop:1}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}{m.note?` · ${m.note}`:""}</div>
       </div>
-      <div style={{fontSize:12,color:S.inactiveText,marginTop:1}}>{new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}{m.note?` · ${m.note}`:""}</div>
+      {urgent&&<span style={{fontSize:12,fontWeight:700,color:T.red,flexShrink:0}}>{d<=0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
+      {soon&&<span style={{fontSize:12,fontWeight:600,color:T.yellow,flexShrink:0}}>{d}d</span>}
+      <button onClick={()=>onDelete(m.id)} onMouseEnter={e=>e.currentTarget.style.color=T.sub} onMouseLeave={e=>e.currentTarget.style.color=T.faint} style={{background:"none",border:"none",color:T.faint,cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1,transition:"color .12s"}}>×</button>
     </div>
-    {urgent&&<span style={{fontSize:12,fontWeight:700,color:T.red,flexShrink:0}}>{d<=0?"Today":d===1?"Tomorrow":`${d}d`}</span>}
-    {soon&&<span style={{fontSize:12,fontWeight:600,color:T.yellow,flexShrink:0}}>{d}d</span>}
-    <button onClick={()=>onDelete(m.id)} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>×</button>
-  </div>;
+  </>;
 }
 
 function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
@@ -1279,10 +1291,10 @@ function AccountTimeline({milestones=[],onAdd,onToggle,onDelete}){
   const upcoming=sorted.filter(m=>!m.done);
   const past=sorted.filter(m=>m.done);
   return <div>
-    {upcoming.map(m=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete}/>)}
+    {upcoming.map((m,i)=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete} first={i===0}/>)}
     {past.length>0&&<div style={{marginTop:8,padding:"8px 0",borderTop:`1px solid ${S.border}`}}>
       <div style={{fontSize:11,color:S.labelText,marginBottom:8}}>{past.length} completed</div>
-      {past.map(m=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete}/>)}
+      {past.map((m,i)=><MilestoneRow key={m.id} m={m} onToggle={onToggle} onDelete={onDelete} first={i===0}/>)}
     </div>}
     {sorted.length===0&&<div style={{fontSize:13,color:S.inactiveText,padding:"8px 0"}}>No milestones yet.</div>}
     {adding
@@ -1466,7 +1478,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 <b style={{color:T.ink,fontWeight:500}}>{a.owner}</b> · {a.eventType} · {a.sponsorMode}
                 {c&&<> · <b style={{color:T.ink,fontWeight:500}}>{c.start} – {c.end}</b></>}
               </div>
-              <textarea value={summary} onChange={e=>setSummary(e.target.value)} onBlur={()=>{if((a.summary||"")!==summary)save({summary});}} rows={1} placeholder="Add a short summary…" onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}}} style={{marginTop:9,width:"100%",maxWidth:640,border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.5,color:summary?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block"}}/>
+              <textarea value={summary} onChange={e=>setSummary(e.target.value)} onBlur={()=>{if((a.summary||"")!==summary)save({summary});}} rows={1} placeholder="Add a short summary…" onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}}} style={{marginTop:9,width:"100%",maxWidth:640,border:`1px solid ${T.hair}`,outline:"none",resize:"none",background:T.pillBg,fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.5,color:summary?T.ink:T.faint,letterSpacing:"-0.01em",padding:"10px 12px",overflow:"hidden",display:"block",borderRadius:6}}/>
               <div style={{display:"flex",gap:6,marginTop:10,flexWrap:"wrap"}}>
                 {(a.products||[]).map(p=><span key={p} style={{fontSize:11.5,fontWeight:500,padding:"2px 8px",borderRadius:6,background:T.purpleSoft,color:T.purple,border:`1px solid ${T.purple}22`}}>{p}</span>)}
               </div>
@@ -1480,7 +1492,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           {/* Tab bar — Linear underline */}
           <div style={{display:"flex",gap:2,marginBottom:-1}}>
             {TABS.map(t=>(
-              <button key={t} onClick={()=>onTabChange(t)} style={{padding:"9px 14px",border:"none",borderBottom:`1.5px solid ${tab===t?T.ink:"transparent"}`,background:"transparent",color:tab===t?T.ink:T.sub,fontFamily:sans,fontSize:13.5,fontWeight:tab===t?600:400,cursor:"pointer",textTransform:"capitalize",letterSpacing:"-0.01em",transition:"color .15s"}}>
+              <button key={t} onClick={()=>onTabChange(t)} onMouseEnter={e=>{if(tab!==t)e.currentTarget.style.color=T.ink;}} onMouseLeave={e=>{if(tab!==t)e.currentTarget.style.color=T.sub;}} style={{padding:"9px 14px",border:"none",borderBottom:`1.5px solid ${tab===t?T.ink:"transparent"}`,background:"transparent",color:tab===t?T.ink:T.sub,fontFamily:sans,fontSize:13.5,fontWeight:tab===t?600:400,cursor:"pointer",textTransform:"capitalize",letterSpacing:"-0.01em",transition:"color .15s"}}>
                 {t}
               </button>
             ))}
@@ -1505,7 +1517,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             );})()}
             {/* Notes — collapsible, Linear/Notion style */}
             <CollapsibleSection title="Notes" defaultOpen={true}>
-              <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>{if((a.notes||"")!==notes)save({notes});}} placeholder="Add a note…" onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,44)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,44)+"px";}}} style={{width:"100%",border:"none",outline:"none",resize:"none",background:"transparent",fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:0,overflow:"hidden",display:"block",minHeight:44}}/>
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={e=>{if((a.notes||"")!==notes)save({notes});e.target.style.background=T.pillBg;e.target.style.borderColor=T.hair;}} onFocus={e=>{e.target.style.background="#fff";e.target.style.borderColor=T.faint;}} placeholder="Add a short summary..." onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.max(e.target.scrollHeight,60)+"px";}} ref={el=>{if(el){el.style.height="auto";el.style.height=Math.max(el.scrollHeight,60)+"px";}}} style={{width:"100%",border:`1px solid ${T.hair}`,outline:"none",resize:"none",background:T.pillBg,fontFamily:sans,fontSize:14,fontWeight:400,lineHeight:1.65,color:notes?T.ink:T.faint,letterSpacing:"-0.01em",padding:"12px 14px",overflow:"hidden",display:"block",minHeight:60,borderRadius:8,transition:"background .12s,border-color .12s"}}/>
             </CollapsibleSection>
             {(a.signals_pending||[]).length>0&&<div style={{marginBottom:32}}>
               <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Signals to review</div>
@@ -1599,9 +1611,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
           {/* TIMELINE */}
           {tab==="timeline"&&<>
-            <CollapsibleSection title="Account lifecycle" defaultOpen={true}
-              onAdd={()=>addMilestone({id:uid(),type:"review",date:new Date().toISOString().slice(0,10),title:"",note:"",done:false})}
-              addLabel="+ Add milestone">
+            <CollapsibleSection title="Account lifecycle" defaultOpen={true} badge={milestones.length||null}>
               <AccountTimeline milestones={milestones} onAdd={addMilestone} onToggle={toggleMilestone} onDelete={delMilestone}/>
             </CollapsibleSection>
 
@@ -1895,7 +1905,7 @@ function NewCycleForm({products,onSave,onCancel}){
     <InlineText value={note} onChange={setNote} placeholder="Add a note…" size={12.5} style={{marginBottom:12,color:note?T.sub:T.faint}}/>
     <div style={{fontSize:11.5,color:T.faint,marginBottom:7}}>Products in scope</div>
     <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:12}}>
-      {PRODUCTS.map(p=>{const has=prods.includes(p); return <button key={p} onClick={()=>setProds(has?prods.filter(x=>x!==p):[...prods,p])} style={{fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green+"1F":T.hairS}`,background:has?T.green+"18":T.soft,color:has?T.green:T.faint,fontFamily:sans,transition:"background .12s"}}>{has?"✓ ":""}{p}</button>;})}
+      {PRODUCTS.map(p=>{const has=prods.includes(p); return <button key={p} onClick={()=>setProds(has?prods.filter(x=>x!==p):[...prods,p])} onMouseEnter={e=>{if(!has)e.currentTarget.style.background=T.hover;}} onMouseLeave={e=>{if(!has)e.currentTarget.style.background="#FEFEFE";}} style={{fontSize:11.5,fontWeight:500,padding:"3px 9px",borderRadius:6,cursor:"pointer",border:`1px solid ${has?T.green+"3F":T.btnBorder}`,background:has?T.green+"14":"#FEFEFE",color:has?T.green:T.sub,fontFamily:sans,boxShadow:has?"none":"0 1px 6px rgba(0,0,0,0.05)",transition:"background .12s"}}>{has?"✓ ":""}{p}</button>;})}
     </div>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       <button disabled={!label} onClick={()=>onSave({id:uid(),label,start,end,products:prods,events:[],note,active:true})} style={{...VBtn.small,fontSize:12,opacity:label?1:.45,cursor:label?"pointer":"default"}}>Create cycle</button>
