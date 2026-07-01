@@ -1,5 +1,4 @@
 "use client";
-"use client";
 import { useState, useEffect } from "react";
 
 const T = {
@@ -492,9 +491,9 @@ const SIDEBAR_W=220;
 const NAV_ITEMS=[
   {id:"dashboard",label:"Home",       section:null},
   {id:"accounts", label:"Accounts",   section:null},
-  {id:"finance",  label:"Finances",   section:"Analytics"},
-  {id:"timeline", label:"Timeline",   section:"Analytics"},
-  {id:"digest",   label:"Agent",      section:"Analytics"},
+  {id:"timeline", label:"Timeline",   section:null},
+  {id:"finance",  label:"Finances",   section:null},
+  {id:"digest",   label:"Agent",      section:null},
   {id:"disputes", label:"Disputes",   section:"Shortcuts"},
   {id:"renewals", label:"Renewals due",section:"Shortcuts"},
   {id:"oos",      label:"Out of scope",section:"Shortcuts"},
@@ -596,8 +595,8 @@ export default function AppDesktop(){
 
       {/* SIDEBAR — desktop: left rail | mobile: bottom tab bar */}
       {isMobile&&<div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:S.bg,borderTop:`1px solid ${S.border}`,display:"flex",alignItems:"stretch",height:56}}>
-        {NAV_ITEMS.filter(n=>!n.section||n.section==="Analytics").map(n=>{const isActive=(nav===n.id)&&(n.id==="accounts"||!showDetail);return<button key={n.id} onClick={()=>{navigate(n.id);selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.ink:S.inactiveText,gap:2,padding:"6px 0"}}>
-          <span style={{fontSize:16}}>{n.id==="dashboard"?"⊞":n.id==="accounts"?"≡":n.id==="timeline"?"◷":n.id==="finance"?"$":n.id==="digest"?"⚡":"•"}</span>
+        {NAV_ITEMS.filter(n=>!n.section).map(n=>{const isActive=(nav===n.id)&&(n.id==="accounts"||!showDetail);return<button key={n.id} onClick={()=>{navigate(n.id);selectAcct(null);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",fontFamily:sans,fontSize:10.5,fontWeight:isActive?700:400,color:isActive?T.ink:S.inactiveText,gap:2,padding:"6px 0"}}>
+          <span style={{fontSize:16}}>{n.id==="dashboard"?"⊞":n.id==="accounts"?"≡":n.id==="timeline"?"◷":"⚡"}</span>
           {n.label}
         </button>;})}
       </div>}
@@ -697,7 +696,7 @@ export default function AppDesktop(){
                 <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Next 14 days</div>
               </div>
               {allMilestones.slice(0,5).map((m,i)=>{const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);return(
-                <button key={m.aid+"_"+m.id} onClick={()=>{setSelected(m.aid);navigate("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
+                <button key={m.id} onClick={()=>{setSelected(m.aid);navigate("accounts");setDetailTab("timeline");}} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"12px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left"}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
                     <div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{m.acct}</div>
@@ -745,7 +744,7 @@ export default function AppDesktop(){
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
                         <div style={{width:30,height:30,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short||a.account.slice(0,2).toUpperCase()}</div>
-                        <div><div style={{fontSize:13,fontWeight:600,color:T.ink,display:"flex",alignItems:"center",gap:7}}>{a.account}{(()=>{const pt=pipelineForAcct(a.id);return pt?<span style={{fontSize:10,fontWeight:600,padding:"1px 6px",borderRadius:4,background:PIPE_STAGES[pt.stage].s,color:PIPE_STAGES[pt.stage].c}}>{PIPE_STAGES[pt.stage].label}</span>:null;})()}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{a.owner} · {a.value}</div></div>
+                        <div><div style={{fontSize:13,fontWeight:600,color:T.ink}}>{a.account}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{a.owner} · {a.value}</div></div>
                       </div>
                       <div style={{display:"flex",alignItems:"center"}}><Tag label={tier.label} c={tier.c} s={tier.s}/></div>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",fontSize:13}}>{c?fmtK(c.gmvActual):"—"}</div>
@@ -808,7 +807,7 @@ export default function AppDesktop(){
                     <span style={{fontSize:14,fontWeight:600,color:T.ink}}>{a.account}</span>
                   </div>
                   <Tag label={tier.label} c={tier.c} s={tier.s}/>
-                  <button onClick={()=>{selectAcct(a.id,"timeline");navigate("accounts");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,fontFamily:sans}}>Open →</button>
+                  <button onClick={()=>{selectAcct(a.id,"timeline");}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,fontFamily:sans}}>Open →</button>
                 </div>
                 {/* Upcoming milestones */}
                 {upcoming.length>0&&<>
@@ -909,7 +908,7 @@ export default function AppDesktop(){
             if(renewals.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No renewals due in the next 90 days.</div>;
             return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
               {renewals.map((m,i)=>{const d=daysDiff(m.date);return(
-                <button key={m.aid+"_"+m.id} onClick={()=>{selectAcct(m.aid,"timeline");navigate("accounts");}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
+                <button key={m.id} onClick={()=>{selectAcct(m.aid,"timeline");navigate("accounts");}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                   <div style={{width:30,height:30,borderRadius:6,background:m.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{m.short}</div>
                   <div style={{flex:1}}>
@@ -1316,17 +1315,6 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
           {/* OVERVIEW */}
           {tab==="overview"&&<>
-            {/* Pipeline summary */}
-            {(()=>{const pt=pipelineForAcct(a.id);if(!pt)return null;const cfg=PIPE_STAGES[pt.stage];return(
-              <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",border:`1px solid ${S.border}`,borderRadius:10,padding:"12px 16px",marginBottom:24,background:"#FAFAFA"}}>
-                <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>Pipeline</span>
-                <span style={{fontSize:12,fontWeight:600,padding:"2px 9px",borderRadius:5,background:cfg.s,color:cfg.c}}>{cfg.label}</span>
-                <span style={{fontSize:12,fontWeight:600,color:PIPE_TIERS[pt.tier].c}}>{PIPE_TIERS[pt.tier].label}</span>
-                <span style={{fontSize:12,color:S.inactiveText}}>{pt.vertical}</span>
-                <span style={{fontSize:12,color:S.inactiveText}}>· {pt.owner}</span>
-                {pt.note&&<span style={{fontSize:12,color:S.labelText,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pt.note}</span>}
-              </div>
-            );})()}
             {/* Pending signals */}
             {(a.signals_pending||[]).length>0&&<div style={{marginBottom:24}}>
               <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Signals to review</div>
@@ -2005,9 +1993,6 @@ function hostLifetimeGmv(a){
   const master=a.contract?.gmvActual||0;
   return Math.max(cyc,master);
 }
-// Read pipeline targets from storage (shared across Accounts + Pipeline views)
-function readTargets(){try{const v=localStorage.getItem("tt_targets");return v?JSON.parse(v):TT_TARGETS_SEED;}catch{return TT_TARGETS_SEED;}}
-function pipelineForAcct(acctId){if(!acctId)return null;return readTargets().find(t=>t.linkedAcct===acctId)||null;}
 function IntelligenceView({orgAccts,isMobile}){
   const GMV_FLOOR=500;
   const hosts=orgAccts
@@ -2142,70 +2127,7 @@ function IntelligenceView({orgAccts,isMobile}){
 }
 
 // ── Pipeline & GTM (host acquisition) ──
-// ── Sankey flow diagram (dependency-free SVG) ──
-// Generic: takes {nodes:[{id,label,col,color,order}], links:[{source,target,value,color,label}]}
-// Node height ∝ throughput; ribbons are cubic béziers with width ∝ value. Conservation is exact.
-function Sankey({nodes,links,height=340,isMobile}){
-  const W=isMobile?340:720;
-  const H=height;
-  const PAD_Y=8, NODE_W=isMobile?10:12, GAP=10;
-  const cols=[...new Set(nodes.map(n=>n.col))].sort((a,b)=>a-b);
-  const colX=(c)=>{const i=cols.indexOf(c);return cols.length<=1?0:(i/(cols.length-1))*(W-NODE_W);};
-
-  const nodeMap={};
-  nodes.forEach(n=>{nodeMap[n.id]={...n,in:0,out:0};});
-  links.forEach(l=>{if(nodeMap[l.source])nodeMap[l.source].out+=l.value;if(nodeMap[l.target])nodeMap[l.target].in+=l.value;});
-  Object.values(nodeMap).forEach(n=>{n.flow=Math.max(n.in,n.out);});
-
-  const colTotals={};
-  cols.forEach(c=>{colTotals[c]=Object.values(nodeMap).filter(n=>n.col===c).reduce((s,n)=>s+n.flow,0);});
-  const maxColFlow=Math.max(...Object.values(colTotals),1);
-  const usableH=H-PAD_Y*2;
-  const maxNodesInCol=Math.max(...cols.map(c=>Object.values(nodeMap).filter(n=>n.col===c).length),1);
-  const scale=(usableH-GAP*(maxNodesInCol-1))/maxColFlow;
-
-  cols.forEach(c=>{
-    const colNodes=Object.values(nodeMap).filter(n=>n.col===c).sort((a,b)=>(a.order??0)-(b.order??0));
-    const totalH=colNodes.reduce((s,n)=>s+n.flow*scale,0)+GAP*(colNodes.length-1);
-    let y=PAD_Y+(usableH-totalH)/2;
-    colNodes.forEach(n=>{n.h=Math.max(3,n.flow*scale);n.y=y;n.x=colX(c);y+=n.h+GAP;});
-  });
-
-  const outOff={}, inOff={};
-  Object.keys(nodeMap).forEach(id=>{outOff[id]=0;inOff[id]=0;});
-  const ribbons=links.filter(l=>nodeMap[l.source]&&nodeMap[l.target]&&l.value>0).map((l,i)=>{
-    const s=nodeMap[l.source], t=nodeMap[l.target];
-    const sw=l.value*scale, tw=l.value*scale;
-    const sy0=s.y+outOff[l.source]; outOff[l.source]+=sw;
-    const ty0=t.y+inOff[l.target]; inOff[l.target]+=tw;
-    const x0=s.x+NODE_W, x1=t.x;
-    const xm=(x0+x1)/2;
-    const sy1=sy0+sw, ty1=ty0+tw;
-    const d=`M${x0},${sy0} C${xm},${sy0} ${xm},${ty0} ${x1},${ty0} L${x1},${ty1} C${xm},${ty1} ${xm},${sy1} ${x0},${sy1} Z`;
-    return {d,color:l.color||s.color||"#CBD5E1",key:i,value:l.value,label:l.label};
-  });
-
-  return <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{display:"block",overflow:"visible"}}>
-    {ribbons.map(r=>(
-      <path key={r.key} d={r.d} fill={r.color} fillOpacity={0.32} stroke="none">
-        <title>{r.label||`${r.value}`}</title>
-      </path>
-    ))}
-    {Object.values(nodeMap).filter(n=>n.flow>0).map(n=>(
-      <g key={n.id}>
-        <rect x={n.x} y={n.y} width={NODE_W} height={n.h} rx={2} fill={n.color||"#94A3B8"}/>
-        <text x={n.col===cols[cols.length-1]?n.x-6:n.x+NODE_W+6}
-              y={n.y+n.h/2} dominantBaseline="middle"
-              textAnchor={n.col===cols[cols.length-1]?"end":"start"}
-              fontSize={isMobile?9:11} fontFamily={sans} fill={T.ink} fontWeight={500}>
-          {n.label} <tspan fill={T.sub} fontWeight={400}>{n.disp!=null?n.disp:n.flow}</tspan>
-        </text>
-      </g>
-    ))}
-  </svg>;
-}
-
-function PipelineView({isMobile,orgAccts=[]}){
+function PipelineView({isMobile}){
   const [targets,setTargets]=useState(()=>{try{const v=localStorage.getItem("tt_targets");return v?JSON.parse(v):TT_TARGETS_SEED;}catch{return TT_TARGETS_SEED;}});
   const [editing,setEditing]=useState(null);
   const [adding,setAdding]=useState(false);
@@ -2239,126 +2161,7 @@ function PipelineView({isMobile,orgAccts=[]}){
   const Field=({label,children})=><div><div style={{fontSize:11,fontWeight:600,color:S.labelText,marginBottom:4}}>{label}</div>{children}</div>;
   const inp={padding:"7px 10px",borderRadius:6,border:`1px solid ${S.border}`,fontFamily:sans,fontSize:13,color:T.ink,width:"100%",background:"#fff",boxSizing:"border-box"};
 
-  // ── Flow diagram data ──
-  const [flowMode,setFlowMode]=useState("pipeline"); // pipeline | gmv
-  const TIER_COLOR={1:T.purple,2:T.blue,3:T.faint};
-  const STAGE_ORDER={targeted:0,contacted:1,in_talks:2,signed:3,lost:4};
-
-  // Pipeline flow: Tier (col 0) → Stage (col 1). Lost sinks at the bottom.
-  const pipelineFlow=(()=>{
-    const nodes=[
-      ...[1,2,3].map(t=>({id:`tier${t}`,label:PIPE_TIERS[t].label,col:0,color:TIER_COLOR[t],order:t})),
-      ...Object.keys(PIPE_STAGES).map(st=>({id:`st_${st}`,label:PIPE_STAGES[st].label,col:1,color:PIPE_STAGES[st].c,order:STAGE_ORDER[st]})),
-    ];
-    const linkMap={};
-    targets.forEach(t=>{const k=`tier${t.tier}|st_${t.stage}`;linkMap[k]=(linkMap[k]||0)+1;});
-    const links=Object.entries(linkMap).map(([k,v])=>{const [source,target]=k.split("|");return {source,target,value:v,color:TIER_COLOR[+source.replace("tier","")],label:`${v} ${PIPE_TIERS[+source.replace("tier","")].label} → ${target.replace("st_","")}`};});
-    return {nodes,links};
-  })();
-
-  // GMV flow: Vertical (col 0) → Host (col 1) → Product (col 2). Hosts ≥ $500 only.
-  const gmvFlow=(()=>{
-    const FLOOR=500;
-    const VCOL=["#1E8F5C","#3FA86F","#62C088","#8AD3A6","#B2E3C5","#CBD5E1"];
-    const hosts=orgAccts.map(a=>({name:a.account,gmv:hostLifetimeGmv(a),vertical:a.vertical||"Uncategorized",
-      products:(a.products&&a.products.length?a.products:["Primary ticketing"])}))
-      .filter(h=>h.gmv>=FLOOR).sort((a,b)=>b.gmv-a.gmv);
-    const verts=[...new Set(hosts.map(h=>h.vertical))];
-    const vColor={}; verts.forEach((v,i)=>vColor[v]=VCOL[i%VCOL.length]);
-    const K=1000;
-    // dollar totals per node for display labels
-    const vertTotal={}, prodTotal={};
-    hosts.forEach(h=>{vertTotal[h.vertical]=(vertTotal[h.vertical]||0)+h.gmv;const per=h.gmv/h.products.length;h.products.forEach(p=>prodTotal[p]=(prodTotal[p]||0)+per);});
-    const nodes=[
-      ...verts.map((v,i)=>({id:`v_${v}`,label:v,col:0,color:vColor[v],order:i,disp:fmtK(vertTotal[v])})),
-      ...hosts.map((h,i)=>({id:`h_${h.name}`,label:isMobile?h.name.slice(0,10):h.name,col:1,color:vColor[h.vertical],order:i,disp:fmtK(h.gmv)})),
-      ...[...new Set(hosts.flatMap(h=>h.products))].map((p,i)=>({id:`p_${p}`,label:p,col:2,color:T.faint,order:i,disp:fmtK(prodTotal[p])})),
-    ];
-    const links=[];
-    hosts.forEach(h=>{
-      links.push({source:`v_${h.vertical}`,target:`h_${h.name}`,value:h.gmv/K,color:vColor[h.vertical],label:`${h.name} · ${fmtK(h.gmv)}`});
-      const per=h.gmv/h.products.length;
-      h.products.forEach(p=>links.push({source:`h_${h.name}`,target:`p_${p}`,value:per/K,color:vColor[h.vertical],label:`${h.name} → ${p}`}));
-    });
-    return {nodes,links};
-  })();
-
-  const flow=flowMode==="pipeline"?pipelineFlow:gmvFlow;
-
   return <div>
-    {/* Flow diagram */}
-    <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
-      <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Flow</div>
-          <div style={{fontSize:15,fontWeight:600,color:T.ink}}>{flowMode==="pipeline"?"Targets by tier and stage":"GMV by vertical, host, and product"}</div>
-          <div style={{fontSize:12,color:S.labelText,marginTop:2}}>{flowMode==="pipeline"?"Ribbon width = number of targets. Lost sinks to the bottom.":"Ribbon width = lifetime GMV. Hosts ≥ $500 only."}</div>
-        </div>
-        <div style={{display:"inline-flex",border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
-          {[["pipeline","Pipeline"],["gmv","GMV"]].map(([id,lbl])=>(
-            <button key={id} onClick={()=>setFlowMode(id)} style={{padding:"6px 14px",border:"none",background:flowMode===id?T.ink:"#fff",color:flowMode===id?"#fff":S.inactiveText,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer"}}>{lbl}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{padding:isMobile?"20px 12px":"24px 28px"}}>
-        {flow.links.length>0
-          ?<Sankey nodes={flow.nodes} links={flow.links} height={flowMode==="gmv"?Math.max(300,flow.nodes.filter(n=>n.col===1).length*34):300} isMobile={isMobile}/>
-          :<div style={{padding:"40px",textAlign:"center",fontSize:13,color:S.inactiveText}}>No flow data yet.</div>}
-      </div>
-    </div>
-
-    {/* Kanban pipeline board */}
-    <div style={{marginBottom:24}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12,flexWrap:"wrap",gap:8}}>
-        <div>
-          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Board</div>
-          <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Pipeline board</div>
-        </div>
-        <div style={{fontSize:12,color:S.labelText}}>{isMobile?"Tap a card's stage to move it":"Drag cards between stages"}</div>
-      </div>
-      <div style={{display:"flex",gap:12,overflowX:"auto",paddingBottom:6}}>
-        {Object.entries(PIPE_STAGES).map(([stage,cfg])=>{
-          const col=targets.filter(t=>t.stage===stage);
-          const colGmv=col.reduce((n,t)=>{const acct=orgAccts.find(a=>a.id===t.linkedAcct);return n+(acct?hostLifetimeGmv(acct):0);},0);
-          return(
-            <div key={stage}
-              onDragOver={e=>{if(!isMobile){e.preventDefault();e.currentTarget.style.background=cfg.s;}}}
-              onDragLeave={e=>{if(!isMobile)e.currentTarget.style.background="#FAFAFA";}}
-              onDrop={e=>{if(isMobile)return;e.preventDefault();e.currentTarget.style.background="#FAFAFA";const id=e.dataTransfer.getData("text/plain");if(id)setStage(id,stage);}}
-              style={{flex:isMobile?"0 0 240px":"1 1 0",minWidth:isMobile?240:150,background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:10,padding:10,transition:"background .12s"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"2px 4px"}}>
-                <span style={{display:"flex",alignItems:"center",gap:7}}>
-                  <span style={{width:8,height:8,borderRadius:2,background:cfg.c}}/>
-                  <span style={{fontSize:12,fontWeight:600,color:T.ink}}>{cfg.label}</span>
-                  <span style={{fontSize:11,color:S.labelText}}>{col.length}</span>
-                </span>
-                {colGmv>0&&<span style={{fontSize:10.5,color:S.labelText}}>{fmtK(colGmv)}</span>}
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,minHeight:60}}>
-                {col.map(t=>(
-                  <div key={t.id}
-                    draggable={!isMobile}
-                    onDragStart={e=>{e.dataTransfer.setData("text/plain",t.id);e.dataTransfer.effectAllowed="move";}}
-                    style={{background:"#fff",border:`1px solid ${S.border}`,borderLeft:`3px solid ${PIPE_TIERS[t.tier].c}`,borderRadius:8,padding:"9px 11px",cursor:isMobile?"default":"grab",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
-                    <div style={{fontSize:12.5,fontWeight:600,color:T.ink,marginBottom:3,lineHeight:1.25}}>{t.name}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                      <span style={{fontSize:10,fontWeight:600,color:PIPE_TIERS[t.tier].c}}>{PIPE_TIERS[t.tier].label}</span>
-                      <span style={{fontSize:10.5,color:S.inactiveText}}>{t.vertical}</span>
-                      {t.linkedAcct&&<span style={{fontSize:10,color:T.green}}>● account</span>}
-                    </div>
-                    {isMobile&&<select value={t.stage} onChange={e=>setStage(t.id,e.target.value)} style={{marginTop:7,width:"100%",fontSize:11,padding:"4px 6px",borderRadius:5,border:`1px solid ${S.border}`,background:"#fff",color:T.ink,fontFamily:sans}}>
-                      {Object.entries(PIPE_STAGES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-                    </select>}
-                  </div>
-                ))}
-                {col.length===0&&<div style={{fontSize:11,color:S.faint,textAlign:"center",padding:"14px 0",border:`1px dashed ${S.border}`,borderRadius:6}}>{isMobile?"Empty":"Drop here"}</div>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-
     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
       {[
         {label:"Hosts signed",value:`${signed.length} / ${totalGoal}`,sub:"vs. Tier 1/2/3 goal"},
@@ -2671,7 +2474,7 @@ function FinancePage({activeAccts,orgAccts,gmvActual,gmvProj,feesEarned,feesCont
 
     {/* OVERVIEW */}
     {view==="intelligence"&&<IntelligenceView orgAccts={orgAccts} isMobile={isMobile}/>}
-    {view==="pipeline"&&<PipelineView isMobile={isMobile} orgAccts={orgAccts}/>}
+    {view==="pipeline"&&<PipelineView isMobile={isMobile}/>}
 
     {view==="overview"&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:20}}>
 
