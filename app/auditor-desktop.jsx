@@ -9,7 +9,7 @@ const T = {
   green:"#1F9A63", greenSoft:"#E6F5EC", red:"#D64B44", redSoft:"#FBE9E7",
   yellow:"#B08006", yellowSoft:"#F8EFD6", blue:"#5A8FD6", blueLt:"#B3CDEC",
   // Tonal light depth (Linear light): back-plane deeper, content/rail near-white
-  backplane:"#ECEBE8", page:"#FBFBFA", rail:"#F4F3F1",
+  backplane:"#F1F0EE", page:"#FCFCFB", rail:"#F4F3F1",
   railText:"#3D4046", railTextActive:"#17181B", railHover:"rgba(0,0,0,0.045)",
   railActive:"rgba(0,0,0,0.065)", railLabel:"#9A9DA4", railHair:"rgba(0,0,0,0.07)",
 };
@@ -471,7 +471,7 @@ function CollapsibleSection({title,badge,badgeColor,badgeBg,defaultOpen=true,onA
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         {/* Vercel chevron — rotates on open */}
         <span style={{fontSize:12,color:S.inactiveText,display:"inline-block",transform:open?"rotate(90deg)":"rotate(0deg)",transition:"transform .18s ease",lineHeight:1}}>›</span>
-        <span style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{title}</span>
+        <span style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>{title}</span>
         {badge!=null&&badge!==""&&<span style={{fontSize:11,fontWeight:600,padding:"1px 6px",borderRadius:4,background:badgeBg||"#F3F4F6",color:badgeColor||S.inactiveText}}>{badge}</span>}
       </div>
       {open&&onAdd&&<button onClick={e=>{e.stopPropagation();onAdd();}} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500,padding:0,fontFamily:sans}}>{addLabel}</button>}
@@ -645,11 +645,11 @@ export default function AppDesktop(){
 
         {/* DASHBOARD */}
         {!showDetail&&nav==="dashboard"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
-          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:28}}>
+          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:26}}>
             <div>
-              <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}><span style={{color:T.purple,cursor:"pointer"}}>Accounts</span> → Dashboard</div>
-              <h1 style={{fontSize:24,fontWeight:700,letterSpacing:-.4,margin:"0 0 4px",color:T.ink}}>3 Tree Labs</h1>
-              <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Real-time revenue, pipeline, and contract health</p>
+              <div style={{fontSize:12,fontWeight:500,letterSpacing:"-0.01em",color:T.faint,marginBottom:7}}><span style={{color:T.sub,cursor:"pointer"}}>Accounts</span> / Home</div>
+              <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 3px",color:T.ink}}>3 Tree Labs</h1>
+              <p style={{fontSize:13.5,color:T.sub,margin:0,letterSpacing:"-0.01em"}}>Real-time revenue, pipeline, and contract health</p>
             </div>
             <div style={{display:"flex",gap:10}}>
               <button onClick={()=>{navigate("accounts");setEditMode(true);}} style={{...VBtn.secondary,fontSize:13}}>+ New account</button>
@@ -664,31 +664,31 @@ export default function AppDesktop(){
             <button onClick={()=>navigate("accounts")} style={{...VBtn.small,borderColor:"#FDE68A",color:"#92400E"}}>Review →</button>
           </div>}
 
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:28}}>
-            <div style={{background:T.black,borderRadius:12,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,color:"#fff"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"auto"}}><span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:"#9CA0AB"}}>AI Forecast</span><span style={{fontSize:13,color:"#9CA0AB"}}>✦</span></div>
-              <div style={{fontSize:32,fontWeight:800,letterSpacing:-1.2,lineHeight:1,margin:"10px 0 8px"}}>{fmtK(forecast)}</div>
-              <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:600,padding:"5px 12px",borderRadius:6,background:"#fff",color:T.black,width:"fit-content"}}>↑ {confidence} Confidence</span>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1.4fr 1fr 1fr 1fr",gap:12,marginBottom:26}}>
+            <div style={{background:"linear-gradient(165deg,#2A2B30,#1A1B1E)",borderRadius:11,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,color:"#fff",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.06)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"auto"}}><span style={{fontSize:11,fontWeight:500,letterSpacing:"-0.01em",color:"#9CA0AB"}}>AI forecast</span><span style={{fontSize:13,color:"#9CA0AB"}}>✦</span></div>
+              <div style={{fontSize:31,fontWeight:700,letterSpacing:"-0.03em",lineHeight:1,margin:"10px 0 8px"}}>{fmtK(forecast)}</div>
+              <span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11.5,fontWeight:500,padding:"4px 10px",borderRadius:6,background:"rgba(255,255,255,0.1)",color:"#E8E9EC",width:"fit-content"}}>↑ {confidence} confidence</span>
             </div>
             {[
               {label:"GMV realized",value:fmtK(gmvActual),sub:`${pipelinePct}% of ${fmtK(gmvProj)} contracted`},
               {label:"Pipeline",value:coverage,sub:coverageHealthy?"Healthy":"Watch"},
               {label:"Net realized",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),sub:netRev>=0?`${fmt(feesEarned)} fees earned`:"Underwater",col:netRev<0?T.red:undefined},
             ].map((t,i)=>(
-              <div key={i} style={{background:"#fff",border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,justifyContent:"space-between"}}>
-                <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>{t.label}</span>
+              <div key={i} style={{background:"#fff",border:`1px solid ${T.hair}`,borderRadius:11,padding:"16px 20px",display:"flex",flexDirection:"column",minHeight:136,justifyContent:"space-between",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
+                <span style={{fontSize:11,fontWeight:500,letterSpacing:"-0.01em",color:T.sub}}>{t.label}</span>
                 <div>
-                  <div style={{fontSize:28,fontWeight:700,letterSpacing:-1,lineHeight:1,marginBottom:6,color:t.col||T.ink}}>{t.value}</div>
-                  <span style={{display:"inline-flex",alignItems:"center",fontSize:11.5,fontWeight:600,padding:"4px 10px",borderRadius:6,background:T.black,color:"#fff"}}>{t.sub}</span>
+                  <div style={{fontSize:28,fontWeight:600,letterSpacing:"-0.03em",lineHeight:1,marginBottom:7,color:t.col||T.ink}}>{t.value}</div>
+                  <span style={{display:"inline-flex",alignItems:"center",fontSize:11.5,fontWeight:500,color:T.sub}}>{t.sub}</span>
                 </div>
               </div>
             ))}
           </div>
 
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:28}}>
-            <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
               <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div><div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>AI Powered</div><div style={{fontSize:15,fontWeight:600,color:T.ink}}>Priority Actions</div></div>
+                <div><div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>AI Powered</div><div style={{fontSize:15,fontWeight:600,color:T.ink}}>Priority Actions</div></div>
                 <span style={{width:24,height:24,borderRadius:"50%",background:T.black,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{actions.length}</span>
               </div>
               {actions.slice(0,4).map((r,i)=>(
@@ -703,9 +703,9 @@ export default function AppDesktop(){
               ))}
               {actions.length===0&&<div style={{padding:"24px 20px",fontSize:13,color:S.inactiveText}}>No open actions.</div>}
             </div>
-            <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
               <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
-                <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Timeline</div>
+                <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Timeline</div>
                 <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Next 14 days</div>
               </div>
               {allMilestones.slice(0,5).map((m,i)=>{const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;const d=daysDiff(m.date);return(
@@ -726,7 +726,7 @@ export default function AppDesktop(){
         {!showDetail&&nav==="accounts"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
             <div>
-              <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Accounts</h1>
+              <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 3px",color:T.ink}}>Accounts</h1>
               <p style={{fontSize:13,color:S.inactiveText,margin:0}}>{acctsByTier.active.length} active · {acctsByTier.watch.length} watch · {acctsByTier.cold.length} cold · {archivedAccts.length} archived</p>
             </div>
             <button onClick={()=>setEditMode(true)} style={{...VBtn.primary}}>+ New account</button>
@@ -735,12 +735,12 @@ export default function AppDesktop(){
             const allRows=[...acctsByTier.active,...acctsByTier.watch,...acctsByTier.cold];
             if(allRows.length===0)return<div style={{padding:"40px",textAlign:"center",fontSize:14,color:S.inactiveText,border:`1px solid ${S.border}`,borderRadius:8}}>No accounts yet.</div>;
             return<>
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"8px 14px":"8px 20px",background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:"8px 8px 0 0"}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"8px 14px":"8px 20px",background:T.rail,border:`1px solid ${T.hair}`,borderRadius:"11px 11px 0 0"}}>
                 {["Account","Tier","GMV realized","Fees earned","Net revenue",""].map((h,i)=>(
-                  <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>=2&&i<5?"right":"left"}}>{h}</div>
+                  <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,textAlign:i>=2&&i<5?"right":"left"}}>{h}</div>
                 ))}
               </div>
-              <div style={{border:`1px solid ${S.border}`,borderTop:"none",borderRadius:"0 0 8px 8px",overflow:"hidden",background:"#fff"}}>
+              <div style={{border:`1px solid ${T.hair}`,borderTop:"none",borderRadius:"0 0 11px 11px",overflow:"hidden",background:"#fff"}}>
                 {allRows.map((a,i)=>{
                   const c=a.contract,tc=sumCosts(a);
                   const fees=c?(c.gmvActual||0)*(c.netTakePct||0)/100:0;
@@ -749,7 +749,7 @@ export default function AppDesktop(){
                   const prevTier=i>0?(allRows[i-1].tier||"active"):null;
                   const showTierHeader=a.tier!==prevTier;
                   return<div key={a.id}>
-                    {showTierHeader&&i>0&&<div style={{padding:"8px 20px 5px",background:"#F9FAFB",borderTop:`1px solid ${S.border}`}}>
+                    {showTierHeader&&i>0&&<div style={{padding:"8px 20px 5px",background:T.rail,borderTop:`1px solid ${S.border}`}}>
                       <span style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:tier.c}}>{tier.label}</span>
                     </div>}
                     <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr 1fr 1fr 1fr 120px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left"}}
@@ -802,8 +802,8 @@ export default function AppDesktop(){
         {/* TIMELINE */}
         {!showDetail&&nav==="timeline"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:28}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Timeline</div>
-            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>All accounts</h1>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Timeline</div>
+            <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px",color:T.ink}}>All accounts</h1>
             <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Milestones, deadlines, and renewal windows across active accounts.</p>
           </div>
           {activeAccts.filter(a=>(a.milestones||[]).length>0).map(a=>{
@@ -812,9 +812,9 @@ export default function AppDesktop(){
             const upcoming=sorted.filter(m=>!m.done);
             const past=sorted.filter(m=>m.done);
             return(
-              <div key={a.id} style={{marginBottom:32,border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+              <div key={a.id} style={{marginBottom:32,border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
                 {/* Account header row */}
-                <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 20px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
                   <div style={{width:28,height:28,borderRadius:6,background:a.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{a.short}</div>
                   <div style={{flex:1}}>
                     <span style={{fontSize:14,fontWeight:600,color:T.ink}}>{a.account}</span>
@@ -824,7 +824,7 @@ export default function AppDesktop(){
                 </div>
                 {/* Upcoming milestones */}
                 {upcoming.length>0&&<>
-                  <div style={{padding:"8px 20px 4px",fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>Upcoming</div>
+                  <div style={{padding:"8px 20px 4px",fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint}}>Upcoming</div>
                   {upcoming.map((m,i)=>{
                     const mt=MILESTONE_TYPES[m.type]||MILESTONE_TYPES.review;
                     const d=daysDiff(m.date);
@@ -850,7 +850,7 @@ export default function AppDesktop(){
                   })}
                 </>}
                 {/* Past milestones — collapsed by default */}
-                {past.length>0&&<div style={{padding:"8px 20px",borderTop:`1px solid ${S.border}`,background:"#FAFAFA"}}>
+                {past.length>0&&<div style={{padding:"8px 20px",borderTop:`1px solid ${S.border}`,background:T.rail}}>
                   <span style={{fontSize:11,color:S.labelText}}>{past.length} completed milestone{past.length!==1?"s":""}</span>
                 </div>}
                 {upcoming.length===0&&past.length===0&&<div style={{padding:"16px 20px",fontSize:13,color:S.inactiveText}}>No milestones.</div>}
@@ -868,15 +868,15 @@ export default function AppDesktop(){
         {/* DISPUTES */}
         {!showDetail&&nav==="disputes"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:20}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
-            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Disputes</h1>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px",color:T.ink}}>Disputes</h1>
             <p style={{fontSize:13,color:S.inactiveText,margin:0}}>All chargebacks and open disputes across accounts. Hand anything contested to Zachary at Polsinelli.</p>
           </div>
           {(()=>{const all=orgAccts.flatMap(a=>(a.chargebacks||[]).map(cb=>({...cb,acct:a.account,aid:a.id})));
             if(all.length===0)return<div style={{fontSize:14,color:S.inactiveText}}>No chargebacks logged.</div>;
-            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 120px",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
-                {["Account / disputed by","Amount","Date","Status",""].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{h}</div>)}
+            return<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 120px",padding:"10px 20px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
+                {["Account / disputed by","Amount","Date","Status",""].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>{h}</div>)}
               </div>
               {all.map((cb,i)=>{const col=cb.status==="Open"?T.red:cb.status.includes("won")?T.green:S.inactiveText;return(
                 <div key={cb.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 120px",padding:"13px 20px",borderTop:i?`1px solid ${S.border}`:"none"}}>
@@ -913,14 +913,14 @@ export default function AppDesktop(){
         {/* RENEWALS DUE */}
         {!showDetail&&nav==="renewals"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:24}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
-            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Renewals due</h1>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px",color:T.ink}}>Renewals due</h1>
             <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Active accounts with renewal milestones in the next 90 days.</p>
           </div>
           {(()=>{
             const renewals=activeAccts.flatMap(a=>(a.milestones||[]).filter(m=>!m.done&&m.type==="renewal"&&daysDiff(m.date)>=0&&daysDiff(m.date)<=90).map(m=>({...m,acct:a.account,aid:a.id,logo:a.logo,short:a.short}))).sort((a,b)=>new Date(a.date)-new Date(b.date));
             if(renewals.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No renewals due in the next 90 days.</div>;
-            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+            return<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
               {renewals.map((m,i)=>{const d=daysDiff(m.date);return(
                 <button key={m.aid+"_"+m.id} onClick={()=>{selectAcct(m.aid,"timeline");navigate("accounts");}} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
@@ -942,16 +942,16 @@ export default function AppDesktop(){
         {/* OUT OF SCOPE */}
         {!showDetail&&nav==="oos"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:24}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
-            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Out of scope</h1>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px",color:T.ink}}>Out of scope</h1>
             <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Features flagged as outside contract scope across all accounts. Each one is a billing or risk conversation.</p>
           </div>
           {(()=>{
             const oos=activeAccts.flatMap(a=>(a.features||[]).filter(f=>f.scope==="out-of-scope"||f.scope==="oos").map(f=>({...f,acct:a.account,aid:a.id,logo:a.logo,short:a.short})));
             if(oos.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No out-of-scope features flagged.</div>;
-            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",padding:"9px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
-                {["Feature","Account","Status"].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{h}</div>)}
+            return<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",padding:"9px 20px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
+                {["Feature","Account","Status"].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>{h}</div>)}
               </div>
               {oos.map((f,i)=>(
                 <button key={f.id} onClick={()=>{selectAcct(f.aid,"timeline");navigate("accounts");}} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",padding:"13px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
@@ -977,14 +977,14 @@ export default function AppDesktop(){
         {/* RISK FLAGS */}
         {!showDetail&&nav==="risks"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:24}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
-            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Risk flags</h1>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px",color:T.ink}}>Risk flags</h1>
             <p style={{fontSize:13,color:S.inactiveText,margin:0}}>All high and medium severity risks across active accounts.</p>
           </div>
           {(()=>{
             const risks=activeAccts.flatMap(a=>(a.risks||[]).map(r=>({...r,acct:a.account,aid:a.id,logo:a.logo,short:a.short}))).sort((a,b)=>({high:0,medium:1,low:2}[a.severity]-{high:0,medium:1,low:2}[b.severity]));
             if(risks.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No risk flags across active accounts.</div>;
-            return<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
+            return<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
               {risks.map((r,i)=>(
                 <button key={i} onClick={()=>{selectAcct(r.aid,"overview");navigate("accounts");}} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
@@ -1006,17 +1006,17 @@ export default function AppDesktop(){
         {/* COST LEDGER */}
         {!showDetail&&nav==="costs"&&<div style={{padding:isMobile?"16px 16px 72px":"32px 40px"}}>
           <div style={{marginBottom:20}}>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Shortcuts</div>
-            <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Cost ledger</h1>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Shortcuts</div>
+            <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px",color:T.ink}}>Cost ledger</h1>
             <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Running costs logged across all accounts. Feeds directly into net revenue calculations.</p>
           </div>
           {(()=>{const all=orgAccts.flatMap(a=>(a.costs||[]).filter(c=>c.computed>0).map(c=>({...c,acct:a.account,aid:a.id})));const total=all.reduce((n,c)=>n+c.computed,0);
             return<>
               <div style={{fontSize:13,color:S.inactiveText,marginBottom:16}}>Total logged: <b style={{color:T.ink}}>{fmt(total)}</b></div>
               {all.length===0?<div style={{fontSize:14,color:S.inactiveText}}>No costs logged yet. Open an account → Economics to add costs.</div>
-                :<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
-                    {["Account / label","Type","When","Amount"].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i===3?"right":"left"}}>{h}</div>)}
+                :<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"10px 20px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
+                    {["Account / label","Type","When","Amount"].map((h,i)=><div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,textAlign:i===3?"right":"left"}}>{h}</div>)}
                   </div>
                   {all.map((c,i)=>(
                     <div key={c.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"12px 20px",borderTop:i?`1px solid ${S.border}`:"none"}}>
@@ -1043,7 +1043,7 @@ export default function AppDesktop(){
               </div>
               <button onClick={()=>setArchiveTarget(null)} style={{background:"none",border:`1px solid ${S.border}`,borderRadius:6,width:28,height:28,cursor:"pointer",fontSize:16,color:S.inactiveText,display:"flex",alignItems:"center",justifyContent:"center",marginLeft:16,flexShrink:0}}>×</button>
             </div>
-            <div style={{margin:"16px 24px",padding:"12px 14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:7,display:"flex",alignItems:"center",gap:10}}>
+            <div style={{margin:"16px 24px",padding:"12px 14px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:7,display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:28,height:28,borderRadius:6,background:archiveTarget.logo||"#888",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{archiveTarget.short}</div>
               <div><div style={{fontSize:13,fontWeight:600,color:T.ink}}>{archiveTarget.account}</div><div style={{fontSize:11.5,color:S.inactiveText,marginTop:1}}>{archiveTarget.value}</div></div>
             </div>
@@ -1087,7 +1087,7 @@ function MilestoneAdd({onAdd,onCancel}){
   const [title,setTitle]=useState("");
   const [date,setDate]=useState("");
   const [note,setNote]=useState("");
-  return <div style={{background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:8}}>
+  return <div style={{background:T.rail,border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:8}}>
     <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:10}}>Add milestone</div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:12}}>
       {Object.entries(MILESTONE_TYPES).map(([k,v])=><button key={k} onClick={()=>setType(k)} style={{padding:"6px 4px",borderRadius:5,fontFamily:sans,fontSize:11,fontWeight:type===k?600:400,cursor:"pointer",border:`1px solid ${type===k?v.color:S.border}`,background:type===k?v.color+"12":"#fff",color:type===k?v.color:S.inactiveText,textAlign:"center"}}>{v.label}</button>)}
@@ -1173,7 +1173,7 @@ function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete}){
     {open&&<div style={{borderTop:`1px solid ${S.border}`}}>
       {/* Quick GMV edit row */}
       {editMode
-        ?<div style={{padding:"14px 16px",background:"#F9FAFB",borderBottom:`1px solid ${S.border}`}}>
+        ?<div style={{padding:"14px 16px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
           <div style={{fontSize:11,fontWeight:600,color:T.ink,marginBottom:10,textTransform:"uppercase",letterSpacing:.4}}>Quick edit</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
             {[["GMV realized ($)","gmvActual","number",gmvActual],["GMV projected ($)","gmvProjected","number",gmvProj],["Net take %","netTakePct","number",take]].map(([l,k,t2,v])=>(
@@ -1195,7 +1195,7 @@ function CycleContractCard({cy,isActive,defaultTake,onUpdate,onDelete}){
             <button onClick={()=>setEditMode(false)} style={{...VBtn.secondary,fontSize:12}}>Done</button>
           </div>
         </div>
-        :<div style={{padding:"12px 16px",background:"#F9FAFB",borderBottom:`1px solid ${S.border}`,display:"flex",gap:10}}>
+        :<div style={{padding:"12px 16px",background:T.rail,borderBottom:`1px solid ${S.border}`,display:"flex",gap:10}}>
           <div style={{fontSize:13,color:S.inactiveText,flex:1}}>
             Fees: <b style={{color:T.ink}}>{fmt(cyFees)}</b>
             {gmvProj>0&&<span> · {pct}% of {fmtK(gmvProj)} plan</span>}
@@ -1331,8 +1331,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           {tab==="overview"&&<>
             {/* Pipeline summary */}
             {(()=>{const pt=pipelineForAcct(a.id);if(!pt)return null;const cfg=PIPE_STAGES[pt.stage];return(
-              <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",border:`1px solid ${S.border}`,borderRadius:10,padding:"12px 16px",marginBottom:24,background:"#FAFAFA"}}>
-                <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>Pipeline</span>
+              <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap",border:`1px solid ${T.hair}`,borderRadius:11,padding:"12px 16px",marginBottom:24,background:T.rail}}>
+                <span style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint}}>Pipeline</span>
                 <span style={{fontSize:12,fontWeight:600,padding:"2px 9px",borderRadius:5,background:cfg.s,color:cfg.c}}>{cfg.label}</span>
                 <span style={{fontSize:12,fontWeight:600,color:PIPE_TIERS[pt.tier].c}}>{PIPE_TIERS[pt.tier].label}</span>
                 <span style={{fontSize:12,color:S.inactiveText}}>{pt.vertical}</span>
@@ -1342,7 +1342,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             );})()}
             {/* Pending signals */}
             {(a.signals_pending||[]).length>0&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Signals to review</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Signals to review</div>
               {a.signals_pending.map(s=>(
                 <div key={s.id} style={{border:`1px solid ${T.redSoft}`,borderRadius:8,padding:"14px 16px",marginBottom:8,background:"#fff"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -1362,14 +1362,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
             {/* What changed */}
             {(a.signal||a.shift)&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Recent activity</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Recent activity</div>
               <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
                 {a.signal&&<div style={{padding:"14px 16px",borderBottom:a.shift?`1px solid ${S.border}`:"none"}}>
-                  <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}>✉ Signal detected</div>
+                  <div style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:6}}>✉ Signal detected</div>
                   <div style={{fontSize:13,color:T.ink,lineHeight:1.5}}>{a.signal}</div>
                 </div>}
                 {a.shift&&<div style={{padding:"14px 16px"}}>
-                  <div style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:6}}>↗ Exposure shift</div>
+                  <div style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:6}}>↗ Exposure shift</div>
                   <div style={{fontSize:13,color:T.ink,lineHeight:1.5}}>{a.shift}</div>
                 </div>}
               </div>
@@ -1377,7 +1377,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
             {/* Fault assessment */}
             {fa.verdict&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Fault assessment</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Fault assessment</div>
               <div style={{border:`1px solid ${S.border}`,borderLeft:`3px solid ${v.c}`,borderRadius:8,padding:"16px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                   <span style={{fontSize:12,fontWeight:600,padding:"4px 10px",borderRadius:4,background:v.s,color:v.c}}>{v.label}</span>
@@ -1392,7 +1392,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
             {/* Risks */}
             {a.risks?.length>0&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Risks & exposure</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Risks & exposure</div>
               <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
                 {a.risks.map((r,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff"}}>
@@ -1408,7 +1408,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
             {/* Obligations */}
             {a.obligations?.length>0&&<div style={{marginBottom:24}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Obligations vs. contract</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Obligations vs. contract</div>
               <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden"}}>
                 {a.obligations.map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.unclear; return(
                   <div key={i} style={{display:"grid",gridTemplateColumns:"60px 1fr 80px",gap:16,padding:"12px 16px",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",alignItems:"start"}}>
@@ -1422,7 +1422,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
             {/* Overextension */}
             {a.flags?.length>0&&<div>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>Overextension</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>Overextension</div>
               <div style={{border:`1px solid ${T.redSoft}`,borderRadius:8,padding:"14px 16px"}}>
                 {a.flags.map((f,i)=><div key={i} style={{fontSize:13,color:T.ink,lineHeight:1.5,padding:"4px 0",borderTop:i?`1px solid ${S.border}`:"none",display:"flex",gap:8}}><span style={{color:T.red,fontSize:9,marginTop:5}}>▲</span>{f}</div>)}
               </div>
@@ -1468,7 +1468,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
           {tab==="economics"&&c&&<>
             <ContractHealthRing eco={eco} costs={costs} obligations={a.obligations||[]} chargebacks={chargebacks} kpis={a.kpis||{}} risks={a.risks||[]}/>
             <div style={{marginTop:28}}>
-              <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,marginBottom:14}}>Revenue structure</div>
+              <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,marginBottom:14}}>Revenue structure</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
                 {[
                   {k:"Platform fee",v:(eco.platformFeePct||0)+"%"},
@@ -1501,7 +1501,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             </div>
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                <div style={{fontSize:12,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>Running costs</div>
+                <div style={{fontSize:12,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>Running costs</div>
                 <button onClick={()=>setAddingCost(v=>!v)} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontWeight:500}}>{addingCost?"Cancel":"+ Add cost"}</button>
               </div>
               {addingCost&&<CostAddStripe onAdd={c2=>{addCost(c2);setAddingCost(false);}}/>}
@@ -1525,7 +1525,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
             {/* Header row */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
               <div>
-                <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:3}}>Contracts</div>
+                <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:3}}>Contracts</div>
                 <div style={{fontSize:13,color:S.inactiveText}}>{cycles.length} cycle{cycles.length!==1?"s":""} · {cycles.filter(c=>c.active).length} active</div>
               </div>
               <div style={{display:"flex",gap:8}}>
@@ -1644,18 +1644,18 @@ function CostAddStripe({onAdd}){
   if(!open) return <button onClick={()=>setOpen(true)} style={{marginTop:10,width:"100%",padding:"10px",borderRadius:7,border:`1px dashed ${S.border}`,background:"#fff",color:T.purple,fontFamily:sans,fontSize:13,fontWeight:500,cursor:"pointer"}}>+ Log a cost</button>;
   return <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",marginTop:10,background:"#fff"}}>
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-      {COST_TYPES.map(c=><button key={c.id} onClick={()=>setType(c.id)} style={{padding:"5px 10px",borderRadius:5,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${type===c.id?T.purple:S.border}`,background:type===c.id?"#F0EEFB":"#fff",color:type===c.id?T.purple:S.inactiveText}}>{c.label}</button>)}
+      {COST_TYPES.map(c=><button key={c.id} onClick={()=>setType(c.id)} style={{padding:"5px 10px",borderRadius:5,fontFamily:sans,fontSize:11,fontWeight:600,cursor:"pointer",border:`1px solid ${type===c.id?T.purple:S.border}`,background:type===c.id?T.purpleSoft:"#fff",color:type===c.id?T.purple:S.inactiveText}}>{c.label}</button>)}
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
       <div style={{border:`1px solid ${S.border}`,borderRadius:6,padding:"8px 10px"}}><label style={{fontSize:11,color:S.labelText,display:"block",fontWeight:600,textTransform:"uppercase",letterSpacing:.3}}>Label</label><input value={label} onChange={e=>setLabel(e.target.value)} style={{border:"none",outline:"none",fontSize:13,fontWeight:500,width:"100%",marginTop:2,fontFamily:sans}}/></div>
       {ct.fields.map(f=><div key={f} style={{border:`1px solid ${S.border}`,borderRadius:6,padding:"8px 10px"}}><label style={{fontSize:11,color:S.labelText,display:"block",fontWeight:600,textTransform:"uppercase",letterSpacing:.3}}>{FIELD_DEFS[f].l}</label><input type="number" value={fields[f]} onChange={e=>setFields(p=>({...p,[f]:+e.target.value||0}))} style={{border:"none",outline:"none",fontSize:13,fontWeight:500,width:"100%",marginTop:2,fontFamily:sans}}/></div>)}
     </div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:"#F0EEFB",borderRadius:6,marginBottom:10}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 12px",background:T.purpleSoft,borderRadius:6,marginBottom:10}}>
       <span style={{fontSize:12,color:T.purple,fontWeight:600}}>Computed</span>
       <span style={{fontSize:16,fontWeight:700,color:T.purple}}>{fmt(computed)}</span>
     </div>
     <div style={{display:"flex",gap:8}}>
-      <button disabled={!computed&&!label} onClick={()=>{onAdd({id:uid(),type,label:label||ct.label,fields,computed,note,when:new Date().toLocaleDateString("en-US",{month:"short",year:"numeric"}),detail:ct.fields.map(f=>`${FIELD_DEFS[f].l}: ${fields[f]}`).join(" · ")});setOpen(false);setLabel("");setFields({amount:0,rate:150,hours:0,pct:0,base:0});}} style={{flex:1,padding:"8px",borderRadius:6,border:"none",background:(computed||label)?T.ink:"#E5E7EB",color:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Add cost</button>
+      <button disabled={!computed&&!label} onClick={()=>{onAdd({id:uid(),type,label:label||ct.label,fields,computed,note,when:new Date().toLocaleDateString("en-US",{month:"short",year:"numeric"}),detail:ct.fields.map(f=>`${FIELD_DEFS[f].l}: ${fields[f]}`).join(" · ")});setOpen(false);setLabel("");setFields({amount:0,rate:150,hours:0,pct:0,base:0});}} style={{flex:1,padding:"8px",borderRadius:6,border:"none",background:(computed||label)?T.ink:"rgba(0,0,0,.08)",color:"#fff",fontFamily:sans,fontWeight:600,fontSize:13,cursor:"pointer"}}>Add cost</button>
       <button onClick={()=>setOpen(false)} style={{padding:"8px 14px",borderRadius:6,border:`1px solid ${S.border}`,background:"#fff",color:S.inactiveText,fontFamily:sans,fontSize:13,cursor:"pointer"}}>Cancel</button>
     </div>
   </div>;
@@ -1686,7 +1686,7 @@ function CycleCard({cy,index,onUpdate,onDelete}){
       </div>
       <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px"}}>×</button>
     </div>
-    {open&&<div style={{marginTop:10,padding:"14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8}}>
+    {open&&<div style={{marginTop:10,padding:"14px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:8}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
         <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Label</label><input value={cy.label||""} onChange={e=>onUpdate({label:e.target.value})} style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
         <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Start → End</label><div style={{display:"flex",gap:6}}><input value={cy.start||""} onChange={e=>onUpdate({start:e.target.value})} placeholder="May 2026" style={{flex:1,padding:"7px 8px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:12,fontFamily:sans,outline:"none"}}/><input value={cy.end||""} onChange={e=>onUpdate({end:e.target.value})} placeholder="Jul 2026" style={{flex:1,padding:"7px 8px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:12,fontFamily:sans,outline:"none"}}/></div></div>
@@ -1739,7 +1739,7 @@ function ChargebackRow({cb,onUpdate,onDelete}){
       </div>
       <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>x</button>
     </div>
-    {open&&<div style={{marginTop:10,padding:"14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8}}>
+    {open&&<div style={{marginTop:10,padding:"14px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:8}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
         {[["Disputed by","text",cb.disputedBy||"","disputedBy"],["Amount ($)","number",cb.amount||0,"amount"],["Date","text",cb.date||"","date"]].map(([lbl,tp,val,key])=>(
           <div key={key}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>{lbl}</label>
@@ -1789,7 +1789,7 @@ function FeatureRow({f,onUpdate,onDelete}){
       </div>
       <button onClick={e=>{e.stopPropagation();onDelete();}} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:16,padding:"0 4px",lineHeight:1}}>x</button>
     </div>
-    {open&&<div style={{marginTop:10,padding:"14px",background:"#F9FAFB",border:`1px solid ${isOos?T.redSoft:S.border}`,borderRadius:8}}>
+    {open&&<div style={{marginTop:10,padding:"14px",background:T.rail,border:`1px solid ${isOos?T.redSoft:S.border}`,borderRadius:8}}>
       {isOos&&<div style={{fontSize:12,color:T.red,marginBottom:10,lineHeight:1.5}}>Out of scope — not covered by the signed contract. Resolve before next cycle.</div>}
       <div style={{marginBottom:10}}><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:4}}>Feature name</label>
         <input value={f.name||""} onChange={e=>onUpdate({name:e.target.value})} placeholder="e.g. Per-pier GMV report" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
@@ -1901,14 +1901,14 @@ function ContractHealthRing({eco={},costs=[],obligations=[],chargebacks=[],kpis=
   const overall=Math.round((gmvScore+roiScore+oblScore+cbScore+sentScore)/5);
   const overallC=overall>=70?T.green:overall>=40?T.yellow:T.red;
   const dims=[
-    {label:"GMV progress",score:gmvScore,c:"#6C5FE0",sub:`${fmt(eco.gmvActual||0)} of ${fmt(eco.gmvProjected||0)}`},
+    {label:"GMV progress",score:gmvScore,c:"#5E6AD2",sub:`${fmt(eco.gmvActual||0)} of ${fmt(eco.gmvProjected||0)}`},
     {label:"ROI efficiency",score:roiScore,c:"#4C8DD6",sub:`${fmt(fees)} rev · ${fmt(tc)} cost`},
     {label:"Obligations",score:oblScore,c:T.green,sub:`${obligations.filter(o=>o.status==="met").length} of ${obligations.length} met`},
     {label:"Chargebacks",score:cbScore,c:cbScore>=70?T.green:T.red,sub:openCbs===0?"None open":`${openCbs} open`},
     {label:"Sentiment",score:sentScore,c:sentScore>=70?T.green:sentScore>=40?T.yellow:T.red,sub:kpis.sentiment||"Unknown"},
   ];
   return <div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"20px",marginBottom:24}}>
-    <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:4}}>AI Assessed</div>
+    <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:4}}>AI Assessed</div>
     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
       <span style={{fontSize:28,fontWeight:700,color:overallC,letterSpacing:-1}}>{overall}</span>
       <div><div style={{fontSize:15,fontWeight:600,color:T.ink}}>Contract Health</div><div style={{fontSize:12,color:S.inactiveText}}>{overall>=70?"Strong":overall>=40?"Watch":"At risk"}</div></div>
@@ -1962,7 +1962,7 @@ const CONNECTORS = [
     description:"Syncs deal stage, contact notes, and pipeline value from your Capsule account.",
     what:"Deal stage, contact activity, opportunity value",
     status:"disconnected",
-    color:"#6C5FE0",
+    color:"#5E6AD2",
   },
   {
     id:"discord", label:"Discord", icon:"◈", category:"Internal",
@@ -1974,8 +1974,8 @@ const CONNECTORS = [
 ];
 
 // ── FINANCE PAGE ──
-const CHART_BLUE="#0070F3";
-const CHART_BLUE_SOFT="rgba(0,112,243,0.08)";
+const CHART_BLUE="#5E6AD2";
+const CHART_BLUE_SOFT="rgba(94,106,210,0.09)";
 
 // Simple SVG area chart — Vercel analytics style
 function AreaChart({data=[],height=120,color=CHART_BLUE}){
@@ -2000,7 +2000,7 @@ function AreaChart({data=[],height=120,color=CHART_BLUE}){
 
 function MiniBar({value,max,color}){
   const pct=max>0?Math.min(100,Math.round(100*value/max)):0;
-  return <div style={{width:"100%",height:3,background:"#F3F4F6",borderRadius:2,overflow:"hidden",marginTop:6}}>
+  return <div style={{width:"100%",height:3,background:T.soft,borderRadius:2,overflow:"hidden",marginTop:6}}>
     <div style={{height:"100%",width:pct+"%",background:color||CHART_BLUE,borderRadius:2}}/>
   </div>;
 }
@@ -2050,9 +2050,9 @@ function IntelligenceView({orgAccts,isMobile}){
   const maxVert=byVert[0]?.gmv||1;
 
   const KPI=({label,value,sub,tag,tagC,tagS,big})=>(
-    <div style={{border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",background:"#fff",display:"flex",flexDirection:"column",justifyContent:"space-between",minHeight:120}}>
+    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,padding:"16px 20px",background:"#fff",display:"flex",flexDirection:"column",justifyContent:"space-between",minHeight:120}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-        <span style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText}}>{label}</span>
+        <span style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint}}>{label}</span>
         {tag&&<span style={{fontSize:10.5,fontWeight:600,padding:"3px 8px",borderRadius:5,background:tagS,color:tagC}}>{tag}</span>}
       </div>
       <div>
@@ -2071,10 +2071,10 @@ function IntelligenceView({orgAccts,isMobile}){
     </div>
 
     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1.3fr 1fr",gap:20,marginBottom:24}}>
-      <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff"}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
           <div>
-            <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Host concentration</div>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Host concentration</div>
             <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Lifetime GMV by host</div>
             <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Ranked by lifetime gross volume</div>
           </div>
@@ -2098,9 +2098,9 @@ function IntelligenceView({orgAccts,isMobile}){
         </div>
       </div>
 
-      <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff"}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
-          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Market mix</div>
+          <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Market mix</div>
           <div style={{fontSize:15,fontWeight:600,color:T.ink}}>GMV by vertical</div>
           <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Lifetime gross volume by host category</div>
         </div>
@@ -2123,9 +2123,9 @@ function IntelligenceView({orgAccts,isMobile}){
       </div>
     </div>
 
-    <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
+    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",marginBottom:24}}>
       <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
-        <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Cumulative revenue</div>
+        <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Cumulative revenue</div>
         <div style={{fontSize:15,fontWeight:600,color:T.ink}}>GMV milestone crossings</div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:1,background:S.border}}>
@@ -2456,15 +2456,15 @@ function DealDrawer({t,value,orgAccts,isMobile,onClose,onPatch,onSetStage,onOpen
       {/* footer split button */}
       <div style={{padding:"12px 18px",borderTop:`1px solid ${S.border}`,display:"flex",gap:10,position:"relative"}}>
         <div style={{display:"inline-flex",flex:acct?"1 1 0":1}}>
-          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:T.black,color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>Log activity</button>
-          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.22)",background:T.black,color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
+          <button onClick={()=>setShowLog(true)} style={{flex:1,padding:"10px 12px",borderRadius:"7px 0 0 7px",border:"none",background:"linear-gradient(180deg,#6C77E0,#5E6AD2)",color:"#fff",fontFamily:sans,fontSize:13,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"inset 0 1px 0 rgba(255,255,255,0.18)"}}>Log activity</button>
+          <button onClick={()=>setMenuOpen(m=>!m)} aria-label="More actions" style={{padding:"10px 11px",borderRadius:"0 7px 7px 0",border:"none",borderLeft:"1px solid rgba(255,255,255,0.25)",background:"linear-gradient(180deg,#6C77E0,#5E6AD2)",color:"#fff",fontFamily:sans,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center"}}>▾</button>
         </div>
         {acct&&<button onClick={()=>onOpenAccount(acct.id)} style={{...VBtn.secondary,flex:"1 1 0",justifyContent:"center",padding:"10px 12px",fontSize:13}}>Open</button>}
         {menuOpen&&<>
           <div onClick={()=>setMenuOpen(false)} style={{position:"fixed",inset:0,zIndex:202}}/>
           <div style={{position:"absolute",bottom:56,left:18,zIndex:203,background:"#fff",border:`1px solid ${S.border}`,borderRadius:8,boxShadow:"0 6px 20px rgba(0,0,0,0.14)",overflow:"hidden",minWidth:200}}>
             <button onClick={()=>{setShowTask(true);setMenuOpen(false);}} style={{display:"block",width:"100%",textAlign:"left",padding:"10px 14px",border:"none",background:"#fff",cursor:"pointer",fontFamily:sans,fontSize:13,color:T.ink}}>Add task</button>
-            <div style={{borderTop:`1px solid ${S.border}`,padding:"6px 14px 4px",fontSize:10.5,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>Move to stage</div>
+            <div style={{borderTop:`1px solid ${S.border}`,padding:"6px 14px 4px",fontSize:10.5,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>Move to stage</div>
             {Object.entries(PIPE_STAGES).map(([k,v])=>(
               <button key={k} onClick={()=>{onSetStage(t.id,k);setMenuOpen(false);}} style={{display:"flex",alignItems:"center",gap:8,width:"100%",textAlign:"left",padding:"8px 14px",border:"none",background:t.stage===k?"#F6F7F9":"#fff",cursor:"pointer",fontFamily:sans,fontSize:13,color:T.ink}}>
                 <span style={{width:7,height:7,borderRadius:2,background:v.c}}/>{v.label}
@@ -2544,9 +2544,9 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
 
   return <div>
     {/* Flow diagram */}
-    <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
+    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",marginBottom:24}}>
       <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
-        <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Flow</div>
+        <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Flow</div>
         <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Targets by tier and stage</div>
         <div style={{fontSize:12,color:S.labelText,marginTop:2}}>Ribbon width = number of targets. Lost sinks to the bottom.</div>
       </div>
@@ -2561,7 +2561,7 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
     <div style={{marginBottom:24}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12,flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Board</div>
+          <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Board</div>
           <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Pipeline board</div>
         </div>
         <div style={{fontSize:12,color:S.labelText}}>{isMobile?"Tap a card's stage to move it":"Drag cards between stages"}</div>
@@ -2575,7 +2575,7 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
               onDragOver={e=>{if(!isMobile){e.preventDefault();e.currentTarget.style.background=cfg.s;}}}
               onDragLeave={e=>{if(!isMobile)e.currentTarget.style.background="#FAFAFA";}}
               onDrop={e=>{if(isMobile)return;e.preventDefault();e.currentTarget.style.background="#FAFAFA";const id=e.dataTransfer.getData("text/plain");if(id)setStage(id,stage);}}
-              style={{flex:isMobile?"0 0 244px":"1 1 0",minWidth:isMobile?244:158,background:"#FAFAFA",border:`1px solid ${S.border}`,borderRadius:10,padding:10,transition:"background .12s"}}>
+              style={{flex:isMobile?"0 0 244px":"1 1 0",minWidth:isMobile?244:158,background:T.rail,border:`1px solid ${T.hair}`,borderRadius:11,padding:10,transition:"background .12s"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,padding:"2px 4px"}}>
                 <span style={{display:"flex",alignItems:"center",gap:7}}>
                   <span style={{width:8,height:8,borderRadius:2,background:cfg.c}}/>
@@ -2626,8 +2626,8 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
         {label:"Goal progress",value:Math.round(100*signed.length/totalGoal)+"%",sub:"Signed toward target"},
         {label:"Lost",value:String(lost),sub:"Closed-lost targets"},
       ].map((t,i)=>(
-        <div key={i} style={{border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",background:"#fff"}}>
-          <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>{t.label}</div>
+        <div key={i} style={{border:`1px solid ${T.hair}`,borderRadius:11,padding:"16px 20px",background:"#fff"}}>
+          <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>{t.label}</div>
           <div style={{fontSize:26,fontWeight:700,letterSpacing:-1,color:T.ink,lineHeight:1,marginBottom:4}}>{t.value}</div>
           <div style={{fontSize:12,color:S.labelText}}>{t.sub}</div>
         </div>
@@ -2636,7 +2636,7 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
 
     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr 1fr",gap:12,marginBottom:24}}>
       {tierStats.map(ts=>{const pct=ts.goal>0?Math.min(100,100*ts.signed/ts.goal):0;const tc=PIPE_TIERS[ts.tier].c;return(
-        <div key={ts.tier} style={{border:`1px solid ${S.border}`,borderRadius:12,padding:"16px 20px",background:"#fff"}}>
+        <div key={ts.tier} style={{border:`1px solid ${T.hair}`,borderRadius:11,padding:"16px 20px",background:"#fff"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:3}}>
             <span style={{fontSize:13,fontWeight:600,color:tc}}>{PIPE_TIERS[ts.tier].label}</span>
             <span style={{fontSize:13,fontWeight:700,color:T.ink}}>{ts.signed} / {ts.goal}</span>
@@ -2654,9 +2654,9 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
       );})}
     </div>
 
-    <div style={{border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",background:"#fff",marginBottom:24}}>
+    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",marginBottom:24}}>
       <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
-        <div style={{fontSize:10.5,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:2}}>Pipeline by vertical</div>
+        <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:2}}>Pipeline by vertical</div>
         <div style={{fontSize:15,fontWeight:600,color:T.ink}}>Targets and signed by category</div>
       </div>
       <div style={{padding:"14px 20px"}}>
@@ -2698,8 +2698,8 @@ function PipelineView({isMobile,orgAccts=[],onOpenAccount}){
       </div>
     </div>}
 
-    <div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2fr .9fr 1fr 1.4fr auto",padding:"10px 16px",background:"#F9FAFB",borderBottom:`1px solid ${S.border}`,fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>
+    <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2fr .9fr 1fr 1.4fr auto",padding:"10px 16px",background:T.rail,borderBottom:`1px solid ${S.border}`,fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>
         <span>Host</span>{!isMobile&&<span>Tier</span>}{!isMobile&&<span>Vertical</span>}<span>Stage</span><span></span>
       </div>
       {view.slice().sort((a,b)=>a.tier-b.tier||PIPE_STAGES[b.stage].order-PIPE_STAGES[a.stage].order).map((t,i)=>(
@@ -2895,35 +2895,35 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
   return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px",maxWidth:1100}}>
 
     {/* Header */}
-    <div style={{marginBottom:24}}>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Finances</div>
-      <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px",color:T.ink}}>Revenue & contract performance</h1>
-      <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Contracted revenue, realized fees, gap analysis, and scenario modeling.</p>
+    <div style={{marginBottom:22}}>
+      <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Finances</div>
+      <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 3px",color:T.ink}}>Revenue & contract performance</h1>
+      <p style={{fontSize:13.5,color:T.sub,margin:0,letterSpacing:"-0.01em"}}>Contracted revenue, realized fees, gap analysis, and scenario modeling.</p>
     </div>
 
     {/* KPI strip */}
-    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",borderRadius:10,border:`1px solid ${S.border}`,overflow:"hidden",background:S.border,gap:1,marginBottom:28}}>
+    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",borderRadius:11,border:`1px solid ${T.hair}`,overflow:"hidden",background:T.hair,gap:1,marginBottom:26,boxShadow:"0 1px 2px rgba(0,0,0,0.03)"}}>
       {[
         {label:"Contracted revenue",value:fmtK(feesContracted),change:null,sub:`from ${fmtK(gmvProj)} GMV`},
         {label:"Fees realized",value:fmtK(feesEarned),change:feesContracted>0?+(100*feesEarned/feesContracted-100).toFixed(1):null,sub:`${pipelinePct}% of contracted`},
         {label:"Net revenue",value:(netRev<0?"-":"")+fmtK(Math.abs(netRev)),change:null,sub:`after ${fmt(totalCosts)} costs`},
         {label:"Avg take rate",value:avgTake.toFixed(1)+"%",change:null,sub:`across ${activeAccts.filter(a=>a.contract).length} contracts`},
       ].map((t,i)=>(
-        <div key={i} style={{padding:"20px 24px",background:"#fff"}}>
-          <div style={{fontSize:11,fontWeight:500,color:S.labelText,marginBottom:8}}>{t.label}</div>
+        <div key={i} style={{padding:"18px 22px",background:"#fff"}}>
+          <div style={{fontSize:11.5,fontWeight:500,color:T.sub,marginBottom:9,letterSpacing:"-0.01em"}}>{t.label}</div>
           <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:4}}>
-            <span style={{fontSize:26,fontWeight:700,letterSpacing:-1,color:T.ink}}>{t.value}</span>
+            <span style={{fontSize:26,fontWeight:600,letterSpacing:"-0.03em",color:T.ink}}>{t.value}</span>
             {t.change!==null&&<ChangeTag value={t.change}/>}
           </div>
-          <div style={{fontSize:12,color:S.labelText}}>{t.sub}</div>
+          <div style={{fontSize:12,color:T.faint}}>{t.sub}</div>
         </div>
       ))}
     </div>
 
     {/* View tabs */}
-    <div style={{display:"flex",gap:0,borderBottom:`1px solid ${S.border}`,marginBottom:24,overflowX:"auto"}}>
+    <div style={{display:"flex",gap:2,borderBottom:`1px solid ${T.hair}`,marginBottom:24,overflowX:"auto"}}>
       {[["overview","Overview"],["intelligence","Intelligence"],["pipeline","Pipeline & GTM"],["accounts","By account"],["history","History"],["scenario","Scenario builder"]].map(([id,lbl])=>(
-        <button key={id} onClick={()=>setView(id)} style={{padding:"8px 16px",border:"none",borderBottom:`2px solid ${view===id?CHART_BLUE:"transparent"}`,background:"transparent",color:view===id?CHART_BLUE:S.inactiveText,fontFamily:sans,fontSize:13,fontWeight:view===id?600:400,cursor:"pointer",whiteSpace:"nowrap"}}>
+        <button key={id} onClick={()=>setView(id)} style={{padding:"9px 14px",border:"none",borderBottom:`1.5px solid ${view===id?T.ink:"transparent"}`,background:"transparent",color:view===id?T.ink:T.sub,fontFamily:sans,fontSize:13.5,fontWeight:view===id?600:400,cursor:"pointer",whiteSpace:"nowrap",letterSpacing:"-0.01em"}}>
           {lbl}
         </button>
       ))}
@@ -2936,7 +2936,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
     {view==="overview"&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:20}}>
 
       {/* Chart with full time range selector */}
-      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,padding:"20px 24px",background:"#fff"}}>
         {/* Chart header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
           <div>
@@ -2949,7 +2949,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
             </div>
           </div>
           {/* Metric toggle */}
-          <div style={{display:"flex",gap:1,background:"#F3F4F6",borderRadius:6,padding:2}}>
+          <div style={{display:"flex",gap:1,background:T.soft,borderRadius:6,padding:2}}>
             {[["fees","Fees"],["gmv","GMV"]].map(([id,lbl])=>(
               <button key={id} onClick={()=>setChartMetric(id)} style={{padding:"4px 10px",borderRadius:5,border:"none",background:chartMetric===id?"#fff":"transparent",color:chartMetric===id?T.ink:S.inactiveText,fontSize:12,fontWeight:chartMetric===id?600:400,cursor:"pointer",fontFamily:sans,boxShadow:chartMetric===id?"0 1px 2px rgba(0,0,0,.08)":"none"}}>
                 {lbl}
@@ -2986,13 +2986,13 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
       </div>
 
       {/* Revenue waterfall */}
-      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,padding:"20px 24px",background:"#fff"}}>
         <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:20}}>Revenue waterfall</div>
         {[
-          {label:"GMV contracted",value:gmvProj,color:"#E5E7EB",fill:CHART_BLUE,pct:100},
-          {label:"GMV realized",value:gmvActual,color:"#E5E7EB",fill:T.green,pct:gmvProj?Math.round(100*gmvActual/gmvProj):0},
-          {label:"Fees contracted",value:feesContracted,color:"#E5E7EB",fill:CHART_BLUE,pct:gmvProj?+(feesContracted/gmvProj*100).toFixed(1):0,indent:true},
-          {label:"Fees realized",value:feesEarned,color:"#E5E7EB",fill:T.green,pct:feesContracted?Math.round(100*feesEarned/feesContracted):0,indent:true},
+          {label:"GMV contracted",value:gmvProj,color:"rgba(0,0,0,.08)",fill:CHART_BLUE,pct:100},
+          {label:"GMV realized",value:gmvActual,color:"rgba(0,0,0,.08)",fill:T.green,pct:gmvProj?Math.round(100*gmvActual/gmvProj):0},
+          {label:"Fees contracted",value:feesContracted,color:"rgba(0,0,0,.08)",fill:CHART_BLUE,pct:gmvProj?+(feesContracted/gmvProj*100).toFixed(1):0,indent:true},
+          {label:"Fees realized",value:feesEarned,color:"rgba(0,0,0,.08)",fill:T.green,pct:feesContracted?Math.round(100*feesEarned/feesContracted):0,indent:true},
           {label:"Costs",value:totalCosts,fill:T.red,negative:true,nobar:true},
           {label:"Net",value:Math.abs(netRev),fill:netRev>=0?T.green:T.red,negative:netRev<0,bold:true,nobar:true},
         ].map((r,i)=>(
@@ -3010,7 +3010,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
       </div>
 
       {/* Active contracts summary */}
-      <div style={{border:`1px solid ${S.border}`,borderRadius:10,background:"#fff",overflow:"hidden"}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,background:"#fff",overflow:"hidden"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${S.border}`}}>
           <div style={{fontSize:12,fontWeight:600,color:T.ink}}>Active contract performance</div>
         </div>
@@ -3037,7 +3037,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
       </div>
 
       {/* Key stats */}
-      <div style={{border:`1px solid ${S.border}`,borderRadius:10,padding:"20px 24px",background:"#fff"}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,padding:"20px 24px",background:"#fff"}}>
         <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:16}}>Key metrics</div>
         {[
           {l:"Contracted revenue",v:fmtK(feesContracted),s:"Total if all realize"},
@@ -3059,10 +3059,10 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
     </div>}
 
     {/* BY ACCOUNT */}
-    {view==="accounts"&&<div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+    {view==="accounts"&&<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"10px 20px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
         {["Account","GMV projected","GMV realized","% realized","Fees earned","Net"].map((h,i)=>(
-          <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>0?"right":"left"}}>{h}</div>
+          <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,textAlign:i>0?"right":"left"}}>{h}</div>
         ))}
       </div>
       {activeAccts.filter(a=>a.contract).sort((a,b)=>(b.contract?.gmvActual||0)-(a.contract?.gmvActual||0)).map((a,i)=>{
@@ -3091,7 +3091,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
           <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:T.ink}}>{net<0?"-":""}{fmtK(Math.abs(net))}</div>
         </div>;
       })}
-      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:`2px solid ${S.border}`,background:"#FAFAFA"}}>
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:`2px solid ${S.border}`,background:T.rail}}>
         <div style={{fontSize:13,fontWeight:700,color:T.ink}}>Total</div>
         <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:T.ink}}>{fmtK(gmvProj)}</div>
         <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:T.ink}}>{fmtK(gmvActual)}</div>
@@ -3109,7 +3109,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
           <div style={{fontSize:13}}>Historical data appears here once a contract cycle is completed and replaced by a renewal.</div>
         </div>
         :<>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:1,border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:S.border,marginBottom:20}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:1,border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:S.border,marginBottom:20}}>
             {[
               {label:"Historical GMV",value:fmtK(historicalGmv),sub:`${allHistorical.length} completed cycle${allHistorical.length!==1?"s":""}`},
               {label:"Historical fees",value:fmtK(historicalFees),sub:historicalGmv>0?+(historicalFees/historicalGmv*100).toFixed(1)+"% blended take":"—"},
@@ -3122,10 +3122,10 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
               </div>
             ))}
           </div>
-          <div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff"}}>
-            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"10px 20px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+          <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"10px 20px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
               {["Cycle","Account","GMV realized","Take rate","Fees earned"].map((h,i)=>(
-                <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText,textAlign:i>1?"right":"left"}}>{h}</div>
+                <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint,textAlign:i>1?"right":"left"}}>{h}</div>
               ))}
             </div>
             {[...allHistorical].sort((a,b)=>new Date(b.start||0)-new Date(a.start||0)).map((c,i)=>{
@@ -3141,7 +3141,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
                 <div style={{fontSize:13,textAlign:"right",fontWeight:700,color:T.ink}}>{fmtK(fees)}</div>
               </div>;
             })}
-            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:`2px solid ${S.border}`,background:"#FAFAFA"}}>
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",padding:"13px 20px",borderTop:`2px solid ${S.border}`,background:T.rail}}>
               <div style={{fontSize:13,fontWeight:700}}>Total</div>
               <div/>
               <div style={{fontSize:13,textAlign:"right",fontWeight:700}}>{fmtK(historicalGmv)}</div>
@@ -3156,7 +3156,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
     {/* SCENARIO BUILDER */}
     {view==="scenario"&&<>
       {/* Scenario output */}
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:1,border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:S.border,marginBottom:24}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:1,border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:S.border,marginBottom:24}}>
         {[
           {label:"Projected GMV",value:fmtK(scenarioGmv),sub:"Confidence-weighted"},
           {label:"Projected fees",value:fmtK(scenarioFees),sub:"From scenario"},
@@ -3176,10 +3176,10 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
       </div>
 
       {/* Account scenario rows */}
-      <div style={{border:`1px solid ${S.border}`,borderRadius:10,overflow:"hidden",background:"#fff",marginBottom:16}}>
-        <div style={{display:"grid",gridTemplateColumns:"1.5fr 1fr 80px 100px 120px",padding:"9px 16px",background:"#FAFAFA",borderBottom:`1px solid ${S.border}`}}>
+      <div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff",marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1.5fr 1fr 80px 100px 120px",padding:"9px 16px",background:T.rail,borderBottom:`1px solid ${S.border}`}}>
           {["Account","GMV","Take %","Confidence","Status"].map((h,i)=>(
-            <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:.4,textTransform:"uppercase",color:S.labelText}}>{h}</div>
+            <div key={i} style={{fontSize:11,fontWeight:600,letterSpacing:"-0.005em",color:T.faint}}>{h}</div>
           ))}
         </div>
         {allScenarios.map((s,i)=>(
@@ -3208,7 +3208,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
 
       {/* Add new client */}
       {newClientForm
-        ?<div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",background:"#F9FAFB",marginBottom:16}}>
+        ?<div style={{border:`1px solid ${S.border}`,borderRadius:8,padding:"16px",background:T.rail,marginBottom:16}}>
           <div style={{fontSize:12,fontWeight:600,color:T.ink,marginBottom:12}}>Add potential client</div>
           <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:10,marginBottom:12}}>
             <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.3,display:"block",marginBottom:4}}>Name</label><input value={nc.name} onChange={e=>setNc(p=>({...p,name:e.target.value}))} placeholder="e.g. Boston Glory" style={{width:"100%",padding:"7px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/></div>
@@ -3225,7 +3225,7 @@ function FinancePage({onOpenAccount,activeAccts,orgAccts,gmvActual,gmvProj,feesE
       }
 
       {/* Confidence guide */}
-      <div style={{padding:"12px 16px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8,fontSize:12}}>
+      <div style={{padding:"12px 16px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:8,fontSize:12}}>
         <div style={{fontWeight:600,color:T.ink,marginBottom:6}}>Confidence guide</div>
         <div style={{display:"flex",gap:16,flexWrap:"wrap",color:S.inactiveText}}>
           {[["Active contract","90%","High certainty — contract signed"],["Watch","60%","At risk — renewal not confirmed"],["Cold","15%","Re-engagement needed"],["Prospect / new","10-50%","Uncontracted — set manually"]].map(([s,c,d])=>(
@@ -3253,7 +3253,7 @@ function AgentPage({accounts=[]}){
     {id:"imessage",label:"iMessage",category:"Messages",desc:"Reads iMessage threads with clients. Requires Full Disk Access on Mac.",what:"Text threads, informal promises, OOS requests",color:"#34C759"},
     {id:"instantly",label:"Instantly",category:"Outbound",desc:"Ingests sequence replies and open rates from outbound campaigns.",what:"Reply rates, interested signals",color:"#F59E0B"},
     {id:"expandi",label:"Expandi",category:"Outbound",desc:"Pulls LinkedIn outreach replies and connection signals.",what:"LinkedIn replies, connection acceptance",color:"#0077B5"},
-    {id:"capsule",label:"Capsule CRM",category:"CRM",desc:"Syncs deal stage, contact notes, and pipeline value.",what:"Deal stage, contact activity, opportunity value",color:"#6C5FE0"},
+    {id:"capsule",label:"Capsule CRM",category:"CRM",desc:"Syncs deal stage, contact notes, and pipeline value.",what:"Deal stage, contact activity, opportunity value",color:"#5E6AD2"},
     {id:"discord",label:"Discord",category:"Internal",desc:"Monitors team Discord for account mentions and deal updates.",what:"Channel mentions, deal discussions",color:"#5865F2",soon:true},
   ];
   const STEPS=["Scanning iMessage threads…","Reading Gmail threads…","Checking Instantly replies…","Pulling Capsule deal stages…","Surfacing signals…","Building digest…"];
@@ -3264,15 +3264,15 @@ function AgentPage({accounts=[]}){
   return <div style={{padding:isMobile?"16px 16px 72px":"32px 40px",maxWidth:860}}>
     <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
       <div>
-        <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:5}}>Agent</div>
-        <h1 style={{fontSize:22,fontWeight:700,letterSpacing:-.3,margin:"0 0 4px"}}>Pipeline Agent</h1>
+        <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:5}}>Agent</div>
+        <h1 style={{fontSize:25,fontWeight:600,letterSpacing:"-0.02em",margin:"0 0 4px"}}>Pipeline Agent</h1>
         <p style={{fontSize:13,color:S.inactiveText,margin:0}}>Connects to your comms and CRMs, scans for signals, surfaces a team-ready digest. Run Friday EOD or before all-hands.</p>
       </div>
       <button onClick={runPull} disabled={pullState==="scanning"} style={{...VBtn.primary,opacity:pullState==="scanning"?.6:1}}>
         {pullState==="scanning"?"Scanning…":"Run pull"}
       </button>
     </div>
-    <div style={{display:"flex",alignItems:"center",gap:16,padding:"10px 16px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8,marginBottom:20}}>
+    <div style={{display:"flex",alignItems:"center",gap:16,padding:"10px 16px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:8,marginBottom:20}}>
       <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:8,height:8,borderRadius:"50%",background:connectedCount>0?T.green:"#D1D5DB"}}/><span style={{fontSize:13,fontWeight:500}}>{connectedCount} of {CONNECTORS.filter(c=>!c.soon).length} sources connected</span></div>
       <div style={{width:1,height:16,background:S.border}}/>
       <span style={{fontSize:13,color:S.inactiveText}}>Last pull: {digest?digest.pulledAt:"never"}</span>
@@ -3292,7 +3292,7 @@ function AgentPage({accounts=[]}){
       {["Email","Messages","Outbound","CRM","Internal"].map(cat=>{
         const cats=CONNECTORS.filter(c=>c.category===cat);
         return <div key={cat} style={{marginBottom:24}}>
-          <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:10}}>{cat}</div>
+          <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:10}}>{cat}</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             {cats.map(c=>{const on=connections[c.id]==="connected";return(
               <div key={c.id} style={{border:`1px solid ${on?T.green:S.border}`,borderRadius:8,padding:"14px",background:on?"#F0FDF4":"#fff",opacity:c.soon?.6:1}}>
@@ -3302,7 +3302,7 @@ function AgentPage({accounts=[]}){
                     <div style={{fontSize:11,color:on?T.green:S.labelText,marginTop:1}}>{c.soon?"Coming soon":on?"Connected":"Not connected"}</div>
                   </div>
                   {!c.soon&&<button onClick={()=>toggle(c.id)} style={{...on?VBtn.secondary:VBtn.primary,fontSize:12,padding:"5px 12px"}}>{on?"Disconnect":"Connect"}</button>}
-                  {c.soon&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:4,background:"#F3F4F6",color:S.inactiveText}}>Soon</span>}
+                  {c.soon&&<span style={{fontSize:11,padding:"4px 8px",borderRadius:4,background:T.soft,color:S.inactiveText}}>Soon</span>}
                 </div>
                 <div style={{fontSize:12,color:S.inactiveText,lineHeight:1.5,marginBottom:4}}>{c.desc}</div>
                 <div style={{fontSize:11,color:S.labelText}}><b style={{color:T.ink}}>Ingests:</b> {c.what}</div>
@@ -3507,7 +3507,7 @@ function ContractWizard({a, onSave, onCancel}){
         {/* Header */}
         <div style={{padding:"20px 24px",borderBottom:`1px solid ${S.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:3}}>Contract wizard · {a.account}</div>
+            <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:3}}>Contract wizard · {a.account}</div>
             <div style={{fontSize:16,fontWeight:700,color:T.ink}}>{STEPS[step]}</div>
           </div>
           <button onClick={onCancel} style={{background:"none",border:`1px solid ${S.border}`,borderRadius:6,width:28,height:28,cursor:"pointer",fontSize:16,color:S.inactiveText,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
@@ -3605,7 +3605,7 @@ function ContractWizard({a, onSave, onCancel}){
                 <input value={econ.kickbackTo||""} onChange={e=>upE("kickbackTo",e.target.value)} placeholder="Partner name" style={{width:"100%",padding:"9px 12px",border:`1px solid ${S.border}`,borderRadius:7,fontSize:14,fontFamily:sans,outline:"none",boxSizing:"border-box"}}/>
               </div>
             </div>
-            {econ.gmvProjected>0&&<div style={{padding:"14px 16px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:8,marginBottom:12}}>
+            {econ.gmvProjected>0&&<div style={{padding:"14px 16px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:8,marginBottom:12}}>
               <div style={{fontSize:12,color:S.inactiveText,marginBottom:4}}>Projected fees at {econ.netTakePct}% net take</div>
               <div style={{fontSize:26,fontWeight:700,color:T.ink,letterSpacing:-1}}>{fmt(fees)}</div>
               {sourceCycle&&sourceCycle.gmvProjected>0&&<div style={{fontSize:12,color:S.inactiveText,marginTop:4}}>
@@ -3670,7 +3670,7 @@ function ContractWizard({a, onSave, onCancel}){
           {/* STEP Review */}
           {step===reviewStep&&<>
             <div style={{fontSize:13,color:S.inactiveText,marginBottom:16,lineHeight:1.6}}>Review before creating. {eventType==="amendment"?"This amendment will be added alongside the active cycle.":eventType==="renewal"?"Current active cycle will be archived and replaced by this renewal.":"This will create the first contract cycle for this account."}</div>
-            {sourceCycle&&<div style={{padding:"10px 14px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:7,marginBottom:12,fontSize:12,color:S.inactiveText}}>Building from: <b style={{color:T.ink}}>{sourceCycle.label}</b></div>}
+            {sourceCycle&&<div style={{padding:"10px 14px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:7,marginBottom:12,fontSize:12,color:S.inactiveText}}>Building from: <b style={{color:T.ink}}>{sourceCycle.label}</b></div>}
             <div style={{border:`1px solid ${S.border}`,borderRadius:8,overflow:"hidden",marginBottom:14}}>
               {[
                 ["Label",terms.label],
@@ -3718,13 +3718,13 @@ function ContractWizard({a, onSave, onCancel}){
 }
 
 function AccountForm({orgId,existing,onCancel,onSave}){
-  const blank={id:uid(),orgId,account:"",short:"",logo:"#6C5FE0",tier:"active",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:0,milestones:[],cycles:[],chargebacks:[],features:[],comms:"",summary:"",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:null};
+  const blank={id:uid(),orgId,account:"",short:"",logo:"#5E6AD2",tier:"active",health:"green",owner:"Carter",products:[],eventType:EVENT_TYPES[0],sponsorMode:SPONSOR_MODES[0],value:"",costs:[],kpis:{},contractCycle:0,milestones:[],cycles:[],chargebacks:[],features:[],comms:"",summary:"",signal:"",fault:{verdict:"neither",reasoning:"",against_us:"",against_them:""},obligations:[],risks:[],signals_pending:[],flags:[],contract:null};
   const [f,setF]=useState(existing||blank);
   const up=(k,v)=>setF(p=>({...p,[k]:v}));
   const toggleProduct=p=>{const cur=f.products||[];up("products",cur.includes(p)?cur.filter(x=>x!==p):[...cur,p]);};
   return <>
     <div style={{marginBottom:18}}>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>Basics</div>
+      <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:8}}>Basics</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
         <div style={{gridColumn:"1/-1"}}><EF label="Account name" value={f.account} onChange={v=>{up("account",v);up("short",v.slice(0,2).toUpperCase());}} placeholder="e.g. Cage Titans"/></div>
         <EF label="Owner" value={f.owner} onChange={v=>up("owner",v)}/>
@@ -3732,7 +3732,7 @@ function AccountForm({orgId,existing,onCancel,onSave}){
       </div>
     </div>
     <div style={{marginBottom:18}}>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>CRM tier</div>
+      <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:8}}>CRM tier</div>
       <div style={{display:"flex",gap:8}}>
         {Object.entries(CRM_TIERS).filter(([k])=>k!=="archived").map(([k,v])=>(
           <button key={k} onClick={()=>up("tier",k)} style={{flex:1,padding:"7px",borderRadius:6,fontFamily:sans,fontSize:12,fontWeight:600,cursor:"pointer",border:`1px solid ${f.tier===k?v.c:S.border}`,background:f.tier===k?v.s:"#fff",color:f.tier===k?v.c:S.inactiveText}}>{v.label}</button>
@@ -3740,7 +3740,7 @@ function AccountForm({orgId,existing,onCancel,onSave}){
       </div>
     </div>
     <div style={{marginBottom:18}}>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:.5,textTransform:"uppercase",color:S.labelText,marginBottom:8}}>Products</div>
+      <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:8}}>Products</div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
         {PRODUCTS.map(p=><button key={p} onClick={()=>toggleProduct(p)} style={{padding:"8px 10px",borderRadius:6,fontFamily:sans,fontSize:12,fontWeight:500,cursor:"pointer",border:`1px solid ${(f.products||[]).includes(p)?T.purple:S.border}`,background:(f.products||[]).includes(p)?T.purpleSoft:"#fff",color:(f.products||[]).includes(p)?T.purple:S.inactiveText,textAlign:"left"}}>{p}</button>)}
       </div>
@@ -3749,7 +3749,7 @@ function AccountForm({orgId,existing,onCancel,onSave}){
       <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Event type</label><select value={f.eventType} onChange={e=>up("eventType",e.target.value)} style={{width:"100%",padding:"8px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",background:"#fff"}}>{EVENT_TYPES.map(o=><option key={o}>{o}</option>)}</select></div>
       <div><label style={{fontSize:11,color:S.labelText,fontWeight:600,textTransform:"uppercase",letterSpacing:.4,display:"block",marginBottom:5}}>Sponsor</label><select value={f.sponsorMode} onChange={e=>up("sponsorMode",e.target.value)} style={{width:"100%",padding:"8px 10px",border:`1px solid ${S.border}`,borderRadius:6,fontSize:13,fontFamily:sans,outline:"none",background:"#fff"}}>{SPONSOR_MODES.map(o=><option key={o}>{o}</option>)}</select></div>
     </div>
-    {existing&&<div style={{padding:"12px",background:"#F9FAFB",border:`1px solid ${S.border}`,borderRadius:7,marginBottom:16,fontSize:12,color:S.inactiveText}}>
+    {existing&&<div style={{padding:"12px",background:T.rail,border:`1px solid ${S.border}`,borderRadius:7,marginBottom:16,fontSize:12,color:S.inactiveText}}>
       Add or renew contracts via the <b style={{color:T.purple}}>+ Contract</b> button in the account header.
     </div>}
     <button disabled={!f.account} onClick={()=>onSave({...f})} style={{...VBtn.primary,width:"100%",justifyContent:"center",fontSize:14,padding:"11px",opacity:f.account?1:.4}}>{existing?"Save changes":"Create account"}</button>
