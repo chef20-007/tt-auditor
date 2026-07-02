@@ -69,12 +69,74 @@ const MILESTONE_TYPES={
 const CHARGEBACK_STATUS=["Open","Resolved — won","Resolved — lost","Disputed"];
 const FEATURE_STATUS=["Scoped","In progress","Shipped","On hold","Out of scope"];
 
+// Three-person team, hardcoded for now. When the backend lands this becomes a real users
+// table, but the id/name/initials/color shape stays the same so the UI does not change.
+// id is the stable actor key written into the event log; never rename an existing id.
+const TEAM=[
+  {id:"carter",name:"Carter Nevulis",initials:"CN",color:"#5A8FD6"},
+  {id:"hunter",name:"Hunter Hasenfus",initials:"HH",color:"#2E9E6B"},
+  {id:"elijah",name:"Elijah Wilson",initials:"EW",color:"#B0510B"},
+];
+const teamMember=id=>TEAM.find(m=>m.id===id)||null;
+// The current user. Hardcoded to Carter locally; the backend swaps this for the session
+// user. Used as the actor on events and the default assigner.
+const CURRENT_USER="carter";
+
 const fmt=n=>"$"+Math.round(n||0).toLocaleString();
 const fmtK=n=>{const v=Math.abs(n||0);if(v>=1000000)return"$"+(((n||0)/1000000).toFixed(v%1000000?1:0))+"M";if(v>=1000)return"$"+((n||0)/1000).toFixed(v%1000?1:0)+"K";return"$"+Math.round(n||0);};
 const pct=(a,b)=>b?Math.min(100,Math.round(100*a/b)):0;
 const uid=()=>Math.random().toString(36).slice(2,9);
 const sumCosts=a=>(a.costs||[]).reduce((n,c)=>n+(c.computed||0),0);
 const daysDiff=(d)=>Math.round((new Date(d)-new Date())/(1000*60*60*24));
+
+// ── EVENT LOG ──
+// Append-only history of everything meaningful that happens to an account and its
+// objects (obligations, cycles, risks, milestones). Current state still lives on the
+// objects for fast reads; the log is the audit trail and the source for the Activity
+// feed. Later, the agent reads this stream to decide what to propose and writes its own
+// events with actor:"agent", so its actions are attributed and auditable like anyone's.
+// Labels are snapshotted at write time so renaming an object never rewrites its history.
+// generated:true marks system/automation events (e.g. contract generation) so the feed
+// can hide them by default without losing them from the audit record.
+function makeEvent({actor=CURRENT_USER,verb,target,from=null,to=null,body=null,meta=null,generated=false}){
+  return {id:"ev_"+uid(),ts:new Date().toISOString(),actor,verb,target,from,to,body,meta,generated};
+}
+// Returns a new account with the event(s) appended. Never mutates. Caps the log at 500
+// entries per account so localStorage stays bounded; the backend will page instead.
+function appendEvents(a,events){
+  const list=Array.isArray(events)?events:[events];
+  if(!list.length) return a;
+  const log=[...(a.events_log||[]),...list].slice(-500);
+  return {...a,events_log:log};
+}
+// Renders one event as a human-readable phrase. Kept as a function (not a static map) so
+// it can weave in from/to values, owner names, and status labels. Returns plain strings;
+// the component adds the actor name and timestamp around it.
+function eventPhrase(ev){
+  const label=ev.target?.label||"";
+  const statusName=s=>OBL_STATUS[s]?.t||s||"";
+  const ownerName=id=>teamMember(id)?.name||id||"someone";
+  switch(ev.verb){
+    case"status_changed": return `changed ${label} from ${statusName(ev.from)} to ${statusName(ev.to)}`;
+    case"assigned": return ev.to?`assigned ${label} to ${ownerName(ev.to)}`:`unassigned ${label}`;
+    case"due_changed": return ev.to?`set a due date on ${label}`:`cleared the due date on ${label}`;
+    case"evidence_linked": return ev.to?`linked evidence to ${label}`:`removed evidence from ${label}`;
+    case"commented": return `commented on ${label}`;
+    case"task_added": return `added a task on ${label}`;
+    case"task_completed": return `completed a task on ${label}`;
+    case"task_reopened": return `reopened a task on ${label}`;
+    case"task_assigned": return ev.to?`assigned a task on ${label}`:`unassigned a task on ${label}`;
+    case"cycle_added": return `added contract cycle ${label}`;
+    case"cycle_activated": return `activated ${label}`;
+    case"cycle_edited": return `edited ${label}`;
+    case"signal_promoted": return `promoted signal to risk: ${label}`;
+    case"signal_dismissed": return `dismissed signal: ${label}`;
+    case"risk_returned": return `moved ${label} back to signals`;
+    case"risk_removed": return `removed risk: ${label}`;
+    case"obligations_generated": return `generated obligations from contract`;
+    default: return `${ev.verb} ${label}`;
+  }
+}
 
 // Cycles is the single source of truth for contract terms. a.contract is a read-only
 // mirror kept in lockstep for the call sites outside StripeDetail (dashboard, finance,
@@ -1401,6 +1463,53 @@ function MilestoneAdd({onAdd,onCancel}){
 
 // Compact ledger summary above the obligations list: "6 of 9 met, 2 pending, 1 missed".
 // Counts by status so the health of the whole obligation set reads at a glance.
+// Linear-style activity feed. Shows the account's event log newest-first, each row an
+// actor avatar dot, the event phrase, and a relative timestamp. System/generated events
+// are hidden by default behind a toggle so human activity reads first without losing the
+// audit record. limit caps how many show before a "see all" affordance.
+function relTime(ts){
+  const d=new Date(ts); const diff=(Date.now()-d)/1000;
+  if(diff<60) return "just now";
+  if(diff<3600) return Math.floor(diff/60)+"m ago";
+  if(diff<86400) return Math.floor(diff/3600)+"h ago";
+  const days=Math.floor(diff/86400);
+  if(days<30) return days+"d ago";
+  return d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+}
+function ActivityFeed({events=[],limit=8,targetId=null}){
+  const [showSystem,setShowSystem]=useState(false);
+  const [showAll,setShowAll]=useState(false);
+  let list=[...events].reverse();
+  if(targetId) list=list.filter(e=>e.target&&e.target.id===targetId);
+  const hasSystem=list.some(e=>e.generated||e.actor==="agent"||e.actor==="system");
+  if(!showSystem) list=list.filter(e=>!(e.generated||e.actor==="system"));
+  const shown=showAll?list:list.slice(0,limit);
+  if(!events.length) return <div style={{fontSize:12,color:T.faint,fontStyle:"italic"}}>No activity yet.</div>;
+  return <div>
+    {shown.map((ev,i)=>{
+      const m=teamMember(ev.actor);
+      const isAgent=ev.actor==="agent";
+      const dotColor=isAgent?T.purple:m?m.color:T.faint;
+      const actorName=isAgent?"Agent":ev.actor==="system"?"System":m?m.name:ev.actor;
+      return <div key={ev.id||i} style={{display:"flex",alignItems:"flex-start",gap:9,padding:"7px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+        <span style={{width:18,height:18,borderRadius:"50%",background:dotColor,color:"#fff",fontSize:9,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,letterSpacing:"-0.02em"}}>{isAgent?"AI":m?m.initials:"?"}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12.5,color:T.ink,letterSpacing:"-0.01em",lineHeight:1.4}}>
+            <b style={{fontWeight:600}}>{actorName}</b> {eventPhrase(ev)}
+            {ev.generated&&<span style={{fontSize:10,color:T.faint,marginLeft:6,padding:"0 5px",borderRadius:4,background:T.rail}}>system</span>}
+          </div>
+          {ev.body&&<div style={{fontSize:12,color:T.sub,marginTop:2,lineHeight:1.45}}>{ev.body}</div>}
+          <div style={{fontSize:10.5,color:T.faint,marginTop:1}}>{relTime(ev.ts)}</div>
+        </div>
+      </div>;
+    })}
+    <div style={{display:"flex",gap:14,marginTop:8}}>
+      {list.length>limit&&<button onClick={()=>setShowAll(!showAll)} style={{fontSize:11.5,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500,padding:0}}>{showAll?"Show less":`See all ${list.length}`}</button>}
+      {hasSystem&&<button onClick={()=>setShowSystem(!showSystem)} style={{fontSize:11.5,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:0}}>{showSystem?"Hide system activity":"Show system activity"}</button>}
+    </div>
+  </div>;
+}
+
 function ObligationLedger({obligations}){
   const total=obligations.length;
   if(!total) return null;
@@ -1418,34 +1527,25 @@ function ObligationLedger({obligations}){
 // date, and evidence. Evidence can point at one of the account's features (the thing
 // that satisfies the obligation) or be free text (an invoice ref, a note). Status stays
 // editable in the collapsed row via TagPick.
-function ObligationRow({o,features=[],onUpdate,first}){
-  const [open,setOpen]=useState(false);
-  const [owner,setOwner]=useState(o.owner||"");
-  const [evidenceText,setEvidenceText]=useState(o.evidence&&o.evidence.type==="text"?o.evidence.value:"");
-  const s=OBL_STATUS[o.status]||OBL_STATUS.pending;
+function ObligationRow({o,features=[],onUpdate,onOpen,first}){
   const linkedFeature=o.evidence&&o.evidence.type==="feature"?features.find(f=>f.id===o.evidence.value):null;
-
-  const evidenceOptions=[
-    {value:"__none",label:"No evidence",color:T.faint},
-    ...features.map(f=>({value:"feature:"+f.id,label:f.name,color:T.blue})),
-    {value:"__text",label:"Free text…",color:T.sub},
-  ];
-  const evidenceValue=o.evidence?(o.evidence.type==="feature"?"feature:"+o.evidence.value:"__text"):"__none";
-
+  const tasks=o.tasks||[];
+  const doneTasks=tasks.filter(t=>t.done).length;
+  const commentCount=0; // shown from drawer; row stays compact
   return <div style={{borderTop:first?"none":`1px solid ${T.hair}`}}>
     <div style={{display:"grid",gridTemplateColumns:"52px 1fr 110px",gap:14,padding:"10px 0",alignItems:"start"}}>
       <span style={{fontSize:11.5,fontWeight:500,color:o.party==="us"?T.purple:T.faint,paddingTop:1,letterSpacing:"-0.01em"}}>{o.party}</span>
-      <div style={{cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+      <div style={{cursor:"pointer"}} onClick={()=>onOpen&&onOpen(o.id)}>
         <div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:9,color:T.faint,transform:open?"rotate(90deg)":"none",transition:"transform .18s",display:"inline-block"}}>▶</span>
           {o.label}
           {o.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail,letterSpacing:"-0.005em"}}>from contract</span>}
         </div>
-        <div style={{fontSize:11.5,color:T.faint,marginTop:2,paddingLeft:15}}>
+        <div style={{fontSize:11.5,color:T.faint,marginTop:2,display:"flex",alignItems:"center",flexWrap:"wrap"}}>
           {o.source}
-          {o.owner&&<span>{"  ·  "}{o.owner}</span>}
+          {o.owner&&teamMember(o.owner)&&<span style={{display:"inline-flex",alignItems:"center",gap:4}}>{"  ·  "}<span style={{width:6,height:6,borderRadius:"50%",background:teamMember(o.owner).color,display:"inline-block"}}/>{teamMember(o.owner).name}</span>}
           {o.due&&<span>{"  ·  due "}{new Date(o.due+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}
           {linkedFeature&&<span>{"  ·  ✓ "}{linkedFeature.name}</span>}
+          {tasks.length>0&&<span>{"  ·  "}{doneTasks}/{tasks.length} tasks</span>}
         </div>
       </div>
       <div style={{display:"flex",justifyContent:"flex-end"}}>
@@ -1453,36 +1553,114 @@ function ObligationRow({o,features=[],onUpdate,first}){
           onChange={v=>onUpdate(o.id,{status:v})} placeholder="Status"/>
       </div>
     </div>
-    <div style={{display:"grid",gridTemplateRows:open?"1fr":"0fr",transition:"grid-template-rows .22s cubic-bezier(.4,0,.2,1)"}}>
-      <div style={{overflow:"hidden"}}>
-        <div style={{padding:"4px 0 16px 66px",display:"flex",flexWrap:"wrap",gap:24,alignItems:"flex-start"}}>
+  </div>;
+}
+
+// Full obligation detail in a right-side drawer (Linear sub-issue pattern). Holds the
+// editable properties (owner, due, evidence), a task checklist, and a comment thread.
+// Tasks and comments both flow through the event log so they appear in history and the
+// account Activity feed. Modeled on the existing target drawer for visual consistency.
+function ObligationDrawer({obl,features=[],events=[],onUpdate,onAddTask,onUpdateTask,onDelTask,onAddComment,onClose}){
+  const [closing,setClosing]=useState(false);
+  const [taskInput,setTaskInput]=useState("");
+  const [commentInput,setCommentInput]=useState("");
+  const [evidenceText,setEvidenceText]=useState(obl.evidence&&obl.evidence.type==="text"?obl.evidence.value:"");
+  const handleClose=()=>{setClosing(true);setTimeout(()=>onClose(),220);};
+  if(!obl) return null;
+  const s=OBL_STATUS[obl.status]||OBL_STATUS.pending;
+  const tasks=obl.tasks||[];
+  const comments=events.filter(e=>e.verb==="commented"&&e.target&&e.target.id===obl.id);
+  const evidenceOptions=[
+    {value:"__none",label:"No evidence",color:T.faint},
+    ...features.map(f=>({value:"feature:"+f.id,label:f.name,color:T.blue})),
+    {value:"__text",label:"Free text…",color:T.sub},
+  ];
+  const evidenceValue=obl.evidence?(obl.evidence.type==="feature"?"feature:"+obl.evidence.value:"__text"):"__none";
+  const W=440;
+  const secTitle={fontSize:12,fontWeight:600,color:T.header,letterSpacing:"-0.005em",marginBottom:10};
+  return <>
+    <div onClick={handleClose} style={{position:"fixed",inset:0,background:"rgba(15,17,21,0.28)",zIndex:200,opacity:closing?0:1,transition:"opacity .22s cubic-bezier(.4,0,.2,1)"}}/>
+    <div style={{position:"fixed",top:10,right:10,bottom:10,width:W,maxWidth:"calc(100vw - 20px)",background:"#fff",zIndex:201,borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.20), 0 0 0 1px rgba(0,0,0,0.05)",display:"flex",flexDirection:"column",overflow:"hidden",animation:closing?"ttDrawerOut .22s cubic-bezier(.4,0,.2,1) forwards":"ttDrawerIn .22s cubic-bezier(.4,0,.2,1)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:`1px solid ${S.border}`}}>
+        <span style={{fontSize:11.5,fontWeight:500,color:obl.party==="us"?T.purple:T.faint}}>{obl.party==="us"?"Our obligation":"Their obligation"}</span>
+        <button onClick={handleClose} style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",border:"none",background:"transparent",cursor:"pointer",color:S.labelText,fontSize:19,borderRadius:6}}>×</button>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"20px 22px"}}>
+        <div style={{fontSize:18,fontWeight:600,color:T.ink,letterSpacing:"-0.02em",marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
+          {obl.label}
+          {obl.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail}}>from contract</span>}
+        </div>
+        <div style={{fontSize:12,color:T.faint,marginBottom:20}}>{obl.source}</div>
+
+        {/* Properties */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:20,marginBottom:26}}>
           <div>
-            <div style={{fontSize:11,color:T.header,marginBottom:4,letterSpacing:"-0.005em"}}>Owner</div>
-            <div style={{minWidth:120}}>
-              <InlineText value={owner} onChange={setOwner} onCommit={()=>onUpdate(o.id,{owner:owner||null})} placeholder="Add owner…" size={12.5}/>
-            </div>
+            <div style={{fontSize:11,color:T.header,marginBottom:4}}>Status</div>
+            <TagPick value={obl.status||"pending"} options={Object.entries(OBL_STATUS).map(([v,d])=>({value:v,label:d.t,color:d.c}))} onChange={v=>onUpdate(obl.id,{status:v})} placeholder="Status"/>
           </div>
           <div>
-            <div style={{fontSize:11,color:T.header,marginBottom:4,letterSpacing:"-0.005em"}}>Due</div>
-            <DateChip value={o.due||""} onChange={d=>onUpdate(o.id,{due:d||null})}/>
+            <div style={{fontSize:11,color:T.header,marginBottom:4}}>Owner</div>
+            <TagPick value={obl.owner||"__none"} options={[{value:"__none",label:"Unassigned",color:T.faint},...TEAM.map(m=>({value:m.id,label:m.name,color:m.color}))]} onChange={v=>onUpdate(obl.id,{owner:v==="__none"?null:v})} placeholder="Assign"/>
           </div>
           <div>
-            <div style={{fontSize:11,color:T.header,marginBottom:4,letterSpacing:"-0.005em"}}>Evidence</div>
-            <TagPick value={evidenceValue}
-              options={evidenceOptions}
-              onChange={v=>{
-                if(v==="__none") onUpdate(o.id,{evidence:null});
-                else if(v==="__text") onUpdate(o.id,{evidence:{type:"text",value:evidenceText||""}});
-                else onUpdate(o.id,{evidence:{type:"feature",value:v.slice(8)}});
-              }} placeholder="Link evidence"/>
-            {o.evidence&&o.evidence.type==="text"&&<div style={{marginTop:6,minWidth:160}}>
-              <InlineText value={evidenceText} onChange={setEvidenceText} onCommit={()=>onUpdate(o.id,{evidence:{type:"text",value:evidenceText}})} placeholder="Invoice ref, note…" size={12.5}/>
+            <div style={{fontSize:11,color:T.header,marginBottom:4}}>Due</div>
+            <DateChip value={obl.due||""} onChange={d=>onUpdate(obl.id,{due:d||null})}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:T.header,marginBottom:4}}>Evidence</div>
+            <TagPick value={evidenceValue} options={evidenceOptions} onChange={v=>{
+              if(v==="__none") onUpdate(obl.id,{evidence:null});
+              else if(v==="__text") onUpdate(obl.id,{evidence:{type:"text",value:evidenceText||""}});
+              else onUpdate(obl.id,{evidence:{type:"feature",value:v.slice(8)}});
+            }} placeholder="Link evidence"/>
+            {obl.evidence&&obl.evidence.type==="text"&&<div style={{marginTop:6,minWidth:160}}>
+              <InlineText value={evidenceText} onChange={setEvidenceText} onCommit={()=>onUpdate(obl.id,{evidence:{type:"text",value:evidenceText}})} placeholder="Invoice ref, note…" size={12.5}/>
             </div>}
           </div>
         </div>
+
+        {/* Tasks */}
+        <div style={{marginBottom:26}}>
+          <div style={secTitle}>Tasks{tasks.length>0&&<span style={{color:T.faint,fontWeight:400}}>{"  "}{tasks.filter(t=>t.done).length}/{tasks.length}</span>}</div>
+          {tasks.map(t=>(
+            <div key={t.id} style={{display:"flex",alignItems:"center",gap:9,padding:"6px 0"}}>
+              <button onClick={()=>onUpdateTask(obl.id,t.id,{done:!t.done})} style={{width:17,height:17,borderRadius:4,border:`1.5px solid ${t.done?T.checkDone:T.checkBorder}`,background:t.done?T.checkDone:"transparent",color:"#fff",fontSize:9,cursor:"pointer",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>{t.done?"✓":""}</button>
+              <span style={{flex:1,fontSize:13,color:t.done?T.faint:T.ink,textDecoration:t.done?"line-through":"none",letterSpacing:"-0.01em"}}>{t.label}</span>
+              <TagPick value={t.owner||"__none"} options={[{value:"__none",label:"Unassigned",color:T.faint},...TEAM.map(m=>({value:m.id,label:m.name,color:m.color}))]} onChange={v=>onUpdateTask(obl.id,t.id,{owner:v==="__none"?null:v})} placeholder="Assign"/>
+              <button onClick={()=>onDelTask(obl.id,t.id)} style={{background:"none",border:"none",color:"#D1D5DB",cursor:"pointer",fontSize:15,padding:"0 2px"}}>×</button>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:8,alignItems:"center"}}>
+            <input value={taskInput} onChange={e=>setTaskInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&taskInput.trim()){onAddTask(obl.id,taskInput);setTaskInput("");}}} placeholder="Add a task, press Enter" style={{flex:1,border:`1px solid ${T.hairS}`,borderRadius:7,padding:"7px 10px",fontFamily:sans,fontSize:12.5,outline:"none",color:T.ink,background:T.page}}/>
+          </div>
+        </div>
+
+        {/* Comments */}
+        <div style={{marginBottom:20}}>
+          <div style={secTitle}>Comments{comments.length>0&&<span style={{color:T.faint,fontWeight:400}}>{"  "}{comments.length}</span>}</div>
+          {comments.map((cm,i)=>{const m=teamMember(cm.actor);return(
+            <div key={cm.id||i} style={{display:"flex",gap:9,padding:"8px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+              <span style={{width:20,height:20,borderRadius:"50%",background:m?m.color:T.faint,color:"#fff",fontSize:9,fontWeight:600,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{m?m.initials:"?"}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,color:T.ink}}><b style={{fontWeight:600}}>{m?m.name:cm.actor}</b> <span style={{color:T.faint,fontSize:10.5,marginLeft:4}}>{relTime(cm.ts)}</span></div>
+                <div style={{fontSize:12.5,color:T.sub,marginTop:2,lineHeight:1.45,whiteSpace:"pre-wrap"}}>{cm.body}</div>
+              </div>
+            </div>
+          );})}
+          <div style={{marginTop:10}}>
+            <textarea value={commentInput} onChange={e=>setCommentInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)&&commentInput.trim()){onAddComment(obl.id,commentInput);setCommentInput("");}}} placeholder="Add a comment, Cmd+Enter to post" rows={2} style={{width:"100%",border:`1px solid ${T.hairS}`,borderRadius:7,padding:"8px 10px",fontFamily:sans,fontSize:12.5,outline:"none",color:T.ink,background:T.page,resize:"vertical"}}/>
+            {commentInput.trim()&&<button onClick={()=>{onAddComment(obl.id,commentInput);setCommentInput("");}} style={{...VBtn.small,fontSize:12,marginTop:6,color:T.purple,borderColor:T.purpleBar}}>Post comment</button>}
+          </div>
+        </div>
+
+        {/* History */}
+        {events.some(e=>e.target&&e.target.id===obl.id&&e.verb!=="commented")&&<div>
+          <div style={secTitle}>History</div>
+          <ActivityFeed events={events.filter(e=>e.verb!=="commented")} limit={6} targetId={obl.id}/>
+        </div>}
       </div>
     </div>
-  </div>;
+  </>;
 }
 
 function MilestoneRow({m,onToggle,onDelete,first}){
@@ -1638,6 +1816,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const [toast,setToast]=useState(null);
   const [cycle,setCycle]=useState(a.contractCycle||1);
   const [railOpen,setRailOpen]=useState(()=>{try{return JSON.parse(localStorage.getItem("tt_rail_sections")||'{"details":true,"performance":true}');}catch{return {details:true,performance:true};}});
+  const [openOblId,setOpenOblId]=useState(null); // obligation shown in the detail drawer
   const toggleRail=k=>setRailOpen(p=>{const n={...p,[k]:!p[k]};try{localStorage.setItem("tt_rail_sections",JSON.stringify(n));}catch{}return n;});
   const [summary,setSummary]=useState(a.summary||"");
   const [notes,setNotes]=useState(a.notes||"");
@@ -1678,18 +1857,69 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   function addMilestone(m){const n=[...milestones,m];setMilestones(n);save({milestones:n});}
   function toggleMilestone(id){const n=milestones.map(m=>m.id===id?{...m,done:!m.done}:m);setMilestones(n);save({milestones:n});}
   function delMilestone(id){const n=milestones.filter(m=>m.id!==id);setMilestones(n);save({milestones:n});}
-  function addContractCycle(cy){const n=cy.active?[...cycles.map(c=>({...c,active:false})),cy]:[...cycles,cy];setCycles(n);save({cycles:n});}
-  function updateContractCycle(id,patch){const n=cycles.map(c=>{if(c.id===id)return{...c,...patch};if(patch.active&&c.active)return{...c,active:false};return c;});setCycles(n);save({cycles:n});}
+  function addContractCycle(cy){const n=cy.active?[...cycles.map(c=>({...c,active:false})),cy]:[...cycles,cy];setCycles(n);const ev=makeEvent({verb:"cycle_added",target:{type:"cycle",id:cy.id,label:cy.label||"Contract cycle"}});save({cycles:n,events_log:[...(a.events_log||[]),ev].slice(-500)});}
+  function updateContractCycle(id,patch){const prev=cycles.find(c=>c.id===id);const n=cycles.map(c=>{if(c.id===id)return{...c,...patch};if(patch.active&&c.active)return{...c,active:false};return c;});setCycles(n);const events=[];if(prev){const tgt={type:"cycle",id,label:prev.label||"Contract cycle"};if(patch.active&&!prev.active)events.push(makeEvent({verb:"cycle_activated",target:tgt}));else events.push(makeEvent({verb:"cycle_edited",target:tgt}));}save({cycles:n,events_log:[...(a.events_log||[]),...events].slice(-500)});}
   function delContractCycle(id){const n=cycles.filter(c=>c.id!==id);setCycles(n);save({cycles:n});}
   // Obligations aren't tracked in local component state (unlike cycles/chargebacks/
   // features) since they're written both by the user here and by contract generation
   // elsewhere. Reads and writes go straight through a.obligations via onSave, bypassing
   // save()'s cycle-regeneration path entirely since editing a status never changes cycles.
+  // Every edit also appends events to the audit log, one per meaningful field change,
+  // with the obligation label snapshotted so history reads correctly after renames.
   function updateObligation(id,patch){
+    const prev=(a.obligations||[]).find(o=>o.id===id);
     const n=(a.obligations||[]).map(o=>o.id===id?{...o,...patch}:o);
+    const events=[];
+    if(prev){
+      const tgt={type:"obligation",id,label:prev.label||""};
+      if("status" in patch && patch.status!==prev.status)
+        events.push(makeEvent({verb:"status_changed",target:tgt,from:prev.status||"pending",to:patch.status}));
+      if("owner" in patch && patch.owner!==prev.owner)
+        events.push(makeEvent({verb:"assigned",target:tgt,from:prev.owner||null,to:patch.owner||null}));
+      if("due" in patch && patch.due!==prev.due)
+        events.push(makeEvent({verb:"due_changed",target:tgt,from:prev.due||null,to:patch.due||null}));
+      if("evidence" in patch && JSON.stringify(patch.evidence)!==JSON.stringify(prev.evidence))
+        events.push(makeEvent({verb:"evidence_linked",target:tgt,to:patch.evidence?(patch.evidence.type==="feature"?"feature":"text"):null}));
+    }
+    onSave(appendEvents({...a,obligations:n},events));
+  }
+  // Tasks live on the obligation as o.tasks[]. Each: {id,label,done,owner,due}. Adding,
+  // completing, and assigning tasks all write events into the same log so they show up
+  // in the obligation history and the account Activity feed.
+  function addObligationTask(oblId,label){
+    if(!label||!label.trim())return;
+    const obl=(a.obligations||[]).find(o=>o.id===oblId);if(!obl)return;
+    const task={id:"tk_"+uid(),label:label.trim(),done:false,owner:null,due:null};
+    const n=(a.obligations||[]).map(o=>o.id===oblId?{...o,tasks:[...(o.tasks||[]),task]}:o);
+    const ev=makeEvent({verb:"task_added",target:{type:"obligation",id:oblId,label:obl.label||""},body:task.label});
+    onSave(appendEvents({...a,obligations:n},ev));
+  }
+  function updateObligationTask(oblId,taskId,patch){
+    const obl=(a.obligations||[]).find(o=>o.id===oblId);if(!obl)return;
+    const prevTask=(obl.tasks||[]).find(t=>t.id===taskId);
+    const n=(a.obligations||[]).map(o=>o.id===oblId?{...o,tasks:(o.tasks||[]).map(t=>t.id===taskId?{...t,...patch}:t)}:o);
+    const events=[];
+    const tgt={type:"obligation",id:oblId,label:obl.label||""};
+    if(prevTask){
+      if("done" in patch && patch.done!==prevTask.done)
+        events.push(makeEvent({verb:patch.done?"task_completed":"task_reopened",target:tgt,body:prevTask.label}));
+      if("owner" in patch && patch.owner!==prevTask.owner)
+        events.push(makeEvent({verb:"task_assigned",target:tgt,to:patch.owner||null,body:prevTask.label}));
+    }
+    onSave(appendEvents({...a,obligations:n},events));
+  }
+  function delObligationTask(oblId,taskId){
+    const n=(a.obligations||[]).map(o=>o.id===oblId?{...o,tasks:(o.tasks||[]).filter(t=>t.id!==taskId)}:o);
     onSave({...a,obligations:n});
   }
-  function addChargeback(cb){const n=[...chargebacks,cb];setChargebacks(n);save({chargebacks:n});}
+  // A comment is just an event: verb "commented", body set, target the obligation. No
+  // separate storage; the thread is the filtered comment-events for that obligation.
+  function addObligationComment(oblId,body){
+    if(!body||!body.trim())return;
+    const obl=(a.obligations||[]).find(o=>o.id===oblId);if(!obl)return;
+    const ev=makeEvent({verb:"commented",target:{type:"obligation",id:oblId,label:obl.label||""},body:body.trim()});
+    onSave(appendEvents(a,ev));
+  }
   function updateChargeback(id,patch){const n=chargebacks.map(c=>c.id===id?{...c,...patch}:c);setChargebacks(n);save({chargebacks:n});}
   function delChargeback(id){const n=chargebacks.filter(c=>c.id!==id);setChargebacks(n);save({chargebacks:n});}
   function addFeature(f2){const n=[...features,f2];setFeatures(n);save({features:n});}
@@ -1701,7 +1931,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
     const dismissed=keep?(a.dismissed_signals||[]):[...(a.dismissed_signals||[]),{...s,dismissedAt:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}];
     setToast(keep?"Added to risks ✓":"Dismissed");
     setTimeout(()=>setToast(null),2000);
-    save({signals_pending:pend,risks,dismissed_signals:dismissed});
+    const ev=makeEvent({verb:keep?"signal_promoted":"signal_dismissed",target:{type:"risk",id:s.id||uid(),label:s.kind||"Signal"}});
+    save({signals_pending:pend,risks,dismissed_signals:dismissed,events_log:[...(a.events_log||[]),ev].slice(-500)});
   }
   function unrisk(idx){
     const r=(a.risks||[])[idx];if(!r)return;
@@ -1710,7 +1941,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
     const pend=r._signal?[...(a.signals_pending||[]),r._signal]:(a.signals_pending||[]);
     setToast(r._signal?"Moved back to signals":"Risk removed");
     setTimeout(()=>setToast(null),2000);
-    save({risks,signals_pending:pend});
+    const ev=makeEvent({verb:r._signal?"risk_returned":"risk_removed",target:{type:"risk",id:r._signal?.id||uid(),label:r.risk||"Risk"}});
+    save({risks,signals_pending:pend,events_log:[...(a.events_log||[]),ev].slice(-500)});
   }
 
   const h=HEALTH[a.health];
@@ -1820,8 +2052,6 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
               const proj=eco.gmvProjected||0;
               const realized=eco.gmvActual||0;
               const obl=a.obligations||[];
-              const oblMet=obl.filter(o=>o.status==="met").length;
-              const oblAttention=obl.filter(o=>o.status==="missed"||o.status==="pending"||o.status==="in_progress");
 
               return <>
                 {/* Active contract header */}
@@ -1835,7 +2065,20 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                   </div>
                 </div>
 
-                {/* The clock */}
+                {/* Obligations: the working surface, promoted to the top. Full rows open
+                    the detail drawer. This is where the day-to-day work happens, so it
+                    leads the page. */}
+                {obl.length>0&&<div style={{marginBottom:28}}>
+                  <div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",marginBottom:10}}>Obligations</div>
+                  <ObligationLedger obligations={obl}/>
+                  <div>
+                    {obl.map((o,i)=>(
+                      <ObligationRow key={o.id||i} o={o} features={features} onUpdate={updateObligation} onOpen={setOpenOblId} first={i===0}/>
+                    ))}
+                  </div>
+                </div>}
+
+                {/* The clock: reference, sits below the working surface */}
                 {clock.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:28}}>
                   {clock.map((ck,i)=>(
                     <div key={i} style={{flex:"1 1 120px",minWidth:120,padding:"12px 14px",background:S.bg,border:`1px solid ${T.hair}`,borderRadius:11,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
@@ -1844,24 +2087,6 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                       <div style={{fontSize:11,color:T.faint,marginTop:3}}>{new Date(ck.date+(ck.date.includes("-")?"T00:00:00":"")).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
                     </div>
                   ))}
-                </div>}
-
-                {/* Obligation ledger */}
-                {obl.length>0&&<div style={{marginBottom:28}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
-                    <div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Obligations</div>
-                    <button onClick={()=>onTabChange("overview")} style={{fontSize:11.5,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500}}>Manage →</button>
-                  </div>
-                  <ObligationLedger obligations={obl}/>
-                  {oblAttention.length>0&&<div style={{marginTop:4}}>
-                    {oblAttention.slice(0,4).map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.pending;return(
-                      <div key={o.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
-                        <span style={{fontSize:12.5,color:T.ink,letterSpacing:"-0.01em"}}>{o.label}</span>
-                        <span style={{fontSize:11.5,fontWeight:500,color:s.c}}>{s.t}</span>
-                      </div>
-                    );})}
-                    {oblAttention.length>4&&<div style={{fontSize:11.5,color:T.faint,marginTop:6}}>+{oblAttention.length-4} more need attention</div>}
-                  </div>}
                 </div>}
 
                 {/* The money */}
@@ -1900,6 +2125,11 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 </div>}
               </>;
             })()}
+            {/* Activity: the account's event log, always shown regardless of contract state */}
+            <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${T.hair}`}}>
+              <div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",marginBottom:12}}>Activity</div>
+              <ActivityFeed events={a.events_log||[]} limit={8}/>
+            </div>
           </>}
 
           {/* OVERVIEW */}
@@ -1995,7 +2225,7 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
               <ObligationLedger obligations={a.obligations}/>
               <div>
                 {a.obligations.map((o,i)=>(
-                  <ObligationRow key={o.id||i} o={o} features={features} onUpdate={updateObligation} first={i===0}/>
+                  <ObligationRow key={o.id||i} o={o} features={features} onUpdate={updateObligation} onOpen={setOpenOblId} first={i===0}/>
                 ))}
               </div>
             </div>}
@@ -2132,7 +2362,8 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
                 onGenerate={isActive?()=>{
                   const regenerated=regenerateContractChildren({...a,cycles,obligations:a.obligations||[],milestones,risks:a.risks||[]});
                   setMilestones(regenerated.milestones);
-                  onSave(regenerated);
+                  const ev=makeEvent({verb:"obligations_generated",target:{type:"cycle",id:cy.id,label:cy.label||"Contract"},generated:true});
+                  onSave(appendEvents(regenerated,ev));
                   setToast("Generated from contract ✓");setTimeout(()=>setToast(null),2000);
                 }:null}
               />;
@@ -2234,6 +2465,13 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
       {/* Toast */}
       {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:T.ink,color:"#fff",padding:"9px 18px",borderRadius:6,fontSize:13,fontWeight:600,zIndex:999,boxShadow:"0 4px 20px rgba(0,0,0,.18)"}}>{toast}</div>}
+      {openOblId&&(()=>{const obl=(a.obligations||[]).find(o=>o.id===openOblId);if(!obl)return null;return(
+        <ObligationDrawer obl={obl} features={features} events={a.events_log||[]}
+          onUpdate={updateObligation}
+          onAddTask={addObligationTask} onUpdateTask={updateObligationTask} onDelTask={delObligationTask}
+          onAddComment={addObligationComment}
+          onClose={()=>setOpenOblId(null)}/>
+      );})()}
     </div>
   );
 }
