@@ -228,9 +228,20 @@ function regenerateContractChildren(a){
   const keepRisks=(a.risks||[]).filter(r=>!r.generated);
   if(!active) return {...a,obligations:keepObl,milestones:keepMs,risks:keepRisks};
   const gen=generateFromCycle(active);
+  // Preserve user-set fields on generated obligations across regeneration. A generated
+  // obligation maps 1:1 to a product in scope, so its label is its stable identity.
+  // If one already exists for this label, carry its status/owner/due/evidence/tags/
+  // comments forward onto the freshly-generated object instead of resetting them.
+  const priorGenByLabel={};
+  (a.obligations||[]).filter(o=>o.generated).forEach(o=>{priorGenByLabel[o.label]=o;});
+  const mergedObl=gen.obligations.map(o=>{
+    const prior=priorGenByLabel[o.label];
+    if(!prior) return o;
+    return {...o,id:prior.id,status:prior.status,owner:prior.owner,due:prior.due,evidence:prior.evidence,tags:prior.tags||[],comments:prior.comments||[]};
+  });
   return {
     ...a,
-    obligations:[...keepObl,...gen.obligations],
+    obligations:[...keepObl,...mergedObl],
     milestones:[...keepMs,...gen.milestones],
     risks:[...keepRisks,...gen.risks],
   };
@@ -720,7 +731,7 @@ export default function AppDesktop(){
   },[]);
   const [nav,setNav]=useState(()=>{try{return sessionStorage.getItem('tt_nav')||'dashboard';}catch{return'dashboard';}});
   const [selected,setSelected]=useState(()=>{try{return sessionStorage.getItem('tt_selected')||null;}catch{return null;}});
-  const [detailTab,setDetailTab]=useState(()=>{try{return sessionStorage.getItem('tt_tab')||'overview';}catch{return'overview';}});
+  const [detailTab,setDetailTab]=useState('home');
   const [editMode,setEditMode]=useState(false);
   const [loaded,setLoaded]=useState(false);
   const [wizardOpen,setWizardOpen]=useState(false);
@@ -802,7 +813,7 @@ export default function AppDesktop(){
   const velocity=activeAccts.length>0?Math.round(activeAccts.reduce((n,a)=>{const ms=(a.milestones||[]).filter(m=>m.done);return n+(ms.length>0?14:21);},0)/activeAccts.length):0;
   const showDetail=selectedAcct&&(nav==="accounts");
   function navigate(page){try{sessionStorage.setItem('tt_nav',page);}catch{}setNav(page);}
-  function selectAcct(id,tab){const t=tab||'overview';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
+  function selectAcct(id,tab){const t=tab||'home';try{sessionStorage.setItem('tt_selected',id||'');sessionStorage.setItem('tt_tab',t);}catch{}setSelected(id);setDetailTab(t);}
 
   return(
     <div style={{display:"flex",flexDirection:isMobile?"column":"row",height:"100vh",background:T.rail,fontFamily:sans,color:T.ink,letterSpacing:"-0.011em",overflow:"hidden"}}>
@@ -892,7 +903,7 @@ export default function AppDesktop(){
                 <span style={{width:24,height:24,borderRadius:"50%",background:T.ink,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{actions.length}</span>
               </div>
               {actions.slice(0,4).map((r,i)=>(
-                <button key={i} onClick={()=>{setSelected(r.aid);navigate("accounts");setDetailTab("overview");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="#fff"} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left",transition:"background .12s"}}>
+                <button key={i} onClick={()=>{setSelected(r.aid);navigate("accounts");setDetailTab("home");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="#fff"} style={{width:"100%",display:"flex",alignItems:"flex-start",gap:12,padding:"14px 20px",border:"none",borderTop:i?`1px solid ${S.border}`:"none",background:"#fff",cursor:"pointer",fontFamily:sans,textAlign:"left",transition:"background .12s"}}>
                   <Tag label={SEV[r.severity].l} c={SEV[r.severity].c} s={SEV[r.severity].s}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:2}}>{r.risk}</div>
@@ -982,7 +993,7 @@ export default function AppDesktop(){
                     {showTierHeader&&i>0&&<div style={{padding:"14px 20px 6px",background:"#fff",borderTop:`1px solid ${T.hair}`}}>
                       <span style={{fontSize:11.5,fontWeight:600,letterSpacing:"-0.01em",color:tier.c}}>{tier.label}</span>
                     </div>}
-                    <button onClick={()=>{selectAcct(a.id,"overview");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr .9fr .9fr .9fr 190px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left",transition:"background .12s"}}
+                    <button onClick={()=>{selectAcct(a.id,"home");}} style={{display:"grid",gridTemplateColumns:isMobile?"1fr auto":"2.2fr .8fr .9fr .9fr .9fr 190px",padding:isMobile?"10px 14px":"12px 20px",width:"100%",background:"#fff",border:"none",borderTop:`1px solid ${S.border}`,cursor:"pointer",fontFamily:sans,color:T.ink,textAlign:"left",transition:"background .12s"}}
                       onMouseEnter={e=>e.currentTarget.style.background=T.soft}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1020,7 +1031,7 @@ export default function AppDesktop(){
                       <div style={{fontSize:13,color:S.labelText,textAlign:"right"}}>—</div>
                       <div style={{display:"flex",justifyContent:"flex-end",gap:10}}>
                         <button onClick={()=>unarchiveAcct(a.id)} style={{fontSize:12,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500}}>Restore</button>
-                        <button onClick={()=>{selectAcct(a.id,"overview");}} style={{fontSize:12,color:S.labelText,background:"none",border:"none",cursor:"pointer",fontFamily:sans}}>View →</button>
+                        <button onClick={()=>{selectAcct(a.id,"home");}} style={{fontSize:12,color:S.labelText,background:"none",border:"none",cursor:"pointer",fontFamily:sans}}>View →</button>
                       </div>
                     </div>
                   ))}
@@ -1080,7 +1091,7 @@ export default function AppDesktop(){
                 )):<div style={{fontSize:12.5,color:T.faint,padding:"20px 10px",textAlign:"center"}}>No recent activity.</div>)}
               </div>
               {/* footer */}
-              {!master&&<button onClick={()=>{selectAcct(peekAcct.id,"overview");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"12px",borderTop:`1px solid ${T.hair}`,background:"transparent",border:"none",borderTopStyle:"solid",cursor:"pointer",fontFamily:sans,fontSize:12,fontWeight:500,color:T.sub,transition:"background .12s",letterSpacing:"-0.01em"}}>Open full account →</button>}
+              {!master&&<button onClick={()=>{selectAcct(peekAcct.id,"home");}} onMouseEnter={e=>e.currentTarget.style.background=T.soft} onMouseLeave={e=>e.currentTarget.style.background="transparent"} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:5,padding:"12px",borderTop:`1px solid ${T.hair}`,background:"transparent",border:"none",borderTopStyle:"solid",cursor:"pointer",fontFamily:sans,fontSize:12,fontWeight:500,color:T.sub,transition:"background .12s",letterSpacing:"-0.01em"}}>Open full account →</button>}
             </div>;
           })()}
         </div>}
@@ -1179,7 +1190,7 @@ export default function AppDesktop(){
 
         {/* FINANCE */}
         {!showDetail&&nav==="finance"&&<FinancePage
-          onOpenAccount={(aid)=>{selectAcct(aid,"overview");navigate("accounts");}}
+          onOpenAccount={(aid)=>{selectAcct(aid,"home");navigate("accounts");}}
           activeAccts={activeAccts}
           orgAccts={orgAccts}
           gmvActual={gmvActual}
@@ -1272,7 +1283,7 @@ export default function AppDesktop(){
             if(risks.length===0)return<div style={{padding:"40px",textAlign:"center",border:`1px dashed ${S.border}`,borderRadius:10,fontSize:13,color:S.inactiveText}}>No risk flags across active accounts.</div>;
             return<div style={{border:`1px solid ${T.hair}`,borderRadius:11,overflow:"hidden",background:"#fff"}}>
               {risks.map((r,i)=>(
-                <button key={i} onClick={()=>{selectAcct(r.aid,"overview");navigate("accounts");}} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
+                <button key={i} onClick={()=>{selectAcct(r.aid,"home");navigate("accounts");}} style={{display:"flex",alignItems:"flex-start",gap:14,padding:"14px 20px",width:"100%",background:"#fff",border:"none",borderTop:i?`1px solid ${S.border}`:"none",cursor:"pointer",fontFamily:sans,textAlign:"left"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#FAFAFA"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                   <Tag label={r.severity==="high"?"Critical":r.severity==="medium"?"Watch":"Low"} c={SEV[r.severity]?.c||T.sub} s={SEV[r.severity]?.s||"#F3F4F6"}/>
                   <div style={{flex:1}}>
@@ -1384,6 +1395,92 @@ function MilestoneAdd({onAdd,onCancel}){
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       <button disabled={!title||!date} onClick={()=>{onAdd({id:uid(),type,title,date,note,done:false});onCancel();}} style={{...VBtn.small,fontSize:12,opacity:(!title||!date)?.45:1,cursor:(!title||!date)?"default":"pointer"}}>Add milestone</button>
       <button onClick={onCancel} style={{fontSize:12,color:T.faint,background:"none",border:"none",cursor:"pointer",fontFamily:sans,padding:"5px 8px"}}>Cancel</button>
+    </div>
+  </div>;
+}
+
+// Compact ledger summary above the obligations list: "6 of 9 met, 2 pending, 1 missed".
+// Counts by status so the health of the whole obligation set reads at a glance.
+function ObligationLedger({obligations}){
+  const total=obligations.length;
+  if(!total) return null;
+  const counts=obligations.reduce((m,o)=>{const s=o.status||"pending";m[s]=(m[s]||0)+1;return m;},{});
+  const met=counts.met||0;
+  const order=["missed","pending","in_progress","waived"];
+  const parts=order.filter(s=>counts[s]).map(s=>`${counts[s]} ${OBL_STATUS[s].t.toLowerCase()}`);
+  return <div style={{fontSize:12,color:T.sub,marginBottom:14,letterSpacing:"-0.01em"}}>
+    <span style={{fontWeight:600,color:met===total?T.green:T.ink}}>{met} of {total} met</span>
+    {parts.length>0&&<span style={{color:T.faint}}>{"  ·  "}{parts.join(", ")}</span>}
+  </div>;
+}
+
+// First-class obligation: a row that expands inline (Linear-style) to edit owner, due
+// date, and evidence. Evidence can point at one of the account's features (the thing
+// that satisfies the obligation) or be free text (an invoice ref, a note). Status stays
+// editable in the collapsed row via TagPick.
+function ObligationRow({o,features=[],onUpdate,first}){
+  const [open,setOpen]=useState(false);
+  const [owner,setOwner]=useState(o.owner||"");
+  const [evidenceText,setEvidenceText]=useState(o.evidence&&o.evidence.type==="text"?o.evidence.value:"");
+  const s=OBL_STATUS[o.status]||OBL_STATUS.pending;
+  const linkedFeature=o.evidence&&o.evidence.type==="feature"?features.find(f=>f.id===o.evidence.value):null;
+
+  const evidenceOptions=[
+    {value:"__none",label:"No evidence",color:T.faint},
+    ...features.map(f=>({value:"feature:"+f.id,label:f.name,color:T.blue})),
+    {value:"__text",label:"Free text…",color:T.sub},
+  ];
+  const evidenceValue=o.evidence?(o.evidence.type==="feature"?"feature:"+o.evidence.value:"__text"):"__none";
+
+  return <div style={{borderTop:first?"none":`1px solid ${T.hair}`}}>
+    <div style={{display:"grid",gridTemplateColumns:"52px 1fr 110px",gap:14,padding:"10px 0",alignItems:"start"}}>
+      <span style={{fontSize:11.5,fontWeight:500,color:o.party==="us"?T.purple:T.faint,paddingTop:1,letterSpacing:"-0.01em"}}>{o.party}</span>
+      <div style={{cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+        <div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:9,color:T.faint,transform:open?"rotate(90deg)":"none",transition:"transform .18s",display:"inline-block"}}>▶</span>
+          {o.label}
+          {o.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail,letterSpacing:"-0.005em"}}>from contract</span>}
+        </div>
+        <div style={{fontSize:11.5,color:T.faint,marginTop:2,paddingLeft:15}}>
+          {o.source}
+          {o.owner&&<span>{"  ·  "}{o.owner}</span>}
+          {o.due&&<span>{"  ·  due "}{new Date(o.due+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"})}</span>}
+          {linkedFeature&&<span>{"  ·  ✓ "}{linkedFeature.name}</span>}
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <TagPick value={o.status||"pending"} options={Object.entries(OBL_STATUS).map(([v,d])=>({value:v,label:d.t,color:d.c}))}
+          onChange={v=>onUpdate(o.id,{status:v})} placeholder="Status"/>
+      </div>
+    </div>
+    <div style={{display:"grid",gridTemplateRows:open?"1fr":"0fr",transition:"grid-template-rows .22s cubic-bezier(.4,0,.2,1)"}}>
+      <div style={{overflow:"hidden"}}>
+        <div style={{padding:"4px 0 16px 66px",display:"flex",flexWrap:"wrap",gap:24,alignItems:"flex-start"}}>
+          <div>
+            <div style={{fontSize:11,color:T.header,marginBottom:4,letterSpacing:"-0.005em"}}>Owner</div>
+            <div style={{minWidth:120}}>
+              <InlineText value={owner} onChange={setOwner} onCommit={()=>onUpdate(o.id,{owner:owner||null})} placeholder="Add owner…" size={12.5}/>
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:T.header,marginBottom:4,letterSpacing:"-0.005em"}}>Due</div>
+            <DateChip value={o.due||""} onChange={d=>onUpdate(o.id,{due:d||null})}/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:T.header,marginBottom:4,letterSpacing:"-0.005em"}}>Evidence</div>
+            <TagPick value={evidenceValue}
+              options={evidenceOptions}
+              onChange={v=>{
+                if(v==="__none") onUpdate(o.id,{evidence:null});
+                else if(v==="__text") onUpdate(o.id,{evidence:{type:"text",value:evidenceText||""}});
+                else onUpdate(o.id,{evidence:{type:"feature",value:v.slice(8)}});
+              }} placeholder="Link evidence"/>
+            {o.evidence&&o.evidence.type==="text"&&<div style={{marginTop:6,minWidth:160}}>
+              <InlineText value={evidenceText} onChange={setEvidenceText} onCommit={()=>onUpdate(o.id,{evidence:{type:"text",value:evidenceText}})} placeholder="Invoice ref, note…" size={12.5}/>
+            </div>}
+          </div>
+        </div>
+      </div>
     </div>
   </div>;
 }
@@ -1624,14 +1721,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
   const fa=a.fault||{};
   const v=VERDICT[fa.verdict]||VERDICT.unclear;
 
-  const TABS=["overview","timeline","economics","contract"];
+  const TABS=["home","overview","timeline","economics","contract"];
 
   return (
     <div style={{display:"flex",height:"100%",background:T.page}}>
       {/* ── LEFT: main content ── */}
       <div style={{flex:1,overflow:"auto",padding:"0",minWidth:0}}>
-        {/* Breadcrumb + title — Linear style */}
-        <div style={{padding:"22px 40px 0",borderBottom:`1px solid ${T.hair}`,background:T.page,position:"sticky",top:0,zIndex:10}}>
+        {/* Breadcrumb and title. Scrolls with content (not sticky). */}
+        <div style={{padding:"22px 40px 0",borderBottom:`1px solid ${T.hair}`,background:T.page}}>
           <div style={{fontSize:12,marginBottom:14,display:"flex",alignItems:"center",gap:6}}>
             <button onClick={onBack} style={{background:"none",border:"none",color:T.sub,cursor:"pointer",fontFamily:sans,fontSize:13,fontWeight:500,padding:0,display:"flex",alignItems:"center",gap:5,letterSpacing:"-0.01em"}}>← Accounts</button>
           </div>
@@ -1668,6 +1765,142 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
 
         {/* Tab content */}
         <div style={{padding:"26px 40px 48px"}}>
+
+          {/* CONTRACT HOME: the default landing view. Active contract, clock, obligation
+              ledger, money, then supporting signals. No active cycle shows a clear empty
+              state but still surfaces notes and any previous cycles. */}
+          {tab==="home"&&<>
+            {!c&&<div style={{marginBottom:28}}>
+              <div style={{padding:"18px 20px",background:T.rail,border:`1px solid ${T.hair}`,borderRadius:11,marginBottom:20}}>
+                <div style={{fontSize:14,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",marginBottom:4}}>No active contract</div>
+                <div style={{fontSize:12.5,color:T.sub,lineHeight:1.5}}>
+                  {cycles.length>0
+                    ?`This account has ${cycles.length} contract ${cycles.length===1?"cycle":"cycles"}, but none is marked active. Set one active in the Contract tab to populate this view.`
+                    :"No contract on file yet. Add one from the Contract tab or the + Contract button."}
+                </div>
+                <button onClick={()=>onTabChange("contract")} style={{marginTop:12,...VBtn.small,fontSize:12,color:T.purple,borderColor:T.purpleBar}}>Go to Contract tab →</button>
+              </div>
+              {cycles.length>0&&<div style={{marginBottom:20}}>
+                <div style={{fontSize:12,fontWeight:600,color:T.header,letterSpacing:"-0.005em",marginBottom:10}}>Previous cycles</div>
+                {[...cycles].sort((x,y)=>new Date(y.start||0)-new Date(x.start||0)).map((cy,i)=>(
+                  <div key={cy.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em"}}>{cy.label||"Untitled cycle"}</div>
+                      <div style={{fontSize:11.5,color:T.faint,marginTop:1}}>{cy.start||"?"} to {cy.end||"?"}{cy.gmvActual?`  ·  ${fmt(cy.gmvActual)} realized`:""}</div>
+                    </div>
+                    <span style={{fontSize:11,fontWeight:500,color:T.faint,padding:"2px 8px",borderRadius:4,background:T.rail}}>inactive</span>
+                  </div>
+                ))}
+              </div>}
+              {(summary||notes)&&<div>
+                {summary&&<div style={{fontSize:13,color:T.sub,lineHeight:1.55,marginBottom:notes?12:0}}>{summary}</div>}
+                {notes&&<div style={{fontSize:12.5,color:T.faint,lineHeight:1.55,whiteSpace:"pre-wrap"}}>{notes}</div>}
+              </div>}
+            </div>}
+
+            {c&&(()=>{
+              // The clock: soonest upcoming payment, renewal, and event from milestones,
+              // plus days to contract end from the active cycle's end date.
+              const upcoming=type=>{
+                const ms=(milestones||[]).filter(m=>m.type===type&&m.date&&!m.done&&daysDiff(m.date)>=0).sort((x,y)=>new Date(x.date)-new Date(y.date));
+                return ms[0]||null;
+              };
+              const nextPay=upcoming("payment");
+              const nextRenew=upcoming("renewal");
+              const nextEvent=upcoming("event_date");
+              const endDays=eco.end?daysDiff(new Date(eco.end)):null;
+              const clock=[
+                nextPay&&{label:"Next payment",days:daysDiff(nextPay.date),date:nextPay.date},
+                nextRenew&&{label:"Renewal window",days:daysDiff(nextRenew.date),date:nextRenew.date},
+                nextEvent&&{label:"Next event",days:daysDiff(nextEvent.date),date:nextEvent.date},
+                endDays!=null&&endDays>=0&&{label:"Contract ends",days:endDays,date:eco.end},
+              ].filter(Boolean);
+
+              const cap=eco.liabilityCap||0;
+              const proj=eco.gmvProjected||0;
+              const realized=eco.gmvActual||0;
+              const obl=a.obligations||[];
+              const oblMet=obl.filter(o=>o.status==="met").length;
+              const oblAttention=obl.filter(o=>o.status==="missed"||o.status==="pending"||o.status==="in_progress");
+
+              return <>
+                {/* Active contract header */}
+                <div style={{marginBottom:24}}>
+                  <div style={{fontSize:11,fontWeight:500,letterSpacing:"-0.005em",color:T.faint,marginBottom:4}}>Active contract</div>
+                  <div style={{fontSize:17,fontWeight:600,color:T.ink,letterSpacing:"-0.02em",marginBottom:2}}>{eco.label||activeCycle.label||"Current contract"}</div>
+                  <div style={{fontSize:12.5,color:T.sub}}>
+                    {eco.start||"?"} to {eco.end||"?"}
+                    {proj>0&&<span>{"  ·  "}{fmtK(proj)} projected</span>}
+                    {eco.netTakePct?<span>{"  ·  "}{eco.netTakePct}% take</span>:null}
+                  </div>
+                </div>
+
+                {/* The clock */}
+                {clock.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:28}}>
+                  {clock.map((ck,i)=>(
+                    <div key={i} style={{flex:"1 1 120px",minWidth:120,padding:"12px 14px",background:S.bg,border:`1px solid ${T.hair}`,borderRadius:11,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
+                      <div style={{fontSize:11,color:T.header,letterSpacing:"-0.005em",marginBottom:4}}>{ck.label}</div>
+                      <div style={{fontSize:20,fontWeight:600,color:ck.days<=14?T.red:ck.days<=30?T.yellow:T.ink,letterSpacing:"-0.02em",lineHeight:1}}>{ck.days}<span style={{fontSize:12,fontWeight:500,color:T.faint,marginLeft:3}}>days</span></div>
+                      <div style={{fontSize:11,color:T.faint,marginTop:3}}>{new Date(ck.date+(ck.date.includes("-")?"T00:00:00":"")).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</div>
+                    </div>
+                  ))}
+                </div>}
+
+                {/* Obligation ledger */}
+                {obl.length>0&&<div style={{marginBottom:28}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+                    <div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em"}}>Obligations</div>
+                    <button onClick={()=>onTabChange("overview")} style={{fontSize:11.5,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500}}>Manage →</button>
+                  </div>
+                  <ObligationLedger obligations={obl}/>
+                  {oblAttention.length>0&&<div style={{marginTop:4}}>
+                    {oblAttention.slice(0,4).map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.pending;return(
+                      <div key={o.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                        <span style={{fontSize:12.5,color:T.ink,letterSpacing:"-0.01em"}}>{o.label}</span>
+                        <span style={{fontSize:11.5,fontWeight:500,color:s.c}}>{s.t}</span>
+                      </div>
+                    );})}
+                    {oblAttention.length>4&&<div style={{fontSize:11.5,color:T.faint,marginTop:6}}>+{oblAttention.length-4} more need attention</div>}
+                  </div>}
+                </div>}
+
+                {/* The money */}
+                <div style={{marginBottom:28}}>
+                  <div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",marginBottom:12}}>Money</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:12,marginBottom:cap>0?16:0}}>
+                    {[["GMV realized",fmt(realized)],["GMV projected",fmtK(proj)],["Fees earned",fmt(fees)],["Net so far",fmt(net)]].map(([k,val],i)=>(
+                      <div key={i}>
+                        <div style={{fontSize:11,color:T.header,letterSpacing:"-0.005em",marginBottom:3}}>{k}</div>
+                        <div style={{fontSize:15,fontWeight:600,color:k==="Net so far"&&net<0?T.red:T.ink,letterSpacing:"-0.01em"}}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {cap>0&&<div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:11.5,color:T.sub,marginBottom:5}}>
+                      <span>Realized GMV against liability cap</span>
+                      <span style={{fontWeight:500,color:realized>cap?T.red:T.sub}}>{fmt(realized)} / {fmt(cap)}</span>
+                    </div>
+                    <div style={{height:6,borderRadius:3,background:T.rail,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${pct(realized,cap)}%`,background:realized>cap?T.red:realized>cap*0.8?T.yellow:T.green,borderRadius:3,transition:"width .3s"}}/>
+                    </div>
+                    {proj>cap&&<div style={{fontSize:11,color:T.red,marginTop:6}}>Projected GMV ({fmtK(proj)}) exceeds the liability cap.</div>}
+                  </div>}
+                </div>
+
+                {/* Supporting signals */}
+                {a.signals_pending?.length>0&&<div style={{marginBottom:8}}>
+                  <div style={{fontSize:13.5,fontWeight:600,color:T.ink,letterSpacing:"-0.01em",marginBottom:10}}>Signals</div>
+                  {a.signals_pending.slice(0,3).map((s,i)=>(
+                    <div key={s.id||i} style={{padding:"8px 0",borderTop:i?`1px solid ${T.hair}`:"none"}}>
+                      <div style={{fontSize:12.5,color:T.ink,letterSpacing:"-0.01em"}}>{s.kind}</div>
+                      <div style={{fontSize:11.5,color:T.faint,marginTop:1}}>{s.text}</div>
+                    </div>
+                  ))}
+                  {a.signals_pending.length>3&&<button onClick={()=>onTabChange("overview")} style={{fontSize:11.5,color:T.purple,background:"none",border:"none",cursor:"pointer",fontFamily:sans,fontWeight:500,marginTop:6}}>See all {a.signals_pending.length} signals →</button>}
+                </div>}
+              </>;
+            })()}
+          </>}
 
           {/* OVERVIEW */}
           {tab==="overview"&&<>
@@ -1756,26 +1989,14 @@ function StripeDetail({a, tab, onTabChange, onBack, onEdit, onNewContract, onDel
               </div>
             </div>}
 
-            {/* Obligations — airy rows, no box */}
+            {/* Obligations, airy rows, no box, expandable inline */}
             {a.obligations?.length>0&&<div style={{marginBottom:32}}>
               <div style={{fontSize:13.5,fontWeight:600,letterSpacing:"-0.01em",color:T.ink,marginBottom:12}}>Obligations vs. contract</div>
+              <ObligationLedger obligations={a.obligations}/>
               <div>
-                {a.obligations.map((o,i)=>{const s=OBL_STATUS[o.status]||OBL_STATUS.pending; return(
-                  <div key={o.id||i} style={{display:"grid",gridTemplateColumns:"52px 1fr 110px",gap:14,padding:"10px 0",borderTop:i?`1px solid ${T.hair}`:"none",alignItems:"start"}}>
-                    <span style={{fontSize:11.5,fontWeight:500,color:o.party==="us"?T.purple:T.faint,paddingTop:1,letterSpacing:"-0.01em"}}>{o.party}</span>
-                    <div>
-                      <div style={{fontSize:13,fontWeight:500,color:T.ink,letterSpacing:"-0.01em",display:"flex",alignItems:"center",gap:6}}>
-                        {o.label}
-                        {o.generated&&<span style={{fontSize:10,fontWeight:500,color:T.faint,padding:"1px 6px",borderRadius:4,background:T.rail,letterSpacing:"-0.005em"}}>from contract</span>}
-                      </div>
-                      <div style={{fontSize:11.5,color:T.faint,marginTop:2}}>{o.source}</div>
-                    </div>
-                    <div style={{display:"flex",justifyContent:"flex-end"}}>
-                      <TagPick value={o.status||"pending"} options={Object.entries(OBL_STATUS).map(([v,d])=>({value:v,label:d.t,color:d.c}))}
-                        onChange={v=>updateObligation(o.id,{status:v})} placeholder="Status"/>
-                    </div>
-                  </div>
-                );})}
+                {a.obligations.map((o,i)=>(
+                  <ObligationRow key={o.id||i} o={o} features={features} onUpdate={updateObligation} first={i===0}/>
+                ))}
               </div>
             </div>}
 
